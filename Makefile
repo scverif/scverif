@@ -1,10 +1,10 @@
 .PHONY: all clean test
 
 MENHIR          := menhir
-MENHIRFLAGS     := --infer
-OCB_FLAGS	:= -tag bin_annot -I src -I lib -r
-OCB		:= ocamlbuild -use-ocamlfind -use-menhir -menhir "$(MENHIR) $(MENHIRFLAGS)" $(OCB_FLAGS)
-MAIN            := asmmain
+MENHIRFLAGS     := --infer --explain
+OCB_FLAGS	:= -tag bin_annot -I src -I lib -r -package batteries -package zarith
+OCB		:= ocamlbuild -use-ocamlfind -use-menhir -menhir "$(MENHIR) $(MENHIRFLAGS)" $(OCB_FLAGS)  
+MAIN            := main
 
 UNAME_S   := $(shell uname -s)
 
