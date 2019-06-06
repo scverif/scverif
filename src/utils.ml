@@ -45,6 +45,10 @@ let try_finally (body : unit -> 'a) (cleanup : unit -> unit) =
   in
     cleanup (); aout
 
+let finally final f a =
+  let res = try f a with e -> final();raise e in
+  final(); res
+
 let timed f x =
   let t1   = Unix.gettimeofday () in
   let aout = f x in
@@ -726,6 +730,18 @@ let hierror fmt =
       raise (HiError (Buffer.contents buf)))
     bfmt fmt
 
+let pp_error fmt msg =
+  Format.fprintf fmt "%s" msg 
+
+exception ParseError of Location.t * string option
+
+let unterminated_comment loc =
+  raise (ParseError (loc, Some "unterminated comment"))
+
+let invalid_char loc (c : char) =
+  let msg = Printf.sprintf "invalid char: `%c'" c in
+  raise (ParseError (loc, Some msg))
+
 (* -------------------------------------------------------------------- *)
 type 'a pp = Format.formatter -> 'a -> unit
 
@@ -767,3 +783,4 @@ type model =
   | ConstantTime
   | Safety
   | Normal
+

@@ -24,6 +24,7 @@ val tryexn : (exn -> bool) -> (unit -> 'a) -> 'a option
 val try_nf : (unit -> 'a) -> 'a option
 
 val try_finally : (unit -> 'a) -> (unit -> unit) -> 'a
+val finally : (unit -> 'a) -> ('b -> 'c) -> 'b -> 'c
 
 val timed : ('a -> 'b) -> 'a -> float * 'b
 
@@ -320,6 +321,11 @@ exception HiError of string
 
 val hierror : ('a, Format.formatter, unit, 'b) format4 -> 'a
 
+exception ParseError of Location.t * string option
+
+val unterminated_comment : Location.t -> 'a
+val invalid_char : Location.t -> char -> 'a 
+val pp_error : Format.formatter -> string -> unit
 (* -------------------------------------------------------------------- *)
 type 'a pp = Format.formatter -> 'a -> unit
 

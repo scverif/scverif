@@ -108,7 +108,7 @@ macro_arg:
   | x=ident r=range { Aindex(x,r) }
 
 macro_args:
-  | LPAREN es=separated_nonempty_list(COMMA, macro_arg) RPAREN { es }
+  | LPAREN es=separated_list(COMMA, macro_arg) RPAREN { es }
 
 lval:
   | x=ident                                  { Lvar x }
@@ -141,9 +141,9 @@ cmd:
   | LCURLY c=instr* RCURLY { c }
 
 var_decl:
-  | x=ident LBRACKET RBRACKET SEMICOLON { {v_name = x; v_type = Tmem } }
-  | bty=base_type x=ident SEMICOLON    { {v_name = x; v_type = Tbase bty } }
-  | bty=base_type x=ident LBRACKET i1=INT COLON i2=INT RBRACKET SEMICOLON 
+  | x=ident LBRACKET RBRACKET  { {v_name = x; v_type = Tmem } }
+  | bty=base_type x=ident      { {v_name = x; v_type = Tbase bty } }
+  | bty=base_type x=ident LBRACKET i1=INT COLON i2=INT RBRACKET 
                               { {v_name = x; v_type = Tarr(bty,i1,i2) } }
   
 param_decl:
@@ -157,7 +157,7 @@ macro_decl:
     { { mc_name = x;  mc_params = p; mc_locals = l; mc_body = c } }
 
 command1:
-  | x=loc(var_decl)   { Gvar x }
+  | x=loc(var_decl) SEMICOLON { Gvar x }
   | m=loc(macro_decl) { Gmacro m }
   | error        { parse_error (Location.make $startpos $endpos) None }
 

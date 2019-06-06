@@ -5,13 +5,6 @@
   module L = Location
   module S = Ilast
 
-  let unterminated_comment loc =
-    raise (S.ParseError (loc, Some "unterminated comment"))
-
-  let invalid_char loc (c : char) =
-    let msg = Printf.sprintf "invalid char: `%c'" c in
-    raise (S.ParseError (loc, Some msg))
-
   let _keywords = [
     "w8"    , W8   ;
     "w16"   , W16  ;

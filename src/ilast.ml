@@ -115,5 +115,3 @@ type command =
   | Gexit  
 
 
-exception ParseError of Location.t * string option
-exception LexicalError of Location.t option * string
