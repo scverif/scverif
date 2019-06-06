@@ -1,3 +1,7 @@
+%{
+  open Asmast
+
+%}
 %token <string> HEX
 %token <string> REGIDENT
 %token COLON COMMA HASHTAG
@@ -34,9 +38,9 @@ instr_disasm:
 
 regident:
   | n=REGIDENT
-    { n }
+    { Reg n }
   | LBRACKET n=REGIDENT COMMA HASHTAG s=HEX RBRACKET
-    { {n; s} }
+    { RegShift (n, s); }
 
 instr_rhs:
   | regs=separated_list(COMMA,regident)
@@ -45,10 +49,10 @@ instr_rhs:
     { regs }
 
 stmt:
-  | io=instr_offset COLON ib=instr_binary id=instr_disasm ir=instr_rhs EOL { { io; ib; id; ir} }
+  | io=instr_offset COLON ib=instr_binary id=instr_disasm ir=instr_rhs EOL { { offset=io; instr_bin=ib; instr_asm=id; instr_exp=ir } }
 
 section:
-  | s_adr=address LT s_name=secname GT COLON EOL
-      s_stmt=stmt
+  | adr=address LT name=secname GT COLON EOL
+      stmts=list(stmt)
     EOF
-    { let sd = { s_adr; s_name; s_stmt } in Section sd}
+    { { s_adr=adr; s_name=name; s_stmts=stmts } }

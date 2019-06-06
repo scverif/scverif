@@ -25,13 +25,9 @@ rule main = parse
   | blank+         { main lexbuf }
   | hex+ as h       { HEX h }
   | regident as r  { REGIDENT r }
-  | immediate as i { IMMEDIATE i }
-  | uint as n      { INT (int_of_string n) }
   | ident as id    { IDENT id }
   | "<"            { LT }
   | ">"            { GT }
-  | "("            { LPAREN }
-  | ")"            { RPAREN }
   | "["            { LBRACKET }
   | "]"            { RBRACKET }
   | "{"            { LCURLY }
