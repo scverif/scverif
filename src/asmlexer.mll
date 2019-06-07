@@ -15,15 +15,15 @@ let letter  = upper | lower
 let char    = letter | '_'
 let digit   = ['0'-'9']
 let uint    = digit+
-let hex     = digit | ['a'-'f'] | ['A'-'F']
-let regident= ('r' digit+)
-let ident   = char (char | digit)*
+let hex     = ['0'-'9'] | ['a'-'f'] | ['A'-'F']
+let regident= 'r' digit+
+let ident   = letter (char | digit)*
 let immediate = ('#' hex+)
 
 rule main = parse
   | newline        { Lexing.new_line lexbuf; main lexbuf}
   | blank+         { main lexbuf }
-  | hex+ as h       { HEX h }
+  | hex+ as h      { HEX h }
   | regident as r  { REGIDENT r }
   | ident as id    { IDENT id }
   | "<"            { LT }

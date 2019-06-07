@@ -1,6 +1,7 @@
 %{
+  open Location
+  open Utils
   open Asmast
-
 %}
 %token <string> HEX
 %token <string> REGIDENT
@@ -16,27 +17,27 @@
 
 %%
 
-address:
+%inline address:
   | a=HEX
     { a }
 
-secname:
+%inline secname:
   | n=IDENT
     { n }
 
-instr_offset:
+%inline instr_offset:
   | o=HEX
     { o }
 
-instr_binary:
+%inline instr_binary:
   | ib=HEX
     { ib }
 
-instr_disasm:
+%inline instr_disasm:
   | id=IDENT
     { id }
 
-regident:
+%inline regident:
   | n=REGIDENT
     { Reg n }
   | LBRACKET n=REGIDENT COMMA HASHTAG s=HEX RBRACKET
@@ -53,6 +54,6 @@ stmt:
 
 section:
   | adr=address LT name=secname GT COLON EOL
-      stmts=list(stmt)
+      stmts=stmt
     EOF
-    { { s_adr=adr; s_name=name; s_stmts=stmts } }
+    { { s_adr=adr; s_name=name; s_stmts=[stmts] } }
