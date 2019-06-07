@@ -40,7 +40,7 @@ regident:
   | n=REGIDENT
     { Reg n }
   | LBRACKET n=REGIDENT COMMA HASHTAG s=HEX RBRACKET
-    { RegShift (n, s); }
+    { RegShift (n, s) }
 
 instr_rhs:
   | regs=separated_list(COMMA,regident)
