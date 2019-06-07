@@ -50,11 +50,10 @@ instr_rhs:
     { regs }
 
 stmt:
-  | io=instr_offset COLON ib=instr_binary id=instr_disasm ir=instr_rhs { { offset=io; instr_bin=ib; instr_asm=id; instr_exp=ir } }
-  | error { parse_error (Location.make $startpos $endpos) "" } 
+  | io=instr_offset COLON ib=instr_binary id=instr_disasm ir=instr_rhs
+    { { offset=io; instr_bin=ib; instr_asm=id; instr_exp=ir } }
+  | error { parse_error (Location.make $startpos $endpos) "" }
 
 section:
-  | adr=address LT name=secname GT COLON
-      stmts=stmt
-    EOF
-    { { s_adr=adr; s_name=name; s_stmts=[stmts] } }
+  | adr=address LT name=secname GT COLON stmts=list(stmt) EOF
+    { { s_adr=adr; s_name=name; s_stmts=stmts } }

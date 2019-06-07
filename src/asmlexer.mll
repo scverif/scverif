@@ -18,7 +18,7 @@ let char    = letter | '_'
 let digit   = ['0'-'9']
 let uint    = digit+
 let hex     = ['0'-'9'] | ['a'-'f'] | ['A'-'F']
-let regident= 'r' digit+
+let regident= ('r' digit+ | "lr" | "pc" | "sp" )
 let ident   = letter (char | digit)*
 let immediate = ('#' hex+)
 
