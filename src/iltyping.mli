@@ -1,1 +1,1 @@
-val process : Ilast.command list -> unit
+val process : Ilast.command list -> Il.global list

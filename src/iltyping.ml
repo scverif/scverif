@@ -102,7 +102,7 @@ let find_label env l =
 
 let process_ty loc ty = 
   match ty with 
-  | Tarr(_, i1, i2) -> 
+  | Tarr(_, i1, i2) when B.lt i2 i1 -> 
     ty_error loc "%a should be less than %a" B.pp_print i1 B.pp_print i2 
   |  _ -> ty
 
@@ -417,7 +417,12 @@ let check_arg env a p =
           Eget(x', Eint n1) in
       Aexpr e
    
-let check_args env args params = 
+let check_args env loc args params = 
+  let len1 = List.length args in
+  let len2 = List.length params in
+  if len1 <> len2 then
+    ty_error loc "invalid number of arguments %i provided instead of %i"
+      len1 len2;
   List.map2 (check_arg env) args params
 
 let rec type_i env i =
@@ -434,7 +439,7 @@ let rec type_i env i =
 
     | Ilast.Imacro(m,args) ->
       let m = find_macro env.genv m in
-      let args = check_args env args m.mc_params in
+      let args = check_args env (loc i) args m.mc_params in
       Imacro(m,args)
 
     | Ilast.Ilabel lbl ->
@@ -508,6 +513,6 @@ let genv = ref empty_genv
 
 let process ast = 
   let genv', gs = List.map_fold process_command !genv ast in
-  Format.eprintf "@[<v>IL definitions processed@ %a@]@."
-    (pp_list "@ @ " (pp_global ~full:true)) gs;
-  genv := genv' 
+  genv := genv';
+  gs
+

@@ -318,6 +318,8 @@ end
 (* -------------------------------------------------------------------- *)
 type full_loc = Location.t * Location.t list
 
+val append_locs : full_loc -> Location.t list -> full_loc 
+
 val pp_full_loc : Format.formatter -> full_loc -> unit
 
 exception HiError of string * Location.t option * string

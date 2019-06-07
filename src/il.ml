@@ -15,7 +15,9 @@ module V : sig
   val compare : t -> t -> int
   val equal   : t -> t -> bool
   val fresh   : string -> Location.t -> ty -> t
+  val clone   : t -> t
   val pp_full : full:bool -> Format.formatter -> t -> unit 
+  val pp_dbg  : Format.formatter -> t -> unit 
   val pp      : Format.formatter -> t -> unit 
 
 end = struct 
@@ -32,6 +34,8 @@ end = struct
       v_ty   = ty 
     }
 
+  let clone x = { x with v_id = Uid.fresh () }
+
   let pp_full ~full fmt v =
     if full then 
       Format.fprintf fmt "%s.%a" v.v_name Uid.pp v.v_id
@@ -39,7 +43,12 @@ end = struct
 
   let pp fmt v = pp_full ~full:false fmt v
 
+  let pp_dbg fmt v = pp_full ~full:true fmt v
+
+
 end
+
+module Mv = Map.Make(V)
 
 module Lbl : sig 
   type t
@@ -76,6 +85,7 @@ end = struct
 end
 
 module Sl = Set.Make(Lbl)
+module Ml = Map.Make(Lbl)
 
 type leak_info = string option
 
@@ -117,7 +127,7 @@ type lval =
   | Lvar   of V.t         
   | Lset   of V.t * expr           (* array assign *)
   | Lstore of wsize * V.t * expr   (* memory assign *)
-  
+
 type macro_arg = 
   | Aexpr  of expr 
   | Alabel of Lbl.t
@@ -167,12 +177,40 @@ module M = struct
   let pp fmt m = pp_full ~full:false fmt m
     
 end 
+
 (* *********************************************** *)
 (* Destructors                                     *)
 let destr_var e = 
   match e with
   | Evar x -> x
   | _      -> assert false
+
+(* *********************************************** *)
+(* Constructors                                    *)
+  
+let oaddi = { od = Oadd None }
+let osubi = { od = Osub None }
+
+let addi e1 e2 = Eop(oaddi, [e1; e2])
+
+let addi_imm e1 i = addi e1 (Eint i)
+
+let subi e1 e2 = Eop(osubi, [e1; e2])
+
+let subi_imm e1 i = subi e1 (Eint i)
+
+(* *********************************************** *)
+
+let lv2e = function
+  | Lvar x -> Evar x
+  | Lset(x,e) -> Eget(x,e)
+  | Lstore(ws,x,e) -> Eload(ws,x,e)
+
+let e2lv = function
+  | Evar x -> Lvar x
+  | Eget(x,e) -> Lset(x,e)
+  | Eload(ws,x,e) -> Lstore(ws,x,e)
+  | _  -> raise Not_found 
 
 (* *********************************************** *)
 (* Checking that all labels are defined            *)
@@ -327,7 +365,7 @@ let pp_param ~full fmt = function
   | Plabel lbl -> Format.fprintf fmt "label %a" (Lbl.pp_full ~full) lbl
 
 let pp_params ~full fmt ps =
-  Format.fprintf fmt "@[%a@]" (pp_list "@ " (pp_param ~full)) ps
+  Format.fprintf fmt "@[%a@]" (pp_list ",@ " (pp_param ~full)) ps
 
 let pp_leak_info fmt i =
   match i with
@@ -346,7 +384,7 @@ let rec pp_i ~full fmt i =
     Format.fprintf fmt "@[%s%a;@]"
       m.mc_name (pp_margs ~full) args 
   | Ilabel lbl ->
-    Format.fprintf fmt "label %a:" (Lbl.pp_full ~full) lbl
+    Format.fprintf fmt "%a:" (Lbl.pp_full ~full) lbl
   | Igoto lbl ->
     Format.fprintf fmt "goto %a;" (Lbl.pp_full ~full) lbl
   | Iif(e,c1,c2) ->
@@ -385,6 +423,14 @@ let pp_macro ~full fmt m =
 let pp_global ~full fmt = function
   | Gvar x -> Format.fprintf fmt "%a;" (pp_var_decl ~full) x
   | Gmacro m -> pp_macro ~full fmt m
+
+let pp_globals ~full fmt gs =
+  Format.fprintf fmt "@[<v>%a@]" 
+   (pp_list "@ @ " (pp_global ~full)) gs
+  
+(* ************************************************************* *)
+let check_size i1 i2 j1 j2 = 
+  B.equal (B.sub i2 i1) (B.sub j2 j1)
 
 
 

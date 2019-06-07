@@ -9,8 +9,10 @@ open Ilast
 open Il
 open Ilparser
 open Illexer
+open Ilinline
 
 open Mainast
+
 
 module Parse = struct
 
@@ -114,7 +116,12 @@ end
 
 let process_il filename =
   let ilast = ILParse.process_file (Location.unloc filename) in
-  Iltyping.process ilast;
+  let gs = Iltyping.process ilast in
+  Format.eprintf "@[<v>IL definitions processed@ %a@]@."
+    (pp_globals ~full:true) gs;
+  let gs = Ilinline.inline_globals gs in
+  Format.eprintf "@[<v>After inlining @ %a@]@."
+    (pp_globals ~full:true) gs;
   ()
 
 let process_asm filename =

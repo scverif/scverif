@@ -91,6 +91,7 @@ expr_r:
   | x=ident                                   { Evar x }
   | TRUE                                      { Ebool true }
   | FALSE                                     { Ebool false }
+  | i=INT                                     { Eint i }
   | x=ident LBRACKET e=expr RBRACKET          { Eget(x,e) }
   | LBRACKET s=wsize x=ident e=expr RBRACKET  { Eload(s, x, e) }
   | e1=expr o=loc(op2) e2=expr                
@@ -107,9 +108,8 @@ expr_r:
 expr:
   | e=loc(expr_r) { e } 
 
-range: 
+%inline range: 
   | LBRACKET i1=INT COLON i2=INT RBRACKET { (i1,i2) }
-  | LBRACKET i=INT RBRACKET { (i,i) }
 
 macro_arg: 
   | e=expr { Aexpr e }
@@ -130,7 +130,7 @@ instr_r:
     { Ileak(i,es) }
   | m=ident args=macro_args SEMICOLON
     { Imacro(m,args) }
-  | LABEL l=ident COLON
+  | l=ident COLON
     {Ilabel l }
   | GOTO l=ident SEMICOLON 
     { Igoto l }
