@@ -1,6 +1,8 @@
 {
+  open Utils
   open Asmparser
 
+  module L=Location
   exception Error of string
 
 }
@@ -34,7 +36,6 @@ rule main = parse
   | "}"            { RCURLY }
   | ","            { COMMA }
   | ":"            { COLON }
-  | "eof"          { EOF }
-  | "\n"           { EOL }
-  | _
-    { raise (Error (Printf.sprintf "At offset %d: unexpected character.\n" (Lexing.lexeme_start lexbuf))) }
+  | "#"            { HASHTAG }
+  | _ as x         { invalid_char (L.of_lexbuf lexbuf) x }
+  | eof            { EOF }

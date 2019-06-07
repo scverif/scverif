@@ -10,7 +10,7 @@
 %token LCURLY RCURLY
 %token LT GT
 %token <string> IDENT
-%token EOL EOF
+%token EOF
 
 %start section
 %type <Asmast.section> section
@@ -50,10 +50,11 @@ instr_rhs:
     { regs }
 
 stmt:
-  | io=instr_offset COLON ib=instr_binary id=instr_disasm ir=instr_rhs EOL { { offset=io; instr_bin=ib; instr_asm=id; instr_exp=ir } }
+  | io=instr_offset COLON ib=instr_binary id=instr_disasm ir=instr_rhs { { offset=io; instr_bin=ib; instr_asm=id; instr_exp=ir } }
+  | error { parse_error (Location.make $startpos $endpos) "" } 
 
 section:
-  | adr=address LT name=secname GT COLON EOL
+  | adr=address LT name=secname GT COLON
       stmts=stmt
     EOF
     { { s_adr=adr; s_name=name; s_stmts=[stmts] } }
