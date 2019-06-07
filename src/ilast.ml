@@ -1,40 +1,20 @@
-module L = Location
-module B = Bigint
+open Location
+open Common
 
-type wsize = 
-  | U8 
-  | U16 
-  | U32 
-  | U64
+type var = string located 
 
-type bty = 
-  | Bool
-  | Int
-  | W of wsize 
- 
-type ty = 
-  | Tbase of bty
-  | Tarr  of bty * B.zint * B.zint
-  | Tmem   
-
-
-type var = string L.located 
-
-type label = string L.located 
+type label = string located 
 
 type leak_info = string option
 
-type macro = string L.located 
+type macro = string located 
 
 type op1 = 
   | OPP        of wsize option
   | NOT        of wsize option
   | SignExtend of wsize
   | ZeroExtend of wsize
-
-type sign =
-  | Signed 
-  | Unsigned
+  | Cast       of cast
 
 type op2 = 
   | ADD 
@@ -57,7 +37,7 @@ type op_r =
   | Op2 of op2 * wsize option
   | Opn of string 
   
-type op = op_r L.located
+type op = op_r located
 
 type expr_desc = 
   | Eint  of B.zint 
@@ -67,7 +47,7 @@ type expr_desc =
   | Eload of wsize * var * expr    (* memory access *)
   | Eop   of op * expr list
 
-and expr = expr_desc L.located
+and expr = expr_desc located
 
 type lval = 
   | Lvar   of var        
@@ -77,7 +57,7 @@ type lval =
 type range = B.zint * B.zint 
 
 type macro_arg = 
-  | Avar   of var
+  | Aexpr  of expr
   | Aindex of var * range
 
 type instr_desc = 
@@ -89,7 +69,7 @@ type instr_desc =
   | Iif    of expr * cmd * cmd 
   | Iwhile of cmd * expr * cmd 
   
-and instr = instr_desc L.located
+and instr = instr_desc located
 
 and cmd = instr list
 
@@ -99,21 +79,19 @@ type var_decl = {
 }
 
 type param = 
-  | Pvar   of var_decl 
+  | Pvar   of var_decl  located
   | Plabel of label 
 
 type macro_decl = {
-    mc_name   : string L.located;
+    mc_name   : string located;
     mc_params : param list;
-    mc_locals  : param list;
+    mc_locals : param list;
     mc_body   : cmd;
   }
 
 type command = 
-  | Gvar   of var_decl L.located 
-  | Gmacro of macro_decl L.located
+  | Gvar   of var_decl located 
+  | Gmacro of macro_decl located
   | Gexit  
 
 
-exception ParseError of Location.t * string option
-exception LexicalError of Location.t option * string

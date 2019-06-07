@@ -1,6 +1,10 @@
-S  src
-
-B  _build/src
+S   src
+B   _build 
+B   _build/src
 
 PKG zarith
 PKG menhirLib
+PKG batteries
+
+FLG -rectypes
+FLG -w Y -w Z -w -23 -w +28 -w +33 -w -40 -w 58

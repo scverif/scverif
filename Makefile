@@ -1,12 +1,13 @@
 .PHONY: all clean test
 
-MENHIR          := menhir
-MENHIRFLAGS     := --infer --explain
-OCB_FLAGS	:= -tag bin_annot -I src -I lib -r -package batteries -package zarith -package ppx_deriving.show
-OCB		:= ocamlbuild -use-ocamlfind -use-menhir -menhir "$(MENHIR) $(MENHIRFLAGS)" $(OCB_FLAGS)
-MAIN            := main
+MENHIR       := menhir
+MENHIRFLAGS  := --infer --explain
+OCB_FLAGS    := -tag bin_annot -I src -r -package batteries -package zarith -package menhirLib -package ppx_deriving.show
+OCB          := ocamlbuild -use-ocamlfind -use-menhir -menhir "$(MENHIR) $(MENHIRFLAGS)" $(OCB_FLAGS)
 
-UNAME_S   := $(shell uname -s)
+MAIN         := main
+
+UNAME_S      := $(shell uname -s)
 
 ifeq ($(UNAME_S),Linux)
 	OCB_FLAGS += -lflags -cclib,-lrt
