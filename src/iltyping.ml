@@ -9,7 +9,7 @@ let ty_error loc = error "type error" (loc, [])
 (* Global environment                                *)
 
 type genv = 
-  { glob_var: var Ms.t;
+  { glob_var: V.t Ms.t;
     macro   : macro Ms.t;
   } 
 
@@ -143,12 +143,11 @@ let process_var_decl vd =
   let loc = loc vd in
   let vd  = unloc vd in
   let ty  = process_ty loc vd.Ilast.v_type in
-  Il.mk_var (unloc vd.Ilast.v_name) loc ty 
+  V.fresh (unloc vd.Ilast.v_name) loc ty 
 
 let process_gvar genv vd = 
   let x = process_var_decl vd in
-  add_gvar genv x
-
+  add_gvar genv x, x
 
 let get_op1 o = 
   match o with 
@@ -174,6 +173,11 @@ let ty2_ws loc o ws =
   let ws = ofdfl (fun _ -> ty_error loc "this operator except a size") ws in
   let ty = tw ws in
   o ws, [ty; ty], ty
+
+let ty2_ws_i loc o ws = 
+  let ws = ofdfl (fun _ -> ty_error loc "this operator except a size") ws in
+  let ty = tw ws in
+  o ws, [ty; tint], ty
  
 let get_op2 loc o ws = 
   match o with
@@ -181,9 +185,9 @@ let get_op2 loc o ws =
   | Ilast.SUB   -> ty2 (fun ws -> Osub ws) tint ws 
   | Ilast.MUL   -> ty2 (fun ws -> Omul ws) tint ws 
   | Ilast.MULH  -> ty2_ws loc (fun ws -> Omulh ws) ws 
-  | Ilast.LSL   -> ty2_ws loc (fun ws -> Olsl ws) ws 
-  | Ilast.LSR   -> ty2_ws loc (fun ws -> Olsr ws) ws 
-  | Ilast.ASR   -> ty2_ws loc (fun ws -> Oasr ws) ws 
+  | Ilast.LSL   -> ty2_ws_i loc (fun ws -> Olsl ws) ws 
+  | Ilast.LSR   -> ty2_ws_i loc (fun ws -> Olsr ws) ws 
+  | Ilast.ASR   -> ty2_ws_i loc (fun ws -> Oasr ws) ws 
   | Ilast.AND   -> ty2 (fun ws -> Oand ws) tbool ws 
   | Ilast.XOR   -> ty2 (fun ws -> Oxor ws) tbool ws 
   | Ilast.OR    -> ty2 (fun ws -> Oor ws) tbool ws 
@@ -489,14 +493,21 @@ let process_macro genv m =
       mc_locals;
       mc_body } in
   check_labels "type error" m; 
-  add_macro genv m
+  add_macro genv m, m
 
 let process_command env = function 
-  | Ilast.Gvar x -> process_gvar env x
-  | Ilast.Gmacro m -> process_macro env m
+  | Ilast.Gvar x   -> 
+    let genv, x = process_gvar env x in
+    genv, Gvar x
+  | Ilast.Gmacro m -> 
+    let genv, m = process_macro env m in
+    genv, Gmacro m 
   | Ilast.Gexit    -> assert false 
 
 let genv = ref empty_genv 
 
 let process ast = 
-  genv := List.fold_left process_command !genv ast 
+  let genv', gs = List.map_fold process_command !genv ast in
+  Format.eprintf "@[<v>IL definitions processed@ %a@]@."
+    (pp_list "@ @ " (pp_global ~full:true)) gs;
+  genv := genv' 

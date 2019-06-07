@@ -33,11 +33,14 @@ let w16 = tw U16
 let w32 = tw U32
 let w64 = tw U64
 
-let pp_wsize fmt = function
-  | U8  -> Format.fprintf fmt "w8"
-  | U16 -> Format.fprintf fmt "w16"
-  | U32 -> Format.fprintf fmt "w32"
-  | U64 -> Format.fprintf fmt "w64"
+let ws_string = function
+  | U8  -> "w8"
+  | U16 -> "w16"
+  | U32 -> "w32"
+  | U64 -> "w64"
+
+let pp_wsize fmt ws = 
+  Format.fprintf fmt "%s" (ws_string ws) 
 
 let pp_bty fmt = function
   | Bool -> Format.fprintf fmt "bool"
