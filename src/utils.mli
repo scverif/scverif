@@ -316,16 +316,24 @@ module Parray : sig
 end
 
 (* -------------------------------------------------------------------- *)
+type full_loc = Location.t * Location.t list
 
-exception HiError of string
+val pp_full_loc : Format.formatter -> full_loc -> unit
 
-val hierror : ('a, Format.formatter, unit, 'b) format4 -> 'a
+exception HiError of string * Location.t option * string
+exception Error of string * full_loc * string
 
-exception ParseError of Location.t * string option
+val hierror : 
+  string -> Location.t option -> ('a, Format.formatter, unit, 'b) format4 -> 'a
+val error : 
+  string -> full_loc -> ('a, Format.formatter, unit, 'b) format4 -> 'a
 
+val parse_error : Location.t -> ('a, Format.formatter, unit, 'b) format4 -> 'a
 val unterminated_comment : Location.t -> 'a
 val invalid_char : Location.t -> char -> 'a 
-val pp_error : Format.formatter -> string -> unit
+
+val pp_hierror : Format.formatter -> string * Location.t option * string -> unit
+val pp_error : Format.formatter -> string * full_loc * string -> unit
 (* -------------------------------------------------------------------- *)
 type 'a pp = Format.formatter -> 'a -> unit
 
@@ -355,3 +363,5 @@ type model =
   | Safety
   | Normal
   
+(* --------------------------------------------------------------------- *)
+module Ms : Map.S with type key = string

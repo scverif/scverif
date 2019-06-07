@@ -1,7 +1,7 @@
 {
   open Utils
   open Ilparser
-
+  open Common
   module L = Location
   module S = Ilast
 
@@ -13,6 +13,7 @@
 
     "bool"  , BOOL ;
     "int"   , TINT ;
+    "uint"  , UINT ;
 
     "else"  , ELSE   ;
     "false" , FALSE  ;
@@ -31,18 +32,18 @@
 
   let sign_of_char =
     function
-    | 'u' -> S.Unsigned
-    | 's' -> S.Signed
+    | 'u' -> Unsigned
+    | 's' -> Signed
     | _ -> assert false
 
-  let mk_sign : char option -> S.sign =
+  let mk_sign : char option -> sign =
     function
     | Some c -> sign_of_char c
-    | None   -> S.Unsigned 
+    | None   -> Unsigned 
 
   let mk_shr = function
-    | S.Unsigned -> LSR 
-    | S.Signed   -> ASR
+    | Unsigned -> LSR 
+    | Signed   -> ASR
 
 }
 

@@ -661,6 +661,7 @@ module String = struct
     | [s] -> [s] | matched -> OptionMatching.last_matching matched s
 end
 
+module Ms = Map.Make (String)
 (* -------------------------------------------------------------------- *)
 module IO = BatIO
 
@@ -718,29 +719,59 @@ end
 
 
 (* -------------------------------------------------------------------- *)
-exception HiError of string
+type full_loc = Location.t * Location.t list
 
-let hierror fmt =
+let pp_full_loc fmt (l,ls) =
+  let pp_loc fmt loc = 
+    Format.fprintf fmt "@ from %s"
+      (Location.tostring loc) in
+  let pp_locs fmt = List.iter (pp_loc fmt) in
+  Format.fprintf fmt "%s%a" (Location.tostring l) pp_locs ls
+
+exception HiError of string * Location.t option * string
+exception Error of string * full_loc * string
+
+let hierror s loc fmt =
   let buf  = Buffer.create 127 in
   let bfmt = Format.formatter_of_buffer buf in
 
   Format.kfprintf
     (fun _ ->
       Format.pp_print_flush bfmt ();
-      raise (HiError (Buffer.contents buf)))
+      let msg = Buffer.contents buf in
+      raise (HiError (s, loc, msg)))
     bfmt fmt
 
-let pp_error fmt msg =
-  Format.fprintf fmt "%s" msg 
+let error s loc fmt =
+  let buf  = Buffer.create 127 in
+  let bfmt = Format.formatter_of_buffer buf in
 
-exception ParseError of Location.t * string option
+  Format.kfprintf
+    (fun _ ->
+      Format.pp_print_flush bfmt ();
+      let msg = Buffer.contents buf in
+      raise (Error (s, loc, msg)))
+    bfmt fmt
 
+let pp_hierror fmt (s, loc, msg) =
+ let pp_loc fmt loc =
+    match loc with
+    | None -> ()
+    | Some loc -> Format.fprintf fmt " at %s" (Location.tostring loc) in
+  Format.fprintf fmt "@[%s%a:@ %s@]" s pp_loc loc msg
+
+let pp_error fmt (s, loc, msg) =
+  Format.fprintf fmt "@[%s at %a:@ %s@]"
+    s pp_full_loc loc msg
+
+let parse_error loc = 
+  hierror "parse error" (Some loc)
+  
 let unterminated_comment loc =
-  raise (ParseError (loc, Some "unterminated comment"))
+  parse_error loc "unterminated comment"
 
 let invalid_char loc (c : char) =
-  let msg = Printf.sprintf "invalid char: `%c'" c in
-  raise (ParseError (loc, Some msg))
+  parse_error loc  "invalid char: `%c'" c
 
 (* -------------------------------------------------------------------- *)
 type 'a pp = Format.formatter -> 'a -> unit
@@ -783,4 +814,5 @@ type model =
   | ConstantTime
   | Safety
   | Normal
+
 

@@ -92,13 +92,11 @@ let main =
       let c = Parse.process_command () in
       process_command c
     with
-    | ParseError (l,s) ->
-      let s = match s with Some s -> s | None -> "" in
-      Format.eprintf "Parse error at %s: %s@." (Location.tostring l) s;
-      exit 1  
-    | Utils.HiError e ->
-      Format.eprintf "%a@." Utils.pp_error e;
+    | Utils.HiError (s,loc,msg) ->
+      Format.eprintf "%a@." Utils.pp_hierror (s, loc, msg);
       exit 2
+    | Utils.Error (s,loc,msg) ->
+      Format.eprintf "%a@." Utils.pp_error (s, loc, msg);
   done
 
 

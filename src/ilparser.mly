@@ -1,18 +1,18 @@
 %{ 
-  open Utils
   open Location
+  open Utils
+  open Common
   open Ilast
-  let parse_error loc msg = raise (ParseError (loc, msg))
 
 %}
 
 %token LPAREN RPAREN LCURLY RCURLY LBRACKET RBRACKET
 %token LEFTARROW COLON SEMICOLON QUESTIONMARK COMMA EOF
 %token MACRO LEAK IF ELSE WHILE LABEL GOTO
-%token BOOL TINT W8 W16 W32 W64
+%token BOOL TINT UINT W8 W16 W32 W64
 %token ADD SUB MUL MULH AND XOR OR NOT EQ NEQ LSL LSR ASR ZEROEXTEND SIGNEXTEND TRUE FALSE
-%token <Ilast.sign> LT
-%token <Ilast.sign> LE
+%token <Common.sign> LT
+%token <Common.sign> LE
 %token <Bigint.zint> INT
 %token <string>IDENT
 
@@ -82,6 +82,11 @@ ident:
 %inline question:
    | l=loc(question_r) { l } 
 
+cast:
+   | s=wsize { CW s }
+   | TINT    { Cint Signed }
+   | UINT    { Cint Unsigned }
+ 
 expr_r:
   | x=ident                                   { Evar x }
   | TRUE                                      { Ebool true }
@@ -95,16 +100,19 @@ expr_r:
   | o=ident LPAREN es=separated_nonempty_list(COMMA,expr) RPAREN 
     { Eop(Location.lmap (fun o -> Opn o) o,es) }
   | e=expr o=question e1=expr COLON e2=expr   { Eop(o, [e;e1;e2]) }
+  | LPAREN e=expr RPAREN { unloc e }
+  | LPAREN c=loc(cast) RPAREN e=expr %prec NOT
+    { Eop(Location.lmap (fun c -> Op1 (Cast c)) c, [e]) }
 
 expr:
   | e=loc(expr_r) { e } 
-  | LPAREN e=loc(expr_r) RPAREN { e } 
+
 range: 
   | LBRACKET i1=INT COLON i2=INT RBRACKET { (i1,i2) }
   | LBRACKET i=INT RBRACKET { (i,i) }
 
 macro_arg: 
-  | x=ident { Avar x }
+  | e=expr { Aexpr e }
   | x=ident r=range { Aindex(x,r) }
 
 macro_args:
@@ -147,7 +155,7 @@ var_decl:
                               { {v_name = x; v_type = Tarr(bty,i1,i2) } }
   
 param_decl:
-  | x=var_decl    { Pvar x }
+  | x=loc(var_decl)    { Pvar x }
   | LABEL x=ident { Plabel x }
 
 macro_decl: 
@@ -159,7 +167,7 @@ macro_decl:
 command1:
   | x=loc(var_decl) SEMICOLON { Gvar x }
   | m=loc(macro_decl) { Gmacro m }
-  | error        { parse_error (Location.make $startpos $endpos) None }
+  | error        { parse_error (Location.make $startpos $endpos) "" }
 
 command:
   | c= command1    { c } 

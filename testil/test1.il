@@ -14,10 +14,11 @@ macro ADDS (w32 rd, w32 rm, w32 rn)
    w32 aux
 { 
   aux <- rm +w32 rn;
-  c   <- aux <w32 rm; 
+  c   <- aux <w32 rm; // FIXME
   leak add (aux);
   rd <- aux;
 }
+
 
 
    

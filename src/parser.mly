@@ -2,7 +2,6 @@
   open Location
   open Utils
   open Mainast
-  let parse_error loc msg = raise (ParseError (loc, msg))
 %}
 
 %token READ ASM IL EOF
@@ -23,7 +22,7 @@
 command1:
   | READ ASM s=loc(STRING) { Read (Asm, s) }
   | READ IL  s=loc(STRING) { Read (Il, s) }
-  | error             { parse_error (Location.make $startpos $endpos) None }
+  | error             { parse_error (Location.make $startpos $endpos) "" }
 
 command:
   | c=command1 { c }

@@ -12,13 +12,6 @@
 
   let keywords = Hash.of_enum (List.enum _keywords)
 
-  let unterminated_comment loc =
-    raise (ParseError (loc, Some "unterminated comment"))
-
-  let invalid_char loc (c : char) =
-    let msg = Printf.sprintf "invalid char: `%c'" c in
-    raise (ParseError (loc, Some msg))
-
 }
 
 let blank    = [' ' '\t' '\r']
