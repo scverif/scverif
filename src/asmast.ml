@@ -7,7 +7,7 @@ type hex   = string [@@deriving show]
 
 type operand =
   | Reg of ident
-  | Imm of ident
+  | Imm of int
   | RegOffs of ident * operand
   | Label of ident list
 [@@deriving show]

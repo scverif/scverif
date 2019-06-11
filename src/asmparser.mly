@@ -10,7 +10,7 @@
 %token LCURLY RCURLY
 %token LT GT
 %token <string> IDENT
-%token <string> IMMEDIATE
+%token <int> IMMEDIATE
 %token EOF
 
 %start section
