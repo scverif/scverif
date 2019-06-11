@@ -41,11 +41,9 @@ rule main = parse
   | ","            { COMMA }
   | "+"            { PLUS }
   | ":"            { COLON }
-  | '#'            { imm lexbuf; main lexbuf }
+  | '#'  (uint as i) { IMMEDIATE i } 
   | immediate as i { IMMEDIATE i }
   | _ as x         { invalid_char (L.of_lexbuf lexbuf) x }
   | eof            { EOF }
 
-and imm = parse
-  | uint+ as i     { IMMEDIATE i }
-  | _              { main lexbuf }
+
