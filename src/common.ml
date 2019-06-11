@@ -69,7 +69,11 @@ let get_arr = function
   | Tarr(bty,i1,i2) -> bty, i1, i2
   | _ -> assert false
 
-
+let ws_byte = function
+  | U8  -> 1
+  | U16 -> 2
+  | U32 -> 4
+  | U64 -> 8
 
 
 

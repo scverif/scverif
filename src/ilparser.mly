@@ -8,7 +8,8 @@
 
 %token LPAREN RPAREN LCURLY RCURLY LBRACKET RBRACKET
 %token LEFTARROW COLON SEMICOLON QUESTIONMARK COMMA EOF
-%token MACRO LEAK IF ELSE WHILE LABEL GOTO
+%token MACRO LEAK IF ELSE WHILE LABEL GOTO 
+%token EVAL INIT REGION EXIT
 %token BOOL TINT UINT W8 W16 W32 W64
 %token ADD SUB MUL MULH AND XOR OR NOT EQ NEQ LSL LSR ASR ZEROEXTEND SIGNEXTEND TRUE FALSE
 %token <Common.sign> LT
@@ -42,10 +43,12 @@ base_type:
   | TINT    { Int   }
   | w=wsize { W w   }
 
+int:
+  | i=INT     { i }
+  | SUB i=INT { B.neg i }
 
 %inline loc(X):
-| x=X { { pl_desc = x; pl_loc = Location.make $startpos $endpos; } }
-;
+  | x=X { { pl_desc = x; pl_loc = Location.make $startpos $endpos; } }
 
 ident:
   | x=loc(IDENT) { x }
@@ -109,11 +112,11 @@ expr:
   | e=loc(expr_r) { e } 
 
 %inline range: 
-  | LBRACKET i1=INT COLON i2=INT RBRACKET { (i1,i2) }
+  | LBRACKET i1=int COLON i2=int RBRACKET { (i1,i2) }
 
 macro_arg: 
   | e=expr { Aexpr e }
-  | x=ident r=range { Aindex(x,r) }
+  | LBRACKET x=ident i1=int COLON i2=int RBRACKET { Aindex(x,(i1,i2)) }
 
 macro_args:
   | LPAREN es=separated_list(COMMA, macro_arg) RPAREN { es }
@@ -151,7 +154,7 @@ cmd:
 var_decl:
   | x=ident LBRACKET RBRACKET  { {v_name = x; v_type = Tmem } }
   | bty=base_type x=ident      { {v_name = x; v_type = Tbase bty } }
-  | bty=base_type x=ident LBRACKET i1=INT COLON i2=INT RBRACKET 
+  | bty=base_type x=ident LBRACKET i1=int COLON i2=int RBRACKET 
                               { {v_name = x; v_type = Tarr(bty,i1,i2) } }
   
 param_decl:
@@ -164,9 +167,25 @@ macro_decl:
     c = cmd 
     { { mc_name = x;  mc_params = p; mc_locals = l; mc_body = c } }
 
+
+initval: 
+  | LBRACKET r=ident ofs=int RBRACKET { Iptr(r, ofs) }
+  | TRUE                              { Ibool true }
+  | FALSE                             { Ibool false }
+  | i=INT                             { Iint i }
+  | EXIT                              { Iexit }
+
+initialization:
+  | REGION m=ident ws=wsize x=ident r=range { Region(m, ws, x, r) }
+  | INIT x=ident v=initval                  { Init(x,v) }
+
+eval_command:
+  | EVAL m=ident i=initialization* SEMICOLON { {eval_m = m; eval_i = i } }
+
 command1:
-  | x=loc(var_decl) SEMICOLON { Gvar x }
-  | m=loc(macro_decl) { Gmacro m }
+  | x=loc(var_decl) SEMICOLON { Gvar   x }
+  | m=loc(macro_decl)         { Gmacro m }
+  | e=eval_command            { Geval  e }
   | error        { parse_error (Location.make $startpos $endpos) "" }
 
 command:

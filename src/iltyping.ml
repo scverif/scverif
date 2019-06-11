@@ -11,11 +11,16 @@ let ty_error loc = error "type error" (loc, [])
 type genv = 
   { glob_var: V.t Ms.t;
     macro   : macro Ms.t;
+    defs    : Il.global list;
+    to_eval : (macro * Ileval.initial) list;
   } 
 
 let empty_genv = 
   { glob_var = Ms.empty; 
-    macro    = Ms.empty; }
+    macro    = Ms.empty;
+    defs     = [];
+    to_eval  = [];
+  }
 
 let add_gvar genv x = 
   try 
@@ -87,7 +92,7 @@ let find_var env x =
     try Ms.find x env.genv.glob_var 
     with Not_found -> 
       ty_error loc "unknown variable %s" x
-
+  
 let find_label env l =
   let loc = loc l in
   let l = unloc l in
@@ -96,6 +101,16 @@ let find_label env l =
   | Var _               -> ty_error loc "%s is a variable, not a label" l
   | exception Not_found -> ty_error loc "unknown label %s" l
          
+(* FIXME check that if the result is a variable it is compatible 
+   with label *)
+let find_goto env l = 
+  let loc = loc l in
+  let l = unloc l in
+  try Ms.find l env.locals 
+  with Not_found -> 
+    try  Var(Ms.find l env.genv.glob_var)
+    with Not_found -> ty_error loc "unknown label %s" l
+  
 
 (* ********************************************** *)
 (* Type checking                                  *)  
@@ -449,8 +464,10 @@ let rec type_i env i =
       Ilabel lbl'
 
     | Ilast.Igoto lbl ->
-      let lbl, _ = find_label env lbl in
-      Igoto lbl
+      begin match find_goto env lbl with
+      | Label(lbl, _) -> Igoto lbl 
+      | Var x         -> Iigoto x
+      end
 
     | Ilast.Iif(e,c1,c2) ->
       let e = check_e env e tbool in 
@@ -500,19 +517,66 @@ let process_macro genv m =
   check_labels "type error" m; 
   add_macro genv m, m
 
-let process_command env = function 
+let check_initval env loc v ty = 
+  match v with 
+  | Ilast.Iptr (x,ofs) ->
+    let x = find_var env x in
+    (* FIXME check that ofs is in the bound of x *)
+    Ileval.Iregion (x, ofs)
+  | Ilast.Ibool b ->
+    check_type loc tbool ty;
+    Ileval.Ibool b
+  | Ilast.Iint  i ->
+    check_type loc tint ty;
+    Ileval.Iint i
+  | Ilast.Iexit   -> 
+    (* FIXME : label ??? *)
+    Ileval.Icptr_exit 
+    
+let process_eval genv evi = 
+  let open Ileval in
+  let m = find_macro genv evi.Ilast.eval_m in
+  let ir = ref [] in
+  let iv = ref [] in
+  let env0 = empty_env genv in
+  let env = ref env0 in
+  let process_ii = function
+    | Ilast.Region (mem, ws, dest, (i1,i2)) ->
+      let mloc = loc mem in
+      let mem = find_var env0 mem in
+      check_ty_mem mloc mem.v_ty;
+      let vd = 
+        mk_loc (loc dest) 
+          { Ilast.v_name = dest; Ilast.v_type = Tarr(W ws,i1,i2) } in
+      let d = process_var_decl vd in
+      env := add_var !env d;
+      ir := { r_from = mem; r_dest = d } :: !ir
+    | Ilast.Init (x, v) -> 
+      let loc = loc x in
+      let x = find_var !env x in
+      let ty = x.v_ty in
+      let v = check_initval !env loc v ty in
+      iv := (x,v) :: !iv in
+  List.iter process_ii evi.eval_i;
+  m, { init_region = List.rev !ir; 
+       init_var    = List.rev !iv; }
+ 
+let process_command genv = function 
   | Ilast.Gvar x   -> 
-    let genv, x = process_gvar env x in
-    genv, Gvar x
+    let genv, x = process_gvar genv x in
+    { genv with defs = Gvar x :: genv.defs }
   | Ilast.Gmacro m -> 
-    let genv, m = process_macro env m in
-    genv, Gmacro m 
+    let genv, m = process_macro genv m in
+    { genv with defs = Gmacro m :: genv.defs }
+  | Ilast.Geval evi -> 
+    let m, evi = process_eval genv evi in
+    { genv with to_eval = (m,evi) :: genv.to_eval }
   | Ilast.Gexit    -> assert false 
 
 let genv = ref empty_genv 
 
 let process ast = 
-  let genv', gs = List.map_fold process_command !genv ast in
-  genv := genv';
-  gs
+  let genv' = List.fold_left process_command !genv ast in
+  genv := { genv' with defs = []; to_eval = [] };
+  List.rev genv'.defs, List.rev genv'.to_eval 
 

@@ -43,10 +43,11 @@ module type TheInterface = sig
 
   val lshift : zint -> int -> zint
   val rshift : zint -> int -> zint
-
   val lgand : zint -> zint -> zint
   val lgor  : zint -> zint -> zint
   val lgxor : zint -> zint -> zint
+  val lgnot : zint -> zint 
+ 
 
   module Notations : sig
     val ( =^ ) : zint -> zint -> bool

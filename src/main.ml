@@ -9,8 +9,7 @@ open Ilast
 open Il
 open Ilparser
 open Illexer
-open Ilinline
-
+open Ileval
 open Mainast
 
 
@@ -116,12 +115,18 @@ end
 
 let process_il filename =
   let ilast = ILParse.process_file (Location.unloc filename) in
-  let gs = Iltyping.process ilast in
-  Format.eprintf "@[<v>IL definitions processed@ %a@]@."
+  let gs, to_ev = Iltyping.process ilast in
+  Format.printf "@[<v>IL definitions processed@ %a@]@."
     (pp_globals ~full:true) gs;
   let gs = Ilinline.inline_globals gs in
-  Format.eprintf "@[<v>After inlining @ %a@]@."
+  Format.printf "@[<v>After inlining @ %a@]@."
     (pp_globals ~full:true) gs;
+  let do_eval (m,initial) = 
+    let m = Ilinline.inline_macro m in
+    let c = partial_eval initial m in
+    Format.eprintf "@[<v>partial evaluation of %s@ %a@]"
+       m.mc_name (pp_cmd ~full:true) c in
+  List.iter do_eval to_ev;
   ()
 
 let process_asm filename =

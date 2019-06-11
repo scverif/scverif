@@ -16,13 +16,17 @@
     "uint"  , UINT ;
 
     "else"  , ELSE   ;
+    "eval"  , EVAL   ;
+    "exit"  , EXIT   ;
     "false" , FALSE  ;
     "goto"  , GOTO   ;
     "if"    , IF     ;
+    "init"  , INIT   ;
     "label" , LABEL  ;
     "leak"  , LEAK   ;
     "macro" , MACRO  ;
     "signextend", SIGNEXTEND;
+    "region", REGION ;
     "true"  , TRUE   ;
     "while" , WHILE  ;
     "zeroextend", ZEROEXTEND;

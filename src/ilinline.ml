@@ -69,7 +69,7 @@ let find_var env loc x =
 let find_lbl env loc lbl = 
   try Ml.find lbl env.elbl 
   with Not_found -> 
-    in_error loc "unbound label %a, please repport" (Lbl.pp_full ~full:true) lbl
+    in_error loc "unbound label %a, please repport" Lbl.pp_dbg lbl
 
 let get_var loc e = 
   match e with
@@ -163,6 +163,8 @@ let rec inline_i env locs i =
   | Igoto lbl ->
     let lbl = find_lbl env loc lbl in
     add_i env loc (Igoto lbl) 
+  | Iigoto x -> 
+    add_i env loc (Iigoto (get_var loc (inline_var env loc x)))
   | Iif(e,c1,c2) ->
     let e  = inline_e env loc e in
     let c1 = inline_c env locs c1 in

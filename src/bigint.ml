@@ -1,5 +1,3 @@
-(* -------------------------------------------------------------------- *)
-module B = Big_int
 
 (* -------------------------------------------------------------------- *)
 module ZImpl : BigintCore.TheInterface = struct
@@ -40,10 +38,10 @@ module ZImpl : BigintCore.TheInterface = struct
 
   let lshift = (Z.shift_left  : zint -> int -> zint)
   let rshift = (Z.shift_right : zint -> int -> zint)
-
   let lgand = (Z.logand : zint -> zint -> zint)
   let lgor  = (Z.logor  : zint -> zint -> zint)
   let lgxor = (Z.logxor : zint -> zint -> zint)
+  let lgnot = (Z.lognot : zint -> zint)
 
   module Notations = struct
     let ( =^ ) = equal
@@ -73,81 +71,6 @@ module ZImpl : BigintCore.TheInterface = struct
   let pp_print  = (Z.pp_print : Format.formatter -> zint -> unit)
   let pp_print_X fmt z = 
     Format.fprintf fmt "%s" (Z.format "X" z) 
-end
-
-(* -------------------------------------------------------------------- *)
-module BigNumImpl : BigintCore.TheInterface = struct
-  type zint = Big_int.big_int
-
-  exception Overflow
-  exception InvalidString
-
-  let compare = (B.compare_big_int : zint -> zint -> int)
-  let equal   = (B.eq_big_int      : zint -> zint -> bool)
-  let sign    = (B.sign_big_int    : zint -> int)
-  let hash    = (Hashtbl.hash      : zint -> int) (* fixed in OCaml 3.12 *)
-
-  let le = (B.le_big_int : zint -> zint -> bool)
-  let lt = (B.lt_big_int : zint -> zint -> bool)
-  let ge = (B.eq_big_int : zint -> zint -> bool)
-  let gt = (B.gt_big_int  : zint -> zint -> bool)
-
-  let zero : zint = B.zero_big_int
-  let one  : zint = B.unit_big_int
-
-  let add  = (B.add_big_int    : zint -> zint -> zint)
-  let neg  = (B.minus_big_int  : zint -> zint)
-  let sub  = (B.sub_big_int    : zint -> zint -> zint)
-  let mul  = (B.mult_big_int   : zint -> zint -> zint)
-  let div  = (B.div_big_int    : zint -> zint -> zint)
-  let abs  = (B.abs_big_int    : zint -> zint)
-  let gcd  = (B.gcd_big_int    : zint -> zint -> zint)
-  let erem = (B.mod_big_int    : zint -> zint -> zint)
-  let ediv = (B.quomod_big_int : zint -> zint -> zint * zint)
-  let pow  = (B.power_big_int_positive_int : zint -> int -> zint)
-
-  let pred = (B.pred_big_int : zint -> zint)
-  let succ = (B.succ_big_int : zint -> zint)
-
-  let parity (z : zint) =
-    if B.sign_big_int (B.extract_big_int z 0 1) = 0 then `Even else `Odd
-
-  let lshift = (B.shift_left_big_int  : zint -> int -> zint)
-  let rshift = (B.shift_right_big_int : zint -> int -> zint)
-
-  let lgand = (B.and_big_int : zint -> zint -> zint)
-  let lgor  = (B.or_big_int  : zint -> zint -> zint)
-  let lgxor = (B.xor_big_int : zint -> zint -> zint)
-
-  module Notations = struct
-    let ( =^ ) = equal
-    let ( +^ ) = add
-    let ( ~^ ) = neg
-    let ( -^ ) = sub
-    let ( *^ ) = mul
-    let ( /^ ) = div
-
-    let ( <=^ ) = le
-    let ( <^  ) = lt
-    let ( >=^ ) = ge
-    let ( >^  ) = gt
-  end
-
-  let of_int = (B.big_int_of_int : int -> zint)
-
-  let to_int (x : zint) =
-    try B.int_of_big_int x with Failure _ -> raise Overflow
-
-  let to_string = (B.string_of_big_int : zint -> string)
-
-  let of_string (x : string) : zint =
-    try  B.big_int_of_string x
-    with Failure _ -> raise InvalidString
-
-  let pp_print fmt x =
-    Format.fprintf fmt "%s" (B.string_of_big_int x)
-
-  let pp_print_X = pp_print 
 end
 
 (* -------------------------------------------------------------------- *)

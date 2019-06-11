@@ -317,6 +317,7 @@ end
 
 (* -------------------------------------------------------------------- *)
 type full_loc = Location.t * Location.t list
+val dummy_full_loc : full_loc
 
 val append_locs : full_loc -> Location.t list -> full_loc 
 

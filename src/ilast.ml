@@ -1,7 +1,7 @@
 open Location
 open Common
 
-type var = string located 
+type ident = string located 
 
 type label = string located 
 
@@ -42,23 +42,23 @@ type op = op_r located
 type expr_desc = 
   | Eint  of B.zint 
   | Ebool of bool
-  | Evar  of var 
-  | Eget  of var * expr            (* array access *)
-  | Eload of wsize * var * expr    (* memory access *)
+  | Evar  of ident 
+  | Eget  of ident * expr            (* array access *)
+  | Eload of wsize * ident * expr    (* memory access *)
   | Eop   of op * expr list
 
 and expr = expr_desc located
 
 type lval = 
-  | Lvar   of var        
-  | Lset   of var * expr           (* array assign *)
-  | Lstore of wsize * var * expr   (* memory assign *)
+  | Lvar   of ident        
+  | Lset   of ident * expr           (* array assign *)
+  | Lstore of wsize * ident * expr   (* memory assign *)
   
 type range = B.zint * B.zint 
 
 type macro_arg = 
   | Aexpr  of expr
-  | Aindex of var * range
+  | Aindex of ident * range
 
 type instr_desc = 
   | Iassgn of lval * expr 
@@ -74,7 +74,7 @@ and instr = instr_desc located
 and cmd = instr list
 
 type var_decl = {
-  v_name : var;
+  v_name : ident;
   v_type : ty;
 }
 
@@ -89,9 +89,22 @@ type macro_decl = {
     mc_body   : cmd;
   }
 
+type initval = 
+  | Iptr  of ident * B.zint
+  | Ibool of bool
+  | Iint  of B.zint 
+  | Iexit 
+
+type init_info = 
+  | Region of ident * wsize * ident * range 
+  | Init   of ident * initval 
+
+type eval_info = { eval_m : ident; eval_i : init_info list }
+
 type command = 
   | Gvar   of var_decl located 
   | Gmacro of macro_decl located
+  | Geval  of eval_info 
   | Gexit  
 
 

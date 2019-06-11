@@ -54,10 +54,13 @@ module Lbl : sig
   type t
   val compare : t -> t -> int
   val equal   : t -> t -> bool
-  val fresh : string -> t
-  val clone : t -> t
+  val fresh   : string -> t
+  val clone   : t -> t
   val pp_full : full:bool -> Format.formatter -> t -> unit
-  val pp : Format.formatter -> t -> unit
+  val pp      : Format.formatter -> t -> unit
+  val pp_dbg  : Format.formatter -> t -> unit
+
+  val exit_ : t
 end = struct
 
   type t = {
@@ -81,6 +84,9 @@ end = struct
     else Format.fprintf fmt "%s" l.l_name
 
   let pp fmt l = pp_full ~full:false fmt l
+  let pp_dbg fmt l = pp_full ~full:true fmt l
+
+  let exit_ = fresh "exit_macro"
 
 end
 
@@ -143,6 +149,7 @@ type instr_desc =
   | Imacro of macro * macro_arg list 
   | Ilabel of Lbl.t 
   | Igoto  of Lbl.t
+  | Iigoto of V.t   
   | Iif    of expr * cmd * cmd 
   | Iwhile of cmd * expr * cmd 
   
@@ -230,22 +237,55 @@ let check_labels msg m =
   let def = defined_label m.mc_body in
   let dparams = params_label m.mc_params in
   let all = Sl.union def dparams in
+  let defined = ref Sl.empty in
   let check ii lbl = 
     if not (Sl.mem lbl all) then
       error msg ii "undefined label %a" Lbl.pp lbl in
+  let check_def ii lbl = 
+    if Sl.mem lbl !defined then
+      error msg ii "redifinition of label %a" Lbl.pp lbl;
+    defined := Sl.add lbl !defined 
+  in
   let check_args ii args = 
     List.iter (function Alabel lbl -> check ii lbl | _ -> ()) args in
   let rec check_i i =
     match i.i_desc with
-    | Iassgn _ | Ileak _ | Ilabel _ -> ()
+    | Iassgn _ | Ileak _ -> ()
+    | Ilabel lbl -> check_def i.i_loc lbl
     | Imacro(_,args) -> check_args i.i_loc args 
     | Igoto lbl -> check i.i_loc lbl 
+    | Iigoto _  -> ()
     | Iif(_,c1,c2) | Iwhile(c1,_,c2) -> check_c c1; check_c c2 
   and check_c c = List.iter check_i c in
   check_c m.mc_body
+
+
                     
 (* ************************************************ *)
 (* Pretty printing                                  *)
+
+let op_string op =
+  match op.od with
+  | Oif   _ -> "if"
+  | Oadd  _ -> "+"   
+  | Omul  _ -> "*"   
+  | Omulh _ -> "**"  
+  | Osub  _ -> "-"   
+  | Oopp  _ -> "-"   
+  | Olsl  _ -> "<<"  
+  | Olsr  _ -> ">>"  
+  | Oasr  _ -> ">>s" 
+  | Oand  _ -> "&"   
+  | Oxor  _ -> "^"   
+  | Oor   _ -> "|"   
+  | Onot  _ -> "!"   
+  | Oeq   _ -> "=="  
+  | Olt   _ -> "<" 
+  | Ole   _ -> "<="
+  | Osignextend _ -> "signextend" 
+  | Ozeroextend _ -> "zeroextend" 
+  | Ocast_int   _ -> "cast_int" 
+  | Ocast_w     _ -> "cast_w" 
 
 let rec pp_e ~full fmt e = 
   match e with
@@ -387,6 +427,8 @@ let rec pp_i ~full fmt i =
     Format.fprintf fmt "%a:" (Lbl.pp_full ~full) lbl
   | Igoto lbl ->
     Format.fprintf fmt "goto %a;" (Lbl.pp_full ~full) lbl
+  | Iigoto x -> 
+    Format.fprintf fmt "goto %a;" (V.pp_full ~full) x
   | Iif(e,c1,c2) ->
     Format.fprintf fmt "@[<v>if %a@ %a%a@]"
       (pp_e ~full) e 

@@ -721,6 +721,8 @@ end
 (* -------------------------------------------------------------------- *)
 type full_loc = Location.t * Location.t list
 
+let dummy_full_loc = Location._dummy, []
+
 let append_locs (loc,locs1) locs2 = (loc, locs1 @ locs2)
   
 let pp_full_loc fmt (l,ls) =
