@@ -23,9 +23,11 @@ clean:
 	$(OCB) -clean
 	rm -f src/*~ src/.*~ $(MAIN).native
 
-test: all
-	@echo "The following command should print 42.000000:"
-	echo "(1 + 2 * 10) * 2" | ./$(MAIN).native
+test-asm: all
+	echo "read asm test/secxor.objdump" | ./$(MAIN).native
+
+test-asml: all
+	echo "read asm test/secxor-loop.objdump" | ./$(MAIN).native
 
 %.inferred.mli:
 	@$(OCB) src/$@ && cat _build/src/$@c
