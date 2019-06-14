@@ -4,6 +4,7 @@ open Location
 open Asmast
 open Asmparser
 open Asmlexer
+open Asmlifter
 
 open Ilast
 open Il
@@ -121,7 +122,7 @@ let process_il filename =
   let gs = Ilinline.inline_globals gs in
   Format.printf "@[<v>After inlining @ %a@]@."
     (pp_globals ~full:true) gs;
-  let do_eval (m,initial) = 
+  let do_eval (m,initial) =
     let m = Ilinline.inline_macro m in
     let c = partial_eval initial m in
     Format.eprintf "@[<v>partial evaluation of %s@ %a@]"
@@ -130,8 +131,12 @@ let process_il filename =
   ()
 
 let process_asm filename =
-  let asmsection = AsmParse.process_file (Location.unloc filename) in
-  Printf.printf "%s\n%!" (Asmast.show_section asmsection);
+  let asmast = AsmParse.process_file (Location.unloc filename) in
+  Format.printf "@[<v>ASM program parsed@ %s@]@."
+    (Asmast.show_section asmast);
+  let gs, cd = Asmlifter.lift asmast in
+  Format.printf "@[<v>ASM lifted to IL@ %a@]@."
+    (pp_globals ~full:true) gs;
   ()
 
 let process_command c =
