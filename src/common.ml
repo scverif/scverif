@@ -44,6 +44,20 @@ let ws_string = function
   | U32 -> "w32"
   | U64 -> "w64"
 
+let pp_wsize fmt ws =
+  Format.fprintf fmt "%s" (ws_string ws)
+
+let pp_bty fmt = function
+  | Bool -> Format.fprintf fmt "bool"
+  | Int  -> Format.fprintf fmt "int"
+  | W s  -> pp_wsize fmt s
+
+let pp_ty fmt = function
+  | Tbase bty -> pp_bty fmt bty
+  | Tarr (bty,i1,i2) ->
+    Format.fprintf fmt "%a[%a:%a]" pp_bty bty B.pp_print i1 B.pp_print i2
+  | Tmem -> Format.fprintf fmt "[]"
+
 let ws_le ws1 ws2 =
   match ws1, ws2 with
   | U8 , (U8 | U16 | U32 | U64)  -> true

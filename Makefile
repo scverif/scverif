@@ -29,5 +29,8 @@ test-asm: all
 test-asml: all
 	echo "read asm test/secxor-loop.objdump" | ./$(MAIN).native
 
+test-il: all
+	echo "read il testil/secxor-while.il" | ./$(MAIN).native
+
 %.inferred.mli:
 	@$(OCB) src/$@ && cat _build/src/$@c
