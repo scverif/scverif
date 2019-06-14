@@ -10,7 +10,7 @@ w32 pc;
 
 mem [];
 
-macro movs_i (w32 r, int i) 
+macro movs_i (w32 r, int i)
 {
    r <- (w32) i;
 }
@@ -42,9 +42,9 @@ macro ldr (w32 d, w32 r, w32 ofs)
 }
 
 macro eors (w32 d, w32 r)
-{ 
-  d <- d ^w32 r;  
-} 
+{
+  d <- d ^w32 r;
+}
 
 macro str(w32 r, w32 d, w32 ofs)
 {
@@ -90,15 +90,15 @@ lbl1: ldr   (r4, r1, r3);
       if (r3 != ((w32)12)) { goto lbl1; }
       pop3 (r4, r5, pc);
       goto pc;
-}   
+}
 
 eval secxor
-  region mem w32 a[0:2] 
+  region mem w32 a[0:2]
   region mem w32 b[0:2]
   region mem w32 c[0:2]
   region mem w32 isp[0:2]
   init r1 [a 0]
   init r2 [b 0]
-  init r0 [c 0] 
+  init r0 [c 0]
   init sp [isp 12]
   init lr exit;

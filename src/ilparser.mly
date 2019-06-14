@@ -1,4 +1,4 @@
-%{ 
+%{
   open Location
   open Utils
   open Common
@@ -8,7 +8,7 @@
 
 %token LPAREN RPAREN LCURLY RCURLY LBRACKET RBRACKET
 %token LEFTARROW COLON SEMICOLON QUESTIONMARK COMMA EOF
-%token MACRO LEAK IF ELSE WHILE LABEL GOTO 
+%token MACRO LEAK IF ELSE WHILE LABEL GOTO
 %token EVAL INIT REGION EXIT
 %token BOOL TINT UINT W8 W16 W32 W64
 %token ADD SUB MUL MULH AND XOR OR NOT EQ NEQ LSL LSR ASR ZEROEXTEND SIGNEXTEND TRUE FALSE
@@ -22,7 +22,7 @@
 %left ASR LSL LSR
 %left ADD SUB XOR OR
 %left MUL MULH AND
-%nonassoc NOT 
+%nonassoc NOT
 
 %start command
 %start file
@@ -32,7 +32,7 @@
 
 %%
 
-wsize: 
+wsize:
   | W8    { U8  }
   | W16   { U16 }
   | W32   { U32 }
@@ -65,13 +65,13 @@ ident:
   | XOR    { Ilast.XOR }
   | OR     { Ilast.OR }
 
-  | EQ     { Ilast.EQ } 
+  | EQ     { Ilast.EQ }
   | NEQ    { Ilast.NEQ }
   | s=LT   { Ilast.LT s }
   | s=LE   { Ilast.LE s }
 
 %inline op2:
-  | o=op2_r s=wsize? { o,s } 
+  | o=op2_r s=wsize? { o,s }
 
 %inline op1:
   | SUB s=wsize?  { OPP s }
@@ -79,17 +79,17 @@ ident:
   | SIGNEXTEND s=wsize { SignExtend s }
   | ZEROEXTEND s=wsize { ZeroExtend s }
 
-%inline question_r: 
+%inline question_r:
    | QUESTIONMARK { Opn "if" }
 
 %inline question:
-   | l=loc(question_r) { l } 
+   | l=loc(question_r) { l }
 
 cast:
    | s=wsize { CW s }
    | TINT    { Cint Signed }
    | UINT    { Cint Unsigned }
- 
+
 expr_r:
   | x=ident                                   { Evar x }
   | TRUE                                      { Ebool true }
@@ -97,11 +97,11 @@ expr_r:
   | i=INT                                     { Eint i }
   | x=ident LBRACKET e=expr RBRACKET          { Eget(x,e) }
   | LBRACKET s=wsize x=ident e=expr RBRACKET  { Eload(s, x, e) }
-  | e1=expr o=loc(op2) e2=expr                
+  | e1=expr o=loc(op2) e2=expr
     { Eop(Location.lmap (fun (o,s) -> Op2(o,s)) o, [e1;e2]) }
-  | o=loc(op1) e=expr    %prec NOT            
-    { Eop(Location.lmap (fun o -> Op1 o) o, [e]) } 
-  | o=ident LPAREN es=separated_nonempty_list(COMMA,expr) RPAREN 
+  | o=loc(op1) e=expr    %prec NOT
+    { Eop(Location.lmap (fun o -> Op1 o) o, [e]) }
+  | o=ident LPAREN es=separated_nonempty_list(COMMA,expr) RPAREN
     { Eop(Location.lmap (fun o -> Opn o) o,es) }
   | e=expr o=question e1=expr COLON e2=expr   { Eop(o, [e;e1;e2]) }
   | LPAREN e=expr RPAREN { unloc e }
@@ -109,12 +109,12 @@ expr_r:
     { Eop(Location.lmap (fun c -> Op1 (Cast c)) c, [e]) }
 
 expr:
-  | e=loc(expr_r) { e } 
+  | e=loc(expr_r) { e }
 
-%inline range: 
+%inline range:
   | LBRACKET i1=int COLON i2=int RBRACKET { (i1,i2) }
 
-macro_arg: 
+macro_arg:
   | e=expr { Aexpr e }
   | LBRACKET x=ident i1=int COLON i2=int RBRACKET { Aindex(x,(i1,i2)) }
 
@@ -125,9 +125,9 @@ lval:
   | x=ident                                  { Lvar x }
   | x=ident LBRACKET e=expr RBRACKET         { Lset(x,e) }
   | LBRACKET s=wsize x=ident e=expr RBRACKET { Lstore(s, x, e) }
- 
-instr_r: 
-  | x=lval LEFTARROW e=expr SEMICOLON 
+
+instr_r:
+  | x=lval LEFTARROW e=expr SEMICOLON
     { Iassgn(x,e) }
   | LEAK i=IDENT? LPAREN es=separated_list(COMMA,expr) RPAREN SEMICOLON
     { Ileak(i,es) }
@@ -135,12 +135,12 @@ instr_r:
     { Imacro(m,args) }
   | l=ident COLON
     {Ilabel l }
-  | GOTO l=ident SEMICOLON 
+  | GOTO l=ident SEMICOLON
     { Igoto l }
-  | IF e=expr c1=cmd c2=else_? 
+  | IF e=expr c1=cmd c2=else_?
     { Iif(e,c1,Utils.odfl [] c2) }
-  | WHILE c1=cmd? LPAREN e=expr RPAREN c2=cmd? 
-    { Iwhile(Utils.odfl [] c1, e, Utils.odfl [] c2) } 
+  | WHILE c1=cmd? LPAREN e=expr RPAREN c2=cmd?
+    { Iwhile(Utils.odfl [] c1, e, Utils.odfl [] c2) }
 
 instr:
   | i=loc(instr_r) { i }
@@ -154,21 +154,21 @@ cmd:
 var_decl:
   | x=ident LBRACKET RBRACKET  { {v_name = x; v_type = Tmem } }
   | bty=base_type x=ident      { {v_name = x; v_type = Tbase bty } }
-  | bty=base_type x=ident LBRACKET i1=int COLON i2=int RBRACKET 
+  | bty=base_type x=ident LBRACKET i1=int COLON i2=int RBRACKET
                               { {v_name = x; v_type = Tarr(bty,i1,i2) } }
-  
+
 param_decl:
   | x=loc(var_decl)    { Pvar x }
   | LABEL x=ident { Plabel x }
 
-macro_decl: 
-  | MACRO x=ident LPAREN p=separated_list(COMMA,param_decl) RPAREN 
+macro_decl:
+  | MACRO x=ident LPAREN p=separated_list(COMMA,param_decl) RPAREN
     l=separated_list(COMMA,param_decl)
-    c = cmd 
+    c = cmd
     { { mc_name = x;  mc_params = p; mc_locals = l; mc_body = c } }
 
 
-initval: 
+initval:
   | LBRACKET r=ident ofs=int RBRACKET { Iptr(r, ofs) }
   | TRUE                              { Ibool true }
   | FALSE                             { Ibool false }
@@ -189,17 +189,8 @@ command1:
   | error        { parse_error (Location.make $startpos $endpos) "" }
 
 command:
-  | c= command1    { c } 
+  | c= command1    { c }
   | EOF            { Gexit }
-  
+
 file:
   | c=command1* EOF { c }
- 
-
-
-
-
-
-  
-
-
