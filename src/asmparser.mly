@@ -18,6 +18,10 @@
 
 %%
 
+%inline loc(X):
+  | x=X
+    { { pl_desc = x; pl_loc = Location.make $startpos $endpos; } }
+
 %inline address:
   | a=HEX
     { a }
@@ -39,17 +43,17 @@
     { id }
 
 %inline regident:
-  | n=REGIDENT
+  | n=loc(REGIDENT)
     { Reg n }
 
 %inline immediate:
-  | i=IMMEDIATE
+  | i=loc(IMMEDIATE)
     { Imm i }
 
 %inline regidentoffs:
-  | LBRACKET n=REGIDENT COMMA i=immediate RBRACKET
+  | LBRACKET n=loc(REGIDENT) COMMA i=immediate RBRACKET
     { RegOffs(n, i) }
-  | LBRACKET n=REGIDENT COMMA m=REGIDENT RBRACKET
+  | LBRACKET n=loc(REGIDENT) COMMA m=loc(REGIDENT) RBRACKET
     { RegOffs(n, Reg m) }
 
 regorimmoroffs:
@@ -61,19 +65,23 @@ regorimmoroffs:
     { r }
 
 instr_rhs:
-  | adr=address LT lid=IDENT PLUS loffs=HEX GT
-    { [Label [adr; lid; loffs]] }
+  | adr=loc(HEX) LT lid=loc(IDENT) PLUS loffs=loc(HEX) GT
+    { [Label [Hex adr; NLabel lid; Hex loffs]] }
   | ops=separated_list(COMMA,regorimmoroffs)
     { ops }
   | LCURLY regs=separated_list(COMMA,regident) RCURLY
     { regs }
   | error { parse_error (Location.make $startpos $endpos) "" }
 
-%inline stmt:
-  | io=instr_offset COLON ib=instr_binary id=instr_disasm ir=instr_rhs
+stmt:
+  | io=loc(instr_offset) COLON ib=loc(instr_binary) id=instr_disasm ir=instr_rhs
     { { offset=io; instr_bin=ib; instr_asm=id; instr_exp=ir } }
   | error { parse_error (Location.make $startpos $endpos) "" }
 
-section:
-  | adr=address LT name=secname GT COLON stmts=list(stmt) EOF
+section_r:
+  | adr=loc(HEX) LT name=loc(secname) GT COLON stmts=list(loc(stmt)) EOF
     { { s_adr=adr; s_name=name; s_stmts=stmts } }
+
+section:
+  | s=loc(section_r)
+    { s }

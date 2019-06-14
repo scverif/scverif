@@ -2,7 +2,7 @@
 
 MENHIR       := menhir
 MENHIRFLAGS  := --infer --explain
-OCB_FLAGS    := -tag bin_annot -I src -r -package batteries -package zarith -package menhirLib -package ppx_deriving.show
+OCB_FLAGS    := -tag bin_annot -I src -r -package batteries -package zarith -package menhirLib -package ppx_deriving.show -package ppx_import
 OCB          := ocamlbuild -use-ocamlfind -use-menhir -menhir "$(MENHIR) $(MENHIRFLAGS)" $(OCB_FLAGS)
 
 MAIN         := main
