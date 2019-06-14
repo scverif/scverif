@@ -1,9 +1,6 @@
 open Location
 open Common
 
-open Location
-open Common
-
 type t = [%import: Location.t]
 [@@deriving show]
 
@@ -20,10 +17,10 @@ type label =
 [@@deriving show]
 
 type operand =
-| Reg of ident
-| Imm of int located
-| RegOffs of ident * operand
-| Label of label list
+  | Reg of ident
+  | Imm of int located
+  | RegOffs of ident * operand
+  | Label of label list
 [@@deriving show]
 
 type stmt_r = {

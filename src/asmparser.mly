@@ -22,10 +22,6 @@
   | x=X
     { { pl_desc = x; pl_loc = Location.make $startpos $endpos; } }
 
-%inline address:
-  | a=HEX
-    { a }
-
 %inline secname:
   | n=IDENT
     { n }
