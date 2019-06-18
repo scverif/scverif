@@ -1,6 +1,7 @@
 {
   open Utils
   open Asmparser
+  open Common
 
   module L=Location
   exception Error of string
@@ -27,8 +28,8 @@ let immediate = '#' uint
 rule main = parse
   | newline        { Lexing.new_line lexbuf; main lexbuf}
   | blank+         { main lexbuf }
-  | hexp as h      { HEX h }
-  | hex+ as h      { HEX h }
+  | hexp as h      { HEX (Bigint.of_string h) }
+  | hex+ as h      { HEX (Bigint.of_string (String.concat "" ["0";"x";h])) }
   | regident as r  { REGIDENT r }
   | identdot as id { IDENT id }
   | ident as id    { IDENT id }
@@ -41,6 +42,6 @@ rule main = parse
   | ","            { COMMA }
   | "+"            { PLUS }
   | ":"            { COLON }
-  | '#' (uint as i) { IMMEDIATE (int_of_string i) }
+  | '#' (uint as i) { IMMEDIATE (Bigint.of_string i) }
   | _ as x         { invalid_char (L.of_lexbuf lexbuf) x }
   | eof            { EOF }

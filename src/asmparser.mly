@@ -3,14 +3,14 @@
   open Utils
   open Asmast
 %}
-%token <string> HEX
+%token <Bigint.zint> HEX
 %token <string> REGIDENT
 %token COLON COMMA PLUS
 %token LBRACKET RBRACKET
 %token LCURLY RCURLY
 %token LT GT
 %token <string> IDENT
-%token <int> IMMEDIATE
+%token <Bigint.zint> IMMEDIATE
 %token EOF
 
 %start section

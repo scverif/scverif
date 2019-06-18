@@ -75,6 +75,7 @@ type range = B.zint * B.zint
 
 type macro_arg =
   | Aexpr  of expr
+  | Alabel of label
   | Aindex of ident * range
 [@@deriving show]
 

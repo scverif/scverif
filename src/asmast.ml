@@ -8,17 +8,16 @@ type 'a located = [%import: 'a Location.located]
 [@@deriving show]
 
 type ident = string located [@@deriving show]
-type hex   = string located [@@deriving show]
+type hex   = B.zint located [@@deriving show]
 
 type label =
   | NLabel of ident
   | Hex of hex
-  | Undef of ident
 [@@deriving show]
 
 type operand =
   | Reg of ident
-  | Imm of int located
+  | Imm of B.zint located
   | RegOffs of ident * operand
   | Label of label list
 [@@deriving show]
