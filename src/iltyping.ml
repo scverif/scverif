@@ -215,7 +215,7 @@ let get_op o =
   match unloc o with
   | Ilast.Op1 o        -> get_op1 o
   | Ilast.Op2 (o', ws) -> get_op2 (loc o) o' ws
-  | Ilast.Opn s        -> assert false
+  | Ilast.Opn _        -> assert false
 
 let get_e1 loc es =
   match es with
@@ -384,12 +384,13 @@ let check_arg env a p =
   match p with
   | Plabel _ ->
     begin match a with
-    | Ilast.Aexpr { pl_desc = Ilast.Evar lbl } | Ilast.Alabel lbl ->
-      let lbl,_ = find_label env lbl in
-      Alabel lbl
-    | Ilast.Aexpr {pl_loc = loc }
-    | Ilast.Aindex ({pl_loc = loc}, _) ->
-      ty_error loc "a label is expected"
+      | Ilast.Alabel lbl
+      | Ilast.Aexpr { pl_desc = Ilast.Evar lbl } ->
+        let lbl,_ = find_label env lbl in
+        Alabel lbl
+      | Ilast.Aexpr {pl_loc = loc }
+      | Ilast.Aindex ({pl_loc = loc}, _) ->
+        ty_error loc "a label is expected"
     end
   | Pvar x ->
     match x.v_ty with
@@ -408,8 +409,9 @@ let check_arg env a p =
           let bty', j1, j2 = check_ty_arr loc x.v_ty in
           check_bound loc n1 n2 j1 j2;
           loc, x, bty', n1, n2
-        | Ilast.Alabel lbl ->
-          ty_error (loc lbl) "a expression is expected"
+        | Ilast.Alabel l ->
+          let loc = loc l in
+          ty_error loc "the expression is a label instead of a %a" pp_bty bty
       in
       if not (ty_eq (Tbase bty) (Tbase bty')) then
         ty_error xloc "the expression is an array of %a instead of %a"
@@ -424,6 +426,7 @@ let check_arg env a p =
       let e =
         match a with
         | Ilast.Aexpr e -> check_e env e ty
+        | Ilast.Alabel lbl -> ty_error (loc lbl) "unimplemented and likely wrong (iltyping)"
         | Ilast.Aindex (x,(n1,n2)) ->
           let x' = find_var env x in
           let bty, j1, j2 = check_ty_arr (loc x) x'.v_ty in
@@ -431,8 +434,8 @@ let check_arg env a p =
           if not (B.equal n1 n2) then
             ty_error (loc x) "the expression is an array not a %a" pp_ty ty;
           check_bound (loc x) n1 n2 j1 j2;
-          Eget(x', Eint n1) 
-        | Ilast.Alabel lbl -> 
+          Eget(x', Eint n1)
+        | Ilast.Alabel lbl ->
           ty_error (loc lbl) "a expression is expected"
       in
       Aexpr e
