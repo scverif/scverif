@@ -20,19 +20,28 @@ let lift_imm (i:B.zint located) =
   let expr = mk_loc loc (Ilast.Eint ival) in
   [Ilast.Aexpr(expr)]
 
-let rec lift_labels (l:Asmast.label list) =
+let lift_label (secname:string) (l:Asmast.label) =
   match l with
-  | NLabel i :: ls ->
+  | LSymbol(i, o) ->
     let loc = loc i in
     let ident = unloc i in
-    let label = mk_loc loc ident in
-    [Ilast.Alabel label] @ lift_labels ls
-  | Hex h :: ls ->
+    let oval = unloc o in
+    let label = mk_loc loc (ident ^ "+" ^ (B.to_string oval)) in
+    label
+  | LAddress h ->
     let loc = loc h in
     let ival = unloc h in
-    let label = mk_loc loc (B.to_string ival) in
-    [Ilast.Alabel label] @ lift_labels ls
-  | [] -> []
+    (* BEWARE: THIS IS WRONG BUT WE DO NOT HAVE A NOTION OF ADDRESSES RIGHT NOW*)
+    let label = mk_loc loc (secname ^ "+" ^ (B.to_string ival)) in
+    label
+
+let lift_labels (secname:string) (ll:Asmast.label list) =
+  let (lll:Ilast.label list) = List.map (lift_label secname) ll in
+  let ineq_lbl l1 l2 = (unloc l1) != (unloc l2) in
+  let remove_duplicates l ls = List.filter (ineq_lbl l) ls in
+  let (uls:Ilast.label list) = List.fold_right remove_duplicates lll lll in
+  let (uals:Ilast.macro_arg list) = List.map (fun x -> Ilast.Alabel x) uls in
+  uals
 
 let rec lift_regoffs (r:Asmast.ident) (o:Asmast.operand) =
   (lift_reg r) @ (lift_operands [o])
