@@ -38,27 +38,27 @@ let lift_label (secname:string) (l:Asmast.label) =
 let lift_labels (secname:string) (ll:Asmast.label list) =
   let (lll:Ilast.label list) = List.map (lift_label secname) ll in
   let ineq_lbl l1 l2 = (unloc l1) != (unloc l2) in
-  let remove_duplicates l ls = List.filter (ineq_lbl l) ls in
-  let (uls:Ilast.label list) = List.fold_right remove_duplicates lll lll in
+  let remove_duplicates l ls = if List.exists (ineq_lbl l) ls then ls else l :: ls in
+  let (uls:Ilast.label list) = List.fold_right remove_duplicates lll [] in
   let (uals:Ilast.macro_arg list) = List.map (fun x -> Ilast.Alabel x) uls in
   uals
 
-let rec lift_regoffs (r:Asmast.ident) (o:Asmast.operand) =
-  (lift_reg r) @ (lift_operands [o])
+let rec lift_regoffs (secname:string) (r:Asmast.ident) (o:Asmast.operand) =
+  (lift_reg r) @ (lift_operands secname [o])
 
-and lift_operands (ops:Asmast.operand list) =
+and lift_operands (secname:string) (ops:Asmast.operand list) =
   match ops with
-  | Reg r :: xs -> (lift_reg r) @ lift_operands xs
-  | Imm i :: xs -> (lift_imm i) @ lift_operands xs
-  | RegOffs(r, o) :: xs -> (lift_regoffs r o) @ lift_operands xs
-  | Label ll :: xs -> (lift_labels ll) @ lift_operands xs
+  | Reg r :: xs -> (lift_reg r) @ lift_operands secname xs
+  | Imm i :: xs -> (lift_imm i) @ lift_operands secname xs
+  | RegOffs(r, o) :: xs -> (lift_regoffs secname r o) @ lift_operands secname xs
+  | Label ll :: xs -> (lift_labels secname ll) @ lift_operands secname xs
   | [] -> []
 
 let lift_stmt (secname:string) (stmt:Asmast.stmt) =
   let stmt_loc = loc stmt in
   let stmt = unloc stmt in
   let mname = mk_loc _dummy stmt.instr_asm in
-  let (margs:Ilast.macro_arg list) = lift_operands stmt.instr_exp in
+  let (margs:Ilast.macro_arg list) = lift_operands secname stmt.instr_exp in
   let idesc = Ilast.Imacro (mname, margs) in
   let lbl_loc = loc stmt.offset in
   let lbl = (secname ^ "+" ^ (B.to_string (unloc stmt.offset))) in

@@ -11,8 +11,8 @@ type ident = string located [@@deriving show]
 type hex   = B.zint located [@@deriving show]
 
 type label =
-  | NLabel of ident
-  | Hex of hex
+  | LSymbol of ident * hex
+  | LAddress of hex
 [@@deriving show]
 
 type operand =

@@ -61,9 +61,9 @@ regorimmoroffs:
     { r }
 
 instr_rhs:
-  | adr=loc(HEX) LT lid=loc(IDENT) PLUS loffs=loc(HEX) GT
-    { [Label [Hex adr; NLabel lid; Hex loffs]] }
-  | ops=separated_nonempty_list(COMMA,regorimmoroffs)
+  | adr=loc(HEX) LT sid=loc(IDENT) PLUS loffs=loc(HEX) GT
+    { [Label [LAddress adr; LSymbol(sid, loffs)]] }
+  | ops=separated_list(COMMA,regorimmoroffs)
     { ops }
   | LCURLY regs=separated_list(COMMA,regident) RCURLY
     { regs }

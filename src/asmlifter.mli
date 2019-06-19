@@ -5,4 +5,4 @@ val lift_stmt :
   string -> Asmast.stmt -> Ilast.cmd
 
 val lift_operands :
-  Asmast.operand list -> Ilast.macro_arg list
+  string -> Asmast.operand list -> Ilast.macro_arg list
