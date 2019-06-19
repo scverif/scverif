@@ -134,13 +134,12 @@ let process_asm filename =
   let asmast = AsmParse.process_file (Location.unloc filename) in
   Format.printf "@[<v>ASM program parsed@ %a@]@."
     Asmast.pp_section asmast;
-  let cm = Asmlifter.lift_section asmast in
+  let ilast = Asmlifter.lift_section asmast in
   Format.printf "@[<v>ASM lifted to IL@ %a@]@."
-    Ilast.pp_command cm;
-  let gs, to_ev = Iltyping.process [cm] in
+    Ilast.pp_command ilast;
+  let gs, to_ev = Iltyping.process [ilast] in
   Format.printf "@[<v>IL definitions processed@ %a@]@."
     (pp_globals ~full:true) gs;
-
   ()
 
 let process_command c =

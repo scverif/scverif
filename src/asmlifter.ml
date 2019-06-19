@@ -67,6 +67,19 @@ let lift_stmt (secname:string) (stmt:Asmast.stmt) =
   let (cmd:Ilast.cmd) = [lbl; ins] in
   cmd
 
+let infer_param_labels (cmds:Ilast.cmd) =
+  let is_lbl_decl (instr:Ilast.instr_desc) =
+    match instr with
+    | Ilast.Ilabel _ -> true
+    | _ -> false in
+  let param_from_cmd (ins:Ilast.instr) =
+    match unloc ins with
+    | Ilast.Ilabel i -> Ilast.Plabel i
+    | _ -> assert false in
+  let lbl_decls = List.filter (fun x -> is_lbl_decl (unloc x)) cmds in
+  let (lbl_params:Ilast.param list) = List.map param_from_cmd lbl_decls in
+  lbl_params
+
 let lift_section (sec:Asmast.section) =
   (* section becomes a macro with call statements *)
   let sloc = loc sec in
@@ -74,11 +87,12 @@ let lift_section (sec:Asmast.section) =
   let mname = m.s_name in
   let secname = unloc mname in
   let (mcalls:Ilast.cmd) = List.flatten (List.map (lift_stmt secname) m.s_stmts) in
+  let (mparams:Ilast.param list) = infer_param_labels mcalls in
 
   let (m:Ilast.macro_decl) = {
     mc_name   = mname;
-    mc_params = []; (* FIXME : requires additional user input *)
-    mc_locals = []; (* FIXME : initial state requires additional user input*)
+    mc_params = []; (* FIXME : initial state requires additional user input*)
+    mc_locals = mparams;
     mc_body   = mcalls
   } in
   Ilast.Gmacro (mk_loc sloc m)
