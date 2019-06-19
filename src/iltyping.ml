@@ -384,7 +384,7 @@ let check_arg env a p =
   match p with
   | Plabel _ ->
     begin match a with
-    | Ilast.Aexpr { pl_desc = Ilast.Evar lbl } ->
+    | Ilast.Aexpr { pl_desc = Ilast.Evar lbl } | Ilast.Alabel lbl ->
       let lbl,_ = find_label env lbl in
       Alabel lbl
     | Ilast.Aexpr {pl_loc = loc }
@@ -408,6 +408,8 @@ let check_arg env a p =
           let bty', j1, j2 = check_ty_arr loc x.v_ty in
           check_bound loc n1 n2 j1 j2;
           loc, x, bty', n1, n2
+        | Ilast.Alabel lbl ->
+          ty_error (loc lbl) "a expression is expected"
       in
       if not (ty_eq (Tbase bty) (Tbase bty')) then
         ty_error xloc "the expression is an array of %a instead of %a"
@@ -429,7 +431,10 @@ let check_arg env a p =
           if not (B.equal n1 n2) then
             ty_error (loc x) "the expression is an array not a %a" pp_ty ty;
           check_bound (loc x) n1 n2 j1 j2;
-          Eget(x', Eint n1) in
+          Eget(x', Eint n1) 
+        | Ilast.Alabel lbl -> 
+          ty_error (loc lbl) "a expression is expected"
+      in
       Aexpr e
 
 let check_args env loc args params =
