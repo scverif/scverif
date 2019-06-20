@@ -91,10 +91,10 @@ macro pop3 (w32 r1, w32 r2, w32 r3)
 
 macro cmp2_i (w32 r1, int i)
 {
-   if (r1 ==w32 (w32) i) { zflag <- ((bool) 0); }
+   zflag <- (r1 ==w32 (w32) i);
 }
 
 macro bnen1 (label l)
 {
-   if (zflag != 0) { goto l; }
+   if (!zflag) { goto l; }
 }
