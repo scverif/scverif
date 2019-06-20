@@ -1,0 +1,58 @@
+00000000 <secmult>:
+   0:	b5f0      	push	{r4, r5, r6, r7, lr}
+   2:	b085      	sub	sp, #20
+   4:	9303      	str	r3, [sp, #12]
+   6:	2300      	movs	r3, #0
+   8:	58d4      	ldr	r4, [r2, r3]
+   a:	58cd      	ldr	r5, [r1, r3]
+   c:	402c      	ands	r4, r5
+   e:	50c4      	str	r4, [r0, r3]
+  10:	3304      	adds	r3, #4
+  12:	2b0c      	cmp	r3, #12
+  14:	d1f8      	bne.n	8 <secmult+0x8>
+  16:	2300      	movs	r3, #0
+  18:	001c      	movs	r4, r3
+  1a:	1c65      	adds	r5, r4, #1
+  1c:	9502      	str	r5, [sp, #8]
+  1e:	2504      	movs	r5, #4
+  20:	40a5      	lsls	r5, r4
+  22:	9501      	str	r5, [sp, #4]
+  24:	1c65      	adds	r5, r4, #1
+  26:	40a5      	lsls	r5, r4
+  28:	9c03      	ldr	r4, [sp, #12]
+  2a:	00ad      	lsls	r5, r5, #2
+  2c:	1964      	adds	r4, r4, r5
+  2e:	9400      	str	r4, [sp, #0]
+  30:	001c      	movs	r4, r3
+  32:	3404      	adds	r4, #4
+  34:	2c0c      	cmp	r4, #12
+  36:	d105      	bne.n	44 <secmult+0x44>
+  38:	9c02      	ldr	r4, [sp, #8]
+  3a:	3304      	adds	r3, #4
+  3c:	2c03      	cmp	r4, #3
+  3e:	d1ec      	bne.n	1a <secmult+0x1a>
+  40:	b005      	add	sp, #20
+  42:	bdf0      	pop	{r4, r5, r6, r7, pc}
+  44:	9d00      	ldr	r5, [sp, #0]
+  46:	5916      	ldr	r6, [r2, r4]
+  48:	682f      	ldr	r7, [r5, #0]
+  4a:	58cd      	ldr	r5, [r1, r3]
+  4c:	402e      	ands	r6, r5
+  4e:	46b4      	mov	ip, r6
+  50:	590d      	ldr	r5, [r1, r4]
+  52:	58d6      	ldr	r6, [r2, r3]
+  54:	402e      	ands	r6, r5
+  56:	4665      	mov	r5, ip
+  58:	406e      	eors	r6, r5
+  5a:	58c5      	ldr	r5, [r0, r3]
+  5c:	407d      	eors	r5, r7
+  5e:	50c5      	str	r5, [r0, r3]
+  60:	5905      	ldr	r5, [r0, r4]
+  62:	406e      	eors	r6, r5
+  64:	407e      	eors	r6, r7
+  66:	5106      	str	r6, [r0, r4]
+  68:	9d01      	ldr	r5, [sp, #4]
+  6a:	9e00      	ldr	r6, [sp, #0]
+  6c:	1975      	adds	r5, r6, r5
+  6e:	9500      	str	r5, [sp, #0]
+  70:	e7df      	b.n	32 <secmult+0x32>

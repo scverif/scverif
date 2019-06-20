@@ -1,0 +1,74 @@
+00000000 <secmult_flaw>:
+   0:	b5f0      	push	{r4, r5, r6, r7, lr}
+   2:	4647      	mov	r7, r8
+   4:	46ce      	mov	lr, r9
+   6:	4698      	mov	r8, r3
+   8:	680d      	ldr	r5, [r1, #0]
+   a:	6813      	ldr	r3, [r2, #0]
+   c:	b580      	push	{r7, lr}
+   e:	401d      	ands	r5, r3
+  10:	6005      	str	r5, [r0, #0]
+  12:	684b      	ldr	r3, [r1, #4]
+  14:	6856      	ldr	r6, [r2, #4]
+  16:	401e      	ands	r6, r3
+  18:	6046      	str	r6, [r0, #4]
+  1a:	688b      	ldr	r3, [r1, #8]
+  1c:	6897      	ldr	r7, [r2, #8]
+  1e:	401f      	ands	r7, r3
+  20:	6087      	str	r7, [r0, #8]
+  22:	6813      	ldr	r3, [r2, #0]
+  24:	684c      	ldr	r4, [r1, #4]
+  26:	401c      	ands	r4, r3
+  28:	46a4      	mov	ip, r4
+  2a:	6853      	ldr	r3, [r2, #4]
+  2c:	680c      	ldr	r4, [r1, #0]
+  2e:	401c      	ands	r4, r3
+  30:	4643      	mov	r3, r8
+  32:	685b      	ldr	r3, [r3, #4]
+  34:	405e      	eors	r6, r3
+  36:	4643      	mov	r3, r8
+  38:	685b      	ldr	r3, [r3, #4]
+  3a:	4074      	eors	r4, r6
+  3c:	405d      	eors	r5, r3
+  3e:	4663      	mov	r3, ip
+  40:	405c      	eors	r4, r3
+  42:	6005      	str	r5, [r0, #0]
+  44:	6044      	str	r4, [r0, #4]
+  46:	6893      	ldr	r3, [r2, #8]
+  48:	680e      	ldr	r6, [r1, #0]
+  4a:	401e      	ands	r6, r3
+  4c:	46b1      	mov	r9, r6
+  4e:	688b      	ldr	r3, [r1, #8]
+  50:	6816      	ldr	r6, [r2, #0]
+  52:	4033      	ands	r3, r6
+  54:	469c      	mov	ip, r3
+  56:	4643      	mov	r3, r8
+  58:	689b      	ldr	r3, [r3, #8]
+  5a:	405f      	eors	r7, r3
+  5c:	4663      	mov	r3, ip
+  5e:	405f      	eors	r7, r3
+  60:	4643      	mov	r3, r8
+  62:	689b      	ldr	r3, [r3, #8]
+  64:	405d      	eors	r5, r3
+  66:	6005      	str	r5, [r0, #0]
+  68:	464d      	mov	r5, r9
+  6a:	4643      	mov	r3, r8
+  6c:	407d      	eors	r5, r7
+  6e:	6085      	str	r5, [r0, #8]
+  70:	691e      	ldr	r6, [r3, #16]
+  72:	688f      	ldr	r7, [r1, #8]
+  74:	6853      	ldr	r3, [r2, #4]
+  76:	6849      	ldr	r1, [r1, #4]
+  78:	6892      	ldr	r2, [r2, #8]
+  7a:	4075      	eors	r5, r6
+  7c:	400a      	ands	r2, r1
+  7e:	403b      	ands	r3, r7
+  80:	4055      	eors	r5, r2
+  82:	4074      	eors	r4, r6
+  84:	405d      	eors	r5, r3
+  86:	6044      	str	r4, [r0, #4]
+  88:	6085      	str	r5, [r0, #8]
+  8a:	bc0c      	pop	{r2, r3}
+  8c:	4690      	mov	r8, r2
+  8e:	4699      	mov	r9, r3
+  90:	bdf0      	pop	{r4, r5, r6, r7, pc}
