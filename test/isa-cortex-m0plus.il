@@ -8,6 +8,8 @@ w32 lr;
 w32 sp;
 w32 pc;
 
+bool zflag;
+
 mem [];
 
 macro movs2_i (w32 r, int i)
@@ -85,4 +87,14 @@ macro pop3 (w32 r1, w32 r2, w32 r3)
    r2 <- [w32 mem ((int)sp) + 4];
    r3 <- [w32 mem ((int)sp) + 8];
    sp <- sp +w32 ((w32) 12);
+}
+
+macro cmp2_i (w32 r1, int i)
+{
+   if (r1 ==w32 (w32) i) { zflag <- ((bool) 0); }
+}
+
+macro bnen1 (label l)
+{
+   if (zflag != 0) { goto l; }
 }

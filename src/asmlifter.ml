@@ -76,6 +76,12 @@ let refine_mname (secname:string) (asmstmt:Asmast.stmt_r) (margs:Ilast.macro_arg
     else
       mname
   in
+  let mname =
+    if String.contains mname '.' then
+      String.concat "" (String.split_on_char '.' mname)
+    else
+      mname
+  in
   mname
 
 let lift_stmt (secname:string) (stmt:Asmast.stmt) =
