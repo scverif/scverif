@@ -23,18 +23,18 @@ type operand =
 [@@deriving show]
 
 type stmt_r = {
-             offset    : hex;
-             instr_bin : hex;
-             instr_asm : string;
-             instr_exp : operand list
-             } [@@deriving show]
+  offset    : hex;
+  instr_bin : hex;
+  instr_asm : string;
+  instr_exp : operand list
+} [@@deriving show]
 
 type stmt = stmt_r located [@@deriving show]
 
 type section_r = {
-                s_adr    : hex;
-                s_name   : ident;
-                s_stmts  : stmt list
-                } [@@deriving show]
+  s_adr    : hex;
+  s_name   : ident;
+  s_stmts  : stmt list
+} [@@deriving show]
 
 type section = section_r located [@@deriving show]

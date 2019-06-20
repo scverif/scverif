@@ -10,7 +10,7 @@ w32 pc;
 
 mem [];
 
-macro movs (w32 r, int i)
+macro movs2_i (w32 r, int i)
 {
    r <- (w32) i;
 }
@@ -36,22 +36,32 @@ macro push3 (w32 r1, w32 r2, w32 r3)
    [w32 mem ((int)sp) + 8] <- r3;
 }
 
-macro ldr (w32 d, w32 r, w32 ofs)
+macro ldr3 (w32 d, w32 r, w32 ofs)
 {
    d <- [w32 mem (int)(r +w32 ofs)];
 }
 
-macro eors (w32 d, w32 r)
+macro ldr3_i (w32 d, w32 r, int ofs)
+{
+   d <- [w32 mem (int)(r +w32 (w32) ofs)];
+}
+
+macro eors2 (w32 d, w32 r)
 {
   d <- d ^w32 r;
 }
 
-macro str(w32 r, w32 d, w32 ofs)
+macro str3 (w32 r, w32 d, w32 ofs)
 {
   [w32 mem (int)(d +w32 ofs)] <- d;
 }
 
-macro adds_i(w32 d, int i)
+macro str3_i (w32 r, w32 d, int ofs)
+{
+  [w32 mem (int)(d +w32 (w32) ofs)] <- d;
+}
+
+macro adds2_i(w32 d, int i)
 {
   d <- d +w32 (w32) i;
 }

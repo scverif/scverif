@@ -23,6 +23,9 @@ clean:
 	$(OCB) -clean
 	rm -f src/*~ src/.*~ $(MAIN).native
 
+test-m0pisa: all
+	printf "read il test/isa-cortex-m0plus.il" | ./$(MAIN).native
+
 test-sxor: all
 	printf "read il test/isa-cortex-m0plus.il\nread asm test/secxor-cortex-m0plus-O3.objdump\n" | ./$(MAIN).native
 

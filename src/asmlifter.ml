@@ -54,11 +54,36 @@ and lift_operands (secname:string) (ops:Asmast.operand list) =
   | Label ll :: xs -> (lift_labels secname ll) @ lift_operands secname xs
   | [] -> []
 
+let refine_mname (secname:string) (asmstmt:Asmast.stmt_r) (margs:Ilast.macro_arg list) =
+  let opcount = List.length margs in
+  let mname =
+    if opcount > 0 then
+      asmstmt.instr_asm ^ (string_of_int opcount)
+    else
+      asmstmt.instr_asm
+  in
+  let pimm arg =
+    match arg with
+    | Alabel _
+    | Aindex _ -> false
+    | Aexpr e ->
+      match unloc e with
+      | Eint _ -> true
+      | _ -> false in
+  let mname =
+    if List.exists pimm margs then
+      mname ^ "_i"
+    else
+      mname
+  in
+  mname
+
 let lift_stmt (secname:string) (stmt:Asmast.stmt) =
   let stmt_loc = loc stmt in
   let stmt = unloc stmt in
-  let mname = mk_loc _dummy stmt.instr_asm in
   let (margs:Ilast.macro_arg list) = lift_operands secname stmt.instr_exp in
+  let mname = refine_mname secname stmt margs in
+  let mname = mk_loc stmt_loc mname in
   let idesc = Ilast.Imacro (mname, margs) in
   let lbl_loc = loc stmt.offset in
   let lbl = (secname ^ "+" ^ (B.to_string (unloc stmt.offset))) in
