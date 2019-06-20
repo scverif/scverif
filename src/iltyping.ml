@@ -426,7 +426,6 @@ let check_arg env a p =
       let e =
         match a with
         | Ilast.Aexpr e -> check_e env e ty
-        | Ilast.Alabel lbl -> ty_error (loc lbl) "unimplemented and likely wrong (iltyping)"
         | Ilast.Aindex (x,(n1,n2)) ->
           let x' = find_var env x in
           let bty, j1, j2 = check_ty_arr (loc x) x'.v_ty in
@@ -436,7 +435,7 @@ let check_arg env a p =
           check_bound (loc x) n1 n2 j1 j2;
           Eget(x', Eint n1)
         | Ilast.Alabel lbl ->
-          ty_error (loc lbl) "a expression is expected"
+          ty_error (loc lbl) "an expression is expected"
       in
       Aexpr e
 
