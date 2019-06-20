@@ -23,14 +23,26 @@ clean:
 	$(OCB) -clean
 	rm -f src/*~ src/.*~ $(MAIN).native
 
-test-asm: all
-	echo "read asm test/secxor.objdump" | ./$(MAIN).native
+test-sxor: all
+	printf "read il test/isa-cortex-m0plus.il\nread asm test/secxor-cortex-m0plus-O3.objdump\n" | ./$(MAIN).native
 
-test-asml: all
-	echo "read asm test/secxor-loop.objdump" | ./$(MAIN).native
+test-sxors: all
+	printf "read il test/isa-cortex-m0plus.il\nread asm test/secxor-cortex-m0plus-Os.objdump\n" | ./$(MAIN).native
+
+test-sand: all
+	printf "read il test/isa-cortex-m0plus.il\nread asm test/secmult-cortex-m0plus-O3.objdump\n" | ./$(MAIN).native
+
+test-sands: all
+	printf "read il test/isa-cortex-m0plus.il\nread asm test/secmult-cortex-m0plus-Os.objdump\n" | ./$(MAIN).native
+
+test-sref: all
+	printf "read il test/isa-cortex-m0plus.il\nread asm test/secrefresh-cortex-m0plus-O3.objdump\n" | ./$(MAIN).native
+
+test-srefs: all
+	printf "read il test/isa-cortex-m0plus.il\nread asm test/secrefresh-cortex-m0plus-Os.objdump\n" | ./$(MAIN).native
 
 test-il: all
-	echo "read il testil/secxor-while.il" | ./$(MAIN).native
+	printf "read il testil/secxor-while.il\n" | ./$(MAIN).native
 
 %.inferred.mli:
 	@$(OCB) src/$@ && cat _build/src/$@c
