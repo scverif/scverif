@@ -27,7 +27,7 @@ let refine_mname (asmstmt:Asmast.stmt) =
 let refine_label (secname:string) (offs:Asmast.hex) =
   let loc = loc offs in
   let offs = unloc offs in
-  let name = secname ^ "+" ^ (B.to_string offs) in
+  let name = secname ^ "+" ^ (B.to_string_X offs) in
   mk_loc loc name
 
 let lift_regimm = function

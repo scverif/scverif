@@ -64,6 +64,8 @@ module ZImpl : BigintCore.TheInterface = struct
 
   let to_string = (Z.to_string : zint -> string)
 
+  let to_string_X = Z.format "x" 
+
   let of_string (x : string) =
     try  Z.of_string x
     with Failure _ -> raise InvalidString
