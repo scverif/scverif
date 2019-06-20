@@ -12,9 +12,9 @@ bool zflag;
 
 mem [];
 
-macro movs2_i (w32 r, int i)
+macro movs (w32 r, w32 i)
 {
-   r <- (w32) i;
+   r <- i;
 }
 
 macro push1 (w32 r)
@@ -38,36 +38,6 @@ macro push3 (w32 r1, w32 r2, w32 r3)
    [w32 mem ((int)sp) + 8] <- r3;
 }
 
-macro ldr3 (w32 d, w32 r, w32 ofs)
-{
-   d <- [w32 mem (int)(r +w32 ofs)];
-}
-
-macro ldr3_i (w32 d, w32 r, int ofs)
-{
-   d <- [w32 mem (int)(r +w32 (w32) ofs)];
-}
-
-macro eors2 (w32 d, w32 r)
-{
-  d <- d ^w32 r;
-}
-
-macro str3 (w32 r, w32 d, w32 ofs)
-{
-  [w32 mem (int)(d +w32 ofs)] <- d;
-}
-
-macro str3_i (w32 r, w32 d, int ofs)
-{
-  [w32 mem (int)(d +w32 (w32) ofs)] <- d;
-}
-
-macro adds2_i(w32 d, int i)
-{
-  d <- d +w32 (w32) i;
-}
-
 macro pop1 (w32 r)
 {
    r <- [w32 mem (int)sp];
@@ -89,12 +59,32 @@ macro pop3 (w32 r1, w32 r2, w32 r3)
    sp <- sp +w32 ((w32) 12);
 }
 
-macro cmp2_i (w32 r1, int i)
+macro ldr (w32 d, w32 r, w32 ofs)
 {
-   zflag <- (r1 ==w32 (w32) i);
+   d <- [w32 mem (int)(r +w32 ofs)];
 }
 
-macro bnen1 (label l)
+macro eors (w32 d, w32 r)
+{
+  d <- d ^w32 r;
+}
+
+macro str (w32 r, w32 d, w32 ofs)
+{
+  [w32 mem (int)(d +w32 ofs)] <- d;
+}
+
+macro adds(w32 d, w32 i)
+{
+  d <- d +w32 i;
+}
+
+macro cmp (w32 r1, w32 i)
+{
+   zflag <- (r1 ==w32 i);
+}
+
+macro bnen (label l)
 {
    if (!zflag) { goto l; }
 }

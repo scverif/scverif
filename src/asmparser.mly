@@ -40,37 +40,27 @@
 
 %inline regident:
   | n=loc(REGIDENT)
-    { Reg n }
+    { n }
 
 %inline immediate:
   | i=loc(IMMEDIATE)
-    { Imm i }
-
-%inline regidentoffs:
-  | LBRACKET n=loc(REGIDENT) COMMA i=immediate RBRACKET
-    { RegOffs(n, i) }
-  | LBRACKET n=loc(REGIDENT) COMMA m=loc(REGIDENT) RBRACKET
-    { RegOffs(n, Reg m) }
-
-regorimmoroffs:
-  | r=regident
-    { r }
-  | i=immediate
     { i }
-  | r=regidentoffs
-    { r }
 
-instr_rhs:
-  | adr=loc(HEX) LT sid=loc(IDENT) PLUS loffs=loc(HEX) GT
-    { [Label [LAddress adr; LSymbol(sid, loffs)]] }
-  | ops=separated_list(COMMA,regorimmoroffs)
-    { ops }
-  | LCURLY regs=separated_list(COMMA,regident) RCURLY
-    { regs }
-  | error { parse_error (Location.make $startpos $endpos) "" }
+regimm:
+  | r=regident  { Reg r }
+  | i=immediate { Imm i }
+
+operand:
+  | ri=regimm                                     { Regimm ri }
+  | LBRACKET r=regident COMMA ofs=regimm RBRACKET { RegOffs(r,ofs) }
+  | HEX  LT sid=loc(IDENT) PLUS loffs=loc(HEX) GT { Label(sid,loffs) }
+
+operands:
+  | LCURLY regs=separated_list(COMMA,regident) RCURLY { Oflexible regs }
+  | ops=separated_nonempty_list(COMMA, operand)       { Ofixed ops     }
 
 stmt:
-  | io=loc(instr_offset) COLON ib=loc(instr_binary) id=instr_disasm ir=instr_rhs
+  | io=loc(instr_offset) COLON ib=loc(instr_binary) id=instr_disasm ir=operands
     { { offset=io; instr_bin=ib; instr_asm=id; instr_exp=ir } }
   | error { parse_error (Location.make $startpos $endpos) "" }
 

@@ -10,23 +10,27 @@ type 'a located = [%import: 'a Location.located]
 type ident = string located [@@deriving show]
 type hex   = B.zint located [@@deriving show]
 
-type label =
-  | LSymbol of ident * hex
-  | LAddress of hex
+type regimm = 
+ | Reg of ident
+ | Imm of B.zint located
 [@@deriving show]
 
 type operand =
-  | Reg of ident
-  | Imm of B.zint located
-  | RegOffs of ident * operand
-  | Label of label list
+  | Regimm  of regimm 
+  | RegOffs of ident * regimm
+  | Label   of ident * hex
+[@@deriving show]
+
+type operands = 
+  | Ofixed    of operand list
+  | Oflexible of ident list
 [@@deriving show]
 
 type stmt_r = {
   offset    : hex;
   instr_bin : hex;
   instr_asm : string;
-  instr_exp : operand list
+  instr_exp : operands
 } [@@deriving show]
 
 type stmt = stmt_r located [@@deriving show]
