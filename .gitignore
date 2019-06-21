@@ -109,6 +109,8 @@ setup.log
 # Local OPAM switch
 _opam/
 
+logs/
+
 #!! ERROR: ocamlbuild is undefined. Use list command to see defined gitignore types !!#
 
 #!! ERROR: opam is undefined. Use list command to see defined gitignore types !!#
