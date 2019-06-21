@@ -14,7 +14,7 @@ ifeq ($(UNAME_S),Linux)
 endif
 
 
-all: native 
+all: native
 
 native:
 	$(OCB) -tag debug $(MAIN).native
@@ -24,25 +24,25 @@ clean:
 	rm -f src/*~ src/.*~ $(MAIN).native
 
 test-m0pisa: all
-	printf "read il test/isa-cortex-m0plus.il" | ./$(MAIN).native
+	printf "read il isa/isa-cortex-m0plus.il" | ./$(MAIN).native
 
 test-sxor: all
-	printf "read il test/isa-cortex-m0plus.il\nread asm test/secxor-cortex-m0plus-O3.objdump\n" | ./$(MAIN).native
+	printf "read il isa/isa-cortex-m0plus.il\nread asm testasm/secxor-cortex-m0plus-O3.objdump\n" | ./$(MAIN).native
 
 test-sxors: all
-	printf "read il test/isa-cortex-m0plus.il\nread asm test/secxor-cortex-m0plus-Os.objdump\n" | ./$(MAIN).native
+	printf "read il isa/isa-cortex-m0plus.il\nread asm testasm/secxor-cortex-m0plus-Os.objdump\n" | ./$(MAIN).native
 
 test-sand: all
-	printf "read il test/isa-cortex-m0plus.il\nread asm test/secmult-cortex-m0plus-O3.objdump\n" | ./$(MAIN).native
+	printf "read il isa/isa-cortex-m0plus.il\nread asm testasm/secmult-cortex-m0plus-O3.objdump\n" | ./$(MAIN).native
 
 test-sands: all
-	printf "read il test/isa-cortex-m0plus.il\nread asm test/secmult-cortex-m0plus-Os.objdump\n" | ./$(MAIN).native
+	printf "read il isa/isa-cortex-m0plus.il\nread asm testasm/secmult-cortex-m0plus-Os.objdump\n" | ./$(MAIN).native
 
 test-sref: all
-	printf "read il test/isa-cortex-m0plus.il\nread asm test/secrefresh-cortex-m0plus-O3.objdump\n" | ./$(MAIN).native
+	printf "read il isa/isa-cortex-m0plus.il\nread asm testasm/secrefresh-cortex-m0plus-O3.objdump\n" | ./$(MAIN).native
 
 test-srefs: all
-	printf "read il test/isa-cortex-m0plus.il\nread asm test/secrefresh-cortex-m0plus-Os.objdump\n" | ./$(MAIN).native
+	printf "read il isa/isa-cortex-m0plus.il\nread asm testasm/secrefresh-cortex-m0plus-Os.objdump\n" | ./$(MAIN).native
 
 test-il: all
 	printf "read il testil/secxor-while.il\n" | ./$(MAIN).native
