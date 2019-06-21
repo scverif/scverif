@@ -11,36 +11,6 @@ open Il
 open Ilparser
 open Illexer
 open Ileval
-open Mainast
-
-
-module Parse = struct
-
-  module L = Lexing
-
-  let lexbuf_from_channel = fun name channel ->
-    let lexbuf = L.from_channel channel in
-    lexbuf.L.lex_curr_p <- {
-        L.pos_fname = name;
-        L.pos_lnum  = 1;
-        L.pos_bol   = 0;
-        L.pos_cnum  = 0
-      };
-    lexbuf
-
-  let parse_command = fun () ->
-    MenhirLib.Convert.Simplified.traditional2revised Parser.command
-
-  let lexer lexbuf = fun () ->
-    let token = Lexer.main lexbuf in
-    (token, L.lexeme_start_p lexbuf, L.lexeme_end_p lexbuf)
-
-  let stdbuf = lexbuf_from_channel "stdin" stdin
-
-  let process_command () =
-    parse_command () (lexer stdbuf)
-
-end
 
 module ILParse = struct
   module L = Lexing
@@ -75,6 +45,14 @@ module ILParse = struct
   let process_file filename =
     let decl = from_file parse_file filename in
     decl
+
+  let parse_command = fun () ->
+    MenhirLib.Convert.Simplified.traditional2revised Ilparser.command
+
+  let stdbuf = lexbuf_from_channel "stdin" stdin
+
+  let process_command () =
+    parse_command () (lexer stdbuf)
 
 end
 
@@ -114,45 +92,55 @@ module AsmParse = struct
 
 end
 
-let process_il ilast = 
-  let gs, to_ev = Iltyping.process ilast in
-  Format.printf "@[<v>IL definitions processed@ %a@]@."
-    (pp_globals ~full:true) gs;
-  let gs = Ilinline.inline_globals gs in
-  Format.printf "@[<v>After inlining @ %a@]@."
-    (pp_globals ~full:true) gs;
-  let do_eval (m,initial) =
-    let m = Ilinline.inline_macro m in
-    let c = partial_eval initial m in
-    Format.eprintf "@[<v>partial evaluation of %s@ %a@]"
-       m.mc_name (pp_cmd ~full:true) c in
-  List.iter do_eval to_ev
-  
-let process_il_file filename =
-  let ilast = ILParse.process_file (Location.unloc filename) in
-  process_il ilast
+let process_gvar genv x = 
+  let x    = Iltyping.process_var_decl x in
+  let genv = Iltyping.add_gvar genv x in
+  Format.eprintf "%a@." (Il.pp_global ~full:true) (Gvar x);  
+  genv
 
-let process_asm filename =
+let process_macro genv m = 
+  let m = Iltyping.process_macro genv m in
+  Format.eprintf "%a@." (Il.pp_global ~full:true) (Gmacro m);
+  let m = Ilinline.inline_macro m in
+  Format.eprintf "@[<v>after inlining@ %a@]@." (Il.pp_global ~full:true) (Gmacro m);
+  let genv = Iltyping.add_macro genv m in
+  genv
+
+let process_eval genv evi = 
+  let m, initial = Iltyping.process_eval genv evi in
+  let c = partial_eval initial m in
+  Format.eprintf "@[<v>partial evaluation of %s@ %a@]@."
+    m.mc_name (pp_cmd ~full:true) c;
+  genv
+
+let rec process_command really_exit genv = function
+  | Ilast.Gvar x   -> process_gvar genv x
+  | Ilast.Gmacro m -> process_macro genv m
+  | Ilast.Geval evi -> process_eval genv evi 
+  | Ilast.Ginclude (Asm, filename) -> process_asm genv filename 
+  | Ilast.Ginclude (Il, filename) -> process_il genv filename 
+  | Ilast.Gexit    -> if really_exit then exit 0 else genv
+
+and process_asm genv filename =
   let asmast = AsmParse.process_file (Location.unloc filename) in
   Format.printf "@[<v>ASM program parsed@ %a@]@."
     Asmast.pp_section asmast;
   let ilast = Asmlifter.lift_section asmast in
   Format.printf "@[<v>ASM lifted to IL@ %a@]@."
     Ilast.pp_command ilast;
-  process_il [ilast]
+  process_command false genv ilast
 
-let process_command c =
-  match c with
-  | Read(Asm, filename) -> process_asm filename
-  | Read(Il, filename)  -> process_il_file filename
-  | Exit -> exit 0
+and process_il genv filename = 
+  let ilast = ILParse.process_file (Location.unloc filename) in
+  List.fold_left (process_command false) genv ilast
 
 let main =
+  let genv = ref Iltyping.empty_genv in
   while true do
     try
       Format.printf ">"; Format.print_flush ();
-      let c = Parse.process_command () in
-      process_command c
+      let c = ILParse.process_command () in
+      genv := process_command true !genv c
     with
     | Utils.HiError (s,loc,msg) ->
       Format.eprintf "%a@." Utils.pp_hierror (s, loc, msg);

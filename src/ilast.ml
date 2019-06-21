@@ -130,9 +130,15 @@ type eval_info = {
 }
 [@@deriving show]
 
+type read_kind =
+  | Asm
+  | Il
+[@@deriving show]
+
 type command =
   | Gvar   of var_decl located
   | Gmacro of macro_decl located
+  | Ginclude of (read_kind * string located)
   | Geval  of eval_info
   | Gexit
 [@@deriving show]

@@ -11,15 +11,11 @@ let ty_error loc = error "type error" (loc, [])
 type genv =
   { glob_var: V.t Ms.t;
     macro   : macro Ms.t;
-    defs    : Il.global list;
-    to_eval : (macro * Ileval.initial) list;
   }
 
 let empty_genv =
   { glob_var = Ms.empty;
     macro    = Ms.empty;
-    defs     = [];
-    to_eval  = [];
   }
 
 let add_gvar genv x =
@@ -160,9 +156,6 @@ let process_var_decl vd =
   let ty  = process_ty loc vd.Ilast.v_type in
   V.fresh (unloc vd.Ilast.v_name) loc ty
 
-let process_gvar genv vd =
-  let x = process_var_decl vd in
-  add_gvar genv x, x
 
 let get_op1 o =
   match o with
@@ -522,7 +515,7 @@ let process_macro genv m =
       mc_locals;
       mc_body } in
   check_labels "type error" m;
-  add_macro genv m, m
+  m
 
 let check_initval env loc v ty =
   match v with
@@ -568,21 +561,3 @@ let process_eval genv evi =
   m, { init_region = List.rev !ir;
        init_var    = List.rev !iv; }
 
-let process_command genv = function
-  | Ilast.Gvar x   ->
-    let genv, x = process_gvar genv x in
-    { genv with defs = Gvar x :: genv.defs }
-  | Ilast.Gmacro m ->
-    let genv, m = process_macro genv m in
-    { genv with defs = Gmacro m :: genv.defs }
-  | Ilast.Geval evi ->
-    let m, evi = process_eval genv evi in
-    { genv with to_eval = (m,evi) :: genv.to_eval }
-  | Ilast.Gexit    -> assert false
-
-let genv = ref empty_genv
-
-let process ast =
-  let genv' = List.fold_left process_command !genv ast in
-  genv := { genv' with defs = []; to_eval = [] };
-  List.rev genv'.defs, List.rev genv'.to_eval

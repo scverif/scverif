@@ -333,6 +333,7 @@ val error :
 
 val parse_error : Location.t -> ('a, Format.formatter, unit, 'b) format4 -> 'a
 val unterminated_comment : Location.t -> 'a
+val unterminated_string  : Location.t -> 'a
 val invalid_char : Location.t -> char -> 'a 
 
 val pp_hierror : Format.formatter -> string * Location.t option * string -> unit

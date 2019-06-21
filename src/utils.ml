@@ -774,6 +774,9 @@ let parse_error loc =
 let unterminated_comment loc =
   parse_error loc "unterminated comment"
 
+let unterminated_string loc =
+  parse_error loc "unterminated string"
+
 let invalid_char loc (c : char) =
   parse_error loc  "invalid char: `%c'" c
 

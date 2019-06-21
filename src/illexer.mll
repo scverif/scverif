@@ -11,6 +11,7 @@
     "w32"   , W32  ;
     "w64"   , W64  ;
 
+    "asm"   , ASM;
     "bool"  , BOOL ;
     "int"   , TINT ;
     "uint"  , UINT ;
@@ -20,7 +21,9 @@
     "exit"  , EXIT   ;
     "false" , FALSE  ;
     "goto"  , GOTO   ;
+    "include", INCLUDE;
     "if"    , IF     ;
+    "il"    , IL     ;
     "init"  , INIT   ;
     "label" , LABEL  ;
     "leak"  , LEAK   ;
@@ -73,6 +76,8 @@ rule main = parse
   | "//" [^'\n']* newline { Lexing.new_line lexbuf; main lexbuf }
   | "//" [^'\n']* eof     { main lexbuf }
 
+  | "\"" { STRING (Buffer.contents (string (Buffer.create 0) lexbuf)) }
+
   | (digit+) as s   
       { INT (Bigint.of_string s) } 
 
@@ -122,3 +127,10 @@ and comment lvl = parse
   | newline          { Lexing.new_line lexbuf; comment lvl lexbuf }
   | [^'\n']          { comment lvl lexbuf }
   | eof              { unterminated_comment (L.of_lexbuf lexbuf) }
+
+and string buf = parse
+  | "\""          { buf }
+  | newline       { unterminated_string (L.of_lexbuf lexbuf) }
+  | blank+        { unterminated_string (L.of_lexbuf lexbuf) }
+  | _ as c        { Buffer.add_char buf c   ; string buf lexbuf }
+  | eof           { unterminated_string (L.of_lexbuf lexbuf) }
