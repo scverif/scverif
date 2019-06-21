@@ -14,7 +14,7 @@ ifeq ($(UNAME_S),Linux)
 endif
 
 
-all: native
+all: native 
 
 native:
 	$(OCB) -tag debug $(MAIN).native
@@ -46,6 +46,8 @@ test-srefs: all
 
 test-il: all
 	printf "read il testil/secxor-while.il\n" | ./$(MAIN).native
+
+tests: all test-m0pisa test-sxor test-sxors test-sand test-sref test-srefs test-il
 
 %.inferred.mli:
 	@$(OCB) src/$@ && cat _build/src/$@c

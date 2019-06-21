@@ -198,18 +198,17 @@ let inline_macro m =
   add_locals env m.mc_locals;
   List.iter (inline_i env []) m.mc_body;
   { mc_name = m.mc_name;
-    mc_id = Uid.fresh ();
-    mc_loc = m.mc_loc;
-    mc_params;
-    mc_locals = env.elocals;
-    mc_body = List.rev env.econt;
-  }
+      mc_id = Uid.fresh ();
+      mc_loc = m.mc_loc;
+      mc_params;
+      mc_locals = env.elocals;
+      mc_body = List.rev env.econt;
+    } 
 
 let inline_global g = 
   match g with 
   | Gvar _ -> g
   | Gmacro m -> Gmacro (inline_macro m)
-
 
 let inline_globals gs = 
   List.map inline_global gs 

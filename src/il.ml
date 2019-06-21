@@ -49,6 +49,7 @@ end = struct
 end
 
 module Mv = Map.Make(V)
+module Sv = Set.Make(V)
 
 module Lbl : sig
   type t
@@ -473,3 +474,50 @@ let pp_globals ~full fmt gs =
 (* ************************************************************* *)
 let check_size i1 i2 j1 j2 =
   B.equal (B.sub i2 i1) (B.sub j2 j1)
+
+
+(* ************************************************************* *)
+(* Remove unused local variables                                 *)
+
+let add_used_lbl (ulbl, uvar) lbl = (Sl.add lbl ulbl, uvar)
+let add_used_var (ulbl, uvar) x   = (ulbl, Sv.add x uvar)
+
+let rec used_e used = function
+  | Eint _ | Ebool _ -> used
+  | Evar x -> add_used_var used x
+  | Eget(x,e) | Eload(_,x,e) -> used_e (add_used_var used x) e
+  | Eop(_,es) -> used_es used es
+
+and used_es used es =List.fold_left used_e used es
+
+let used_arg used = function
+  | Aexpr e -> used_e used e
+  | Alabel lbl -> add_used_lbl used lbl
+  | Aindex(x,_,_) -> add_used_var used x
+
+let used_lval used = function
+  | Lvar x -> add_used_var used x
+  | Lset (x,e) | Lstore(_,x,e) -> used_e (add_used_var used x) e
+
+let rec used_i used i = 
+  match i.i_desc with
+  | Iassgn(x,e) -> used_e (used_lval used x) e
+  | Ileak(_, es) -> used_es used es
+  | Imacro(_, margs) -> List.fold_left used_arg used margs
+  | Ilabel lbl | Igoto lbl -> add_used_lbl used lbl
+  | Iigoto x -> add_used_var used x
+  | Iif(e,c1,c2) | Iwhile(c1,e,c2) ->
+    used_c (used_c (used_e used e) c1) c2
+
+and used_c used c = List.fold_left used_i used c
+
+let clear_macro m = 
+  let (ulbl, uvar) = used_c (Sl.empty, Sv.empty) m.mc_body in
+  let is_used = function
+    | Pvar x -> Sv.mem x uvar 
+    | Plabel lbl -> Sl.mem lbl ulbl in
+  { m with mc_locals = List.filter is_used m.mc_locals }
+
+
+
+

@@ -34,7 +34,7 @@
   | ib=loc(IDENT) { mk_loc (loc ib) (Bigint.of_string ("0x"^(unloc ib))) }
 
 %inline instr_disasm:
-  | id=IDENT { id }
+  | id=loc(IDENT) { id }
 
 %inline regident:
   | n=loc(IDENT) { n }

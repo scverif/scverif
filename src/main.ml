@@ -114,8 +114,7 @@ module AsmParse = struct
 
 end
 
-let process_il filename =
-  let ilast = ILParse.process_file (Location.unloc filename) in
+let process_il ilast = 
   let gs, to_ev = Iltyping.process ilast in
   Format.printf "@[<v>IL definitions processed@ %a@]@."
     (pp_globals ~full:true) gs;
@@ -127,8 +126,11 @@ let process_il filename =
     let c = partial_eval initial m in
     Format.eprintf "@[<v>partial evaluation of %s@ %a@]"
        m.mc_name (pp_cmd ~full:true) c in
-  List.iter do_eval to_ev;
-  ()
+  List.iter do_eval to_ev
+  
+let process_il_file filename =
+  let ilast = ILParse.process_file (Location.unloc filename) in
+  process_il ilast
 
 let process_asm filename =
   let asmast = AsmParse.process_file (Location.unloc filename) in
@@ -137,15 +139,12 @@ let process_asm filename =
   let ilast = Asmlifter.lift_section asmast in
   Format.printf "@[<v>ASM lifted to IL@ %a@]@."
     Ilast.pp_command ilast;
-  let gs, to_ev = Iltyping.process [ilast] in
-  Format.printf "@[<v>IL definitions processed@ %a@]@."
-    (pp_globals ~full:true) gs;
-  ()
+  process_il [ilast]
 
 let process_command c =
   match c with
   | Read(Asm, filename) -> process_asm filename
-  | Read(Il, filename)  -> process_il filename
+  | Read(Il, filename)  -> process_il_file filename
   | Exit -> exit 0
 
 let main =

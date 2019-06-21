@@ -29,7 +29,7 @@ type operands =
 type stmt_r = {
   offset    : hex;
   instr_bin : hex;
-  instr_asm : string;
+  instr_asm : ident;
   instr_exp : operands
 } [@@deriving show]
 

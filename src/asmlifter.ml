@@ -14,14 +14,10 @@ let clear_name (mname:string) =
   else
     mname
 
-let refine_mname (asmstmt:Asmast.stmt) =
-  let loc = loc asmstmt in
-  let asmstmt = unloc asmstmt in
-  let mname = clear_name asmstmt.instr_asm in
-  let mname =
-    match asmstmt.instr_exp with
-    | Ofixed    _    -> mname
-    | Oflexible args -> mname ^ (string_of_int (List.length args)) in
+let refine_mname (mname:ident) (nargs:int) =
+  let loc = loc mname in
+  let mname = clear_name (unloc mname) in
+  let mname = mname ^ (string_of_int nargs) in
   mk_loc loc mname
 
 let refine_label (secname:string) (offs:Asmast.hex) =
@@ -48,9 +44,9 @@ let lift_operands = function
 
 let lift_stmt (secname:string) (stmt:Asmast.stmt) =
   let stmt_loc = loc stmt in
-  let mname = refine_mname stmt in
   let stmt  = unloc stmt in
   let margs = lift_operands stmt.instr_exp in
+  let mname = refine_mname stmt.instr_asm (List.length margs) in
   let lbl   = refine_label secname stmt.offset in
   let ilbl  = mk_loc (loc lbl) (Ilast.Ilabel lbl) in
   let ins   = mk_loc stmt_loc  (Ilast.Imacro (mname, margs)) in

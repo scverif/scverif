@@ -292,7 +292,7 @@ let unknown_arr i1 i2 =
   Array.make size Vunknown
 
 let rec eval_i st = 
-  Format.eprintf "%a@." pp_state st;
+(*  Format.eprintf "%a@." pp_state st; *)
   match st.st_pc with
   | [] -> ()
   | i :: c ->
