@@ -24,11 +24,12 @@ ISATESTS  := $(patsubst $(ISASRCDIR)/%.il, %.isatest, $(ISASRC))
 
 ASMSRCDIR := testasm
 ASMSRC    := $(wildcard $(ASMSRCDIR)/*.objdump)
-ASMTESTS  := $(patsubst $(ASMSRCDIR)/%.objdump, %.asmtest, $(ASMSRC))
+ASMILSRC  := $(wildcard $(ASMSRCDIR)/*.il)
+ASMTESTS  := $(patsubst $(ASMSRCDIR)/%.il, %.asmtest, $(ASMILSRC))
 
 EVALSRCDIR := testeval
 EVALSRC    := $(wildcard $(EVALSRCDIR)/*.il)
-EVALTESTS  := $(patsubst $(EVALSRCDIR)/%.il, %.evaltest, $(ISASRC))
+EVALTESTS  := $(patsubst $(EVALSRCDIR)/%.il, %.evaltest, $(EVALSRC))
 
 all: native
 
@@ -44,19 +45,19 @@ logdir:
 
 # rule to test ilfiles
 %.iltest: $(ILSRCDIR)/%.il native logdir
-	printf "read il $<\n" | ./$(MAIN).native | tee $(LOGDIR)/$@
+	printf "include il \"$<\"\n" | ./$(MAIN).native | tee $(LOGDIR)/$@
 
 # rule to test instruction set architectures
 %.isatest: $(ISASRCDIR)/%.il native logdir
-	printf "read il $<\n" | ./$(MAIN).native | tee $(LOGDIR)/$@
+	printf "include il \"$<\"\n" | ./$(MAIN).native | tee $(LOGDIR)/$@
 
 # rule to test parsing of assembly files
-%.asmtest: $(ASMSRCDIR)/%.objdump native logdir
-	printf "read il isa/isa-cortex-m0plus.il\nread asm $<\n" | ./$(MAIN).native | tee $(LOGDIR)/$@
+%.asmtest: $(ASMSRCDIR)/%.il native logdir
+	printf "include il \"$<\"\n" | ./$(MAIN).native | tee $(LOGDIR)/$@
 
 # rule to test ilfiles
 %.evaltest: $(EVALSRCDIR)/%.il native logdir
-	printf "read il $<\n" | ./$(MAIN).native | tee $(LOGDIR)/$@
+	printf "include il \"$<\"\n" | ./$(MAIN).native | tee $(LOGDIR)/$@
 
 
 # shortcut for various tests
