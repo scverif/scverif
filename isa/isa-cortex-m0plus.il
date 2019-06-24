@@ -15,8 +15,11 @@ w32 sp;
 w32 lr;
 w32 pc;
 
-bool zflag;
-bool vflag;
+bool apsrn;
+bool apsrz;
+bool apsrc;
+bool apsrv;
+
 
 mem [];
 
@@ -27,7 +30,9 @@ macro mov2 (w32 r, w32 i)
 
 macro movs2 (w32 r, w32 i)
 {
-   r <- i;
+   mov2(r, i);
+   apsrn <- (i >>w32 31) ==w32 (w32) 1;
+   apsrz <- i ==w32 (w32) 0;
 }
 
 macro push1 (w32 r)
@@ -53,7 +58,7 @@ macro push3 (w32 r1, w32 r2, w32 r3)
 
 macro push4 (w32 r1, w32 r2, w32 r3, w32 r4)
 {
-   sp <- sp -w32 ((w32) 12);
+   sp <- sp -w32 ((w32) 16);
    [w32 mem ((int)sp) + 0]  <- r1;
    [w32 mem ((int)sp) + 4]  <- r2;
    [w32 mem ((int)sp) + 8]  <- r3;
@@ -72,7 +77,7 @@ macro push5 (w32 r1, w32 r2, w32 r3, w32 r4, w32 r5)
 
 macro push6 (w32 r1, w32 r2, w32 r3, w32 r4, w32 r5, w32 r6)
 {
-   sp <- sp -w32 ((w32) 20);
+   sp <- sp -w32 ((w32) 24);
    [w32 mem ((int)sp) + 0]  <- r1;
    [w32 mem ((int)sp) + 4]  <- r2;
    [w32 mem ((int)sp) + 8]  <- r3;
@@ -83,7 +88,7 @@ macro push6 (w32 r1, w32 r2, w32 r3, w32 r4, w32 r5, w32 r6)
 
 macro push7 (w32 r1, w32 r2, w32 r3, w32 r4, w32 r5, w32 r6, w32 r7)
 {
-   sp <- sp -w32 ((w32) 20);
+   sp <- sp -w32 ((w32) 28);
    [w32 mem ((int)sp) + 0]  <- r1;
    [w32 mem ((int)sp) + 4]  <- r2;
    [w32 mem ((int)sp) + 8]  <- r3;
@@ -108,7 +113,7 @@ macro push8 (w32 r1, w32 r2, w32 r3, w32 r4, w32 r5, w32 r6, w32 r7, w32 r8)
 
 macro push9 (w32 r1, w32 r2, w32 r3, w32 r4, w32 r5, w32 r6, w32 r7, w32 r8, w32 r9)
 {
-   sp <- sp -w32 ((w32) 32);
+   sp <- sp -w32 ((w32) 36);
    [w32 mem ((int)sp) + 0]  <- r1;
    [w32 mem ((int)sp) + 4]  <- r2;
    [w32 mem ((int)sp) + 8]  <- r3;
@@ -217,37 +222,61 @@ macro ldr3 (w32 d, w32 r, w32 ofs)
 
 macro str3 (w32 r, w32 d, w32 ofs)
 {
+  /* writes 4 bytes per address, not equal to w32 array */
   [w32 mem (int)(d +w32 ofs)] <- d;
 }
 
-macro lsls2 (w32 r1, w32 r2)
+macro lsls3 (w32 r1, w32 r2, w32 imm5)
 {
-  r1 <- r1 <<w32 (int) r2;
+  if(imm5 !=w32 (w32) 0) {
+    apsrc <- (r2 >>w32 (int) ((w32) 32 -w32 imm5)) ==w32 (w32) 1;
+    /* depends on semantic of <<w32 */
+    r1 <- r2 <<w32 (int) imm5;
+    /* computes on new r1 value */
+    apsrn <- (r1 >>w32 31) ==w32 (w32) 1;
+    apsrz <- r1 ==w32 (w32) 0;
+  }
 }
 
-macro eors2 (w32 d, w32 r)
+macro lsls2 (w32 r1, w32 imm5)
 {
-  d <- d ^w32 r;
+  lsls3 (r1, r1, imm5);
 }
 
-macro and2 (w32 d, w32 r)
+macro eors2 (w32 r1, w32 r2)
 {
-  d <- d &w32 r;
+  r1 <- r1 ^w32 r2;
+  /* computes on new r1 value */
+  apsrn <- (r1 >>w32 31) ==w32 (w32) 1;
+  apsrz <- r1 ==w32 (w32) 0;
 }
 
-macro ands2 (w32 d, w32 r)
+macro ands2 (w32 r1, w32 r2)
 {
-  d <- d &w32 r;
-}
-
-macro adds2 (w32 d, w32 i)
-{
-  d <- d +w32 i;
+  r1 <- r1 &w32 r2;
+  /* computes on new r1 value */
+  apsrn <- (r1 >>w32 31) ==w32 (w32) 1;
+  apsrz <- r1 ==w32 (w32) 0;
 }
 
 macro adds3 (w32 d, w32 r1, w32 r2)
 {
+  apsrc <- ((r1 >>w32 31) &w32 (r2 >>w32 31)) ==w32 (w32) 1;
+
   d <- r1 +w32 r2;
+  apsrn <- (d >>w32 31) ==w32 (w32) 1;
+  apsrz <- d ==w32 (w32) 0;
+  /* TODO overflow (apsrv) missing */
+}
+
+macro adds2 (w32 r1, w32 r2)
+{
+  adds3(r1, r1, r2);
+}
+
+macro add2 (w32 d, w32 i)
+{
+  d <- d +w32 i;
 }
 
 macro sub2 (w32 d, w32 i)
@@ -257,15 +286,19 @@ macro sub2 (w32 d, w32 i)
 
 macro cmp2 (w32 r1, w32 i)
 {
-   zflag <- (r1 ==w32 i);
+  apsrn <- ((r1 +w32 i) >>w32 31) ==w32 (w32) 1;
+  apsrz  <- ((r1 +w32 i) ==w32 (w32) 0);
+  apsrc <- ((r1 >>w32 31) &w32 (i >>w32 31)) ==w32 (w32) 1;
+  /* TODO overflow (apsrv) missing */
 }
 
 macro bn1 (label l)
 {
-   if (vflag) { goto l; }
+   /*BEWARE: apsrv not implemented*/
+   if (!apsrv) { goto l; }
 }
 
 macro bnen1 (label l)
 {
-   if (!zflag) { goto l; }
+   if (!apsrz) { goto l; }
 }
