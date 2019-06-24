@@ -71,9 +71,9 @@ test-sand: secmult-cortex-m0plus-O3.asmtest
 
 test-sands: secmult-cortex-m0plus-Os.asmtest
 
-test-sref: secrefresh-cortex-m0plus-O3.asmtest
+test-sref: secref-cortex-m0plus-O3.asmtest
 
-test-srefs: secrefresh-cortex-m0plus-Os.asmtest
+test-srefs: secref-cortex-m0plus-Os.asmtest
 
 test-il: secxor-while.iltest
 

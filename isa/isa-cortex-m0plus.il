@@ -133,8 +133,8 @@ macro pop1 (w32 r)
 
 macro pop2 (w32 r1, w32 r2)
 {
-   [w32 mem ((int)sp) + 0] <- r1;
-   [w32 mem ((int)sp) + 4] <- r2;
+   r1 <- [w32 mem ((int)sp + 0)];
+   r2 <- [w32 mem ((int)sp + 4)];
    sp <- sp +w32 ((w32) 8);
 }
 
@@ -223,7 +223,7 @@ macro ldr3 (w32 d, w32 r, w32 ofs)
 macro str3 (w32 r, w32 d, w32 ofs)
 {
   /* writes 4 bytes per address, not equal to w32 array */
-  [w32 mem (int)(d +w32 ofs)] <- d;
+  [w32 mem (int)(d +w32 ofs)] <- r;
 }
 
 macro lsls3 (w32 r1, w32 r2, w32 imm5)

@@ -9,16 +9,16 @@ type pointer =
     p_dest : V.t;
     p_ofs  : B.zint }
 
-type cpointer = Lbl.t  
+type cpointer = Lbl.t
 
-type bvalue = 
+type bvalue =
   | Vcptr of Lbl.t
-  | Vptr  of pointer 
+  | Vptr  of pointer
   | Vint  of B.zint
   | Vbool of bool
-  | Vunknown 
+  | Vunknown
 
-type value = 
+type value =
   | Varr  of bvalue array
   | Vbase of bvalue
 
@@ -28,17 +28,17 @@ type state = {
             st_prog    : cmd;
     mutable st_pc      : cmd;
     mutable st_eprog   : cmd;
-  } 
+  }
 
 module Ptr = struct
   type t = pointer
-  let equal p1 p2 = 
-    V.equal p1.p_mem  p2.p_mem  && 
+  let equal p1 p2 =
+    V.equal p1.p_mem  p2.p_mem  &&
     V.equal p1.p_dest p2.p_dest &&
-    B.equal p1.p_ofs  p2.p_ofs 
+    B.equal p1.p_ofs  p2.p_ofs
 
-  let pp fmt p = 
-    Format.fprintf fmt "[%a @@ %a %a]" 
+  let pp fmt p =
+    Format.fprintf fmt "[%a @@ %a %a]"
       V.pp_dbg p.p_mem
       V.pp_dbg p.p_dest
       B.pp_print p.p_ofs
@@ -47,34 +47,34 @@ end
 (* Pretty printer *)
 
 let pp_bvalue fmt = function
-  | Vcptr lbl -> Format.fprintf fmt "lbl %a" Lbl.pp_dbg lbl 
-  | Vptr p    -> Ptr.pp fmt p 
+  | Vcptr lbl -> Format.fprintf fmt "lbl %a" Lbl.pp_dbg lbl
+  | Vptr p    -> Ptr.pp fmt p
   | Vint i    -> B.pp_print fmt i
   | Vbool b   -> Format.fprintf fmt "%b" b
   | Vunknown  -> Format.fprintf fmt "_"
 
 let pp_value fmt = function
-  | Varr t -> 
-    Format.fprintf fmt "@[{%a}@]" 
+  | Varr t ->
+    Format.fprintf fmt "@[{%a}@]"
       (pp_list ",@ " pp_bvalue) (Array.to_list t)
   | Vbase bv -> pp_bvalue fmt bv
 
-let pp_regions fmt mr = 
+let pp_regions fmt mr =
   Format.fprintf fmt "  @[<v>";
   Mv.iter (fun x t ->
       Format.fprintf fmt "%a -> @[%a@]@ "
-           V.pp_dbg x 
+           V.pp_dbg x
            (pp_list ",@ " pp_bvalue) (Array.to_list t)) mr;
   Format.fprintf fmt "@]"
 
-let pp_vars fmt mv = 
+let pp_vars fmt mv =
   Format.fprintf fmt "  @[<v>";
   Mv.iter (fun x v ->
       Format.fprintf fmt "%a -> %a@ "
            V.pp_dbg x pp_value v) mv;
-  Format.fprintf fmt "@]"                   
+  Format.fprintf fmt "@]"
 
-let pp_state fmt st = 
+let pp_state fmt st =
   Format.fprintf fmt "@[<v>regions:@ %a@ vars:@ %a@ pc:@ %a@ eprog:@ %a@]"
     pp_regions st.st_mregion
     pp_vars    st.st_mvar
@@ -91,9 +91,9 @@ let b64 = B.lshift B.one 64
 
 let basis = function
   | U8  -> b8
-  | U16 -> b16 
+  | U16 -> b16
   | U32 -> b32
-  | U64 -> b64 
+  | U64 -> b64
 
 let max_word b = B.sub (B.rshift b 1) B.one
 
@@ -104,13 +104,13 @@ let max64 = max_word b64
 
 let max_w = function
   | U8  -> max8
-  | U16 -> max16 
+  | U16 -> max16
   | U32 -> max32
-  | U64 -> max64 
+  | U64 -> max64
 
 let of_int  ws i = B.erem i (basis ws)
 let to_uint ws i = B.erem i (basis ws)
-let to_int ws i = 
+let to_int ws i =
   let i = to_uint ws i in
   if B.le i (max_w ws) then i
   else B.sub i (basis ws)
@@ -118,50 +118,64 @@ let to_int ws i =
 (* ***************************************************** *)
 (* Operators evaluation                                  *)
 
-let op_w_w op ws i1 = 
+let op_w_w op ws i1 =
   let w1 = of_int ws i1 in
   Vint (to_uint ws (op w1))
 
-let op_ww_w op ws i1 i2 = 
+let op_ww_w op ws i1 i2 =
   let w1 = of_int ws i1 in
   let w2 = of_int ws i2 in
   Vint (to_uint ws (op w1 w2))
 
+let op_wi_w op ws i1 i2 =
+  let w1 = of_int ws i1 in
+  let (w2:int) = B.to_int (to_uint ws i2) in
+  Vint (to_uint ws (op w1 w2))
 
-let op_ww_b op ws i1 i2 = 
+let op_ww_b op ws i1 i2 =
   let w1 = of_int ws i1 in
   let w2 = of_int ws i2 in
-  Vbool (op w1 w2) 
+  Vbool (op w1 w2)
 
-let eadd ws (v1, v2) = 
+let eadd ws (v1, v2) =
   match ws, v1, v2 with
   | None   , Vint i1, Vint i2 -> Vint (B.add i1 i2)
-  | _      , Vptr p , Vint i  
+  | _      , Vptr p , Vint i
   | _      , Vint i , Vptr p -> Vptr { p with p_ofs = B.add p.p_ofs i }
   | Some ws, Vint i1, Vint i2 -> op_ww_w B.add ws i1 i2
   | _                         -> Vunknown
 
-let esub ws (v1, v2) = 
+let esub ws (v1, v2) =
   match ws, v1, v2 with
   | None   , Vint i1, Vint i2 -> Vint (B.sub i1 i2)
-  | _      , Vptr p , Vint i  
+  | _      , Vptr p , Vint i
   | _      , Vint i , Vptr p -> Vptr { p with p_ofs = B.sub p.p_ofs i }
   | Some ws, Vint i1, Vint i2 -> op_ww_w B.sub ws i1 i2
   | _                         -> Vunknown
 
-let exor ws (v1, v2) = 
+let elsl ws (v1, v2) =
+  match ws, v1, v2 with
+  | ws, Vint i1 , Vint i2  -> op_wi_w B.lshift ws i1 i2
+  | _                      -> Vunknown
+
+let elsr ws (v1, v2) =
+  match ws, v1, v2 with
+  | ws, Vint i1 , Vint i2  -> op_wi_w B.rshift ws i1 i2
+  | _                      -> Vunknown
+
+let exor ws (v1, v2) =
   match ws, v1, v2 with
   | None   , Vbool b1, Vbool b2 -> Vbool (if b1 then not b2 else b2)
   | Some ws, Vint i1 , Vint i2  -> op_ww_w B.lgxor ws i1 i2
   | _                           -> Vunknown
 
-let enot ws v = 
+let enot ws v =
   match ws, v with
   | None   , Vbool b -> Vbool (not b)
   | Some ws, Vint i  -> op_w_w B.lgnot ws i
   | _                -> Vunknown
 
-let eeq bty (v1,v2) = 
+let eeq bty (v1,v2) =
   match bty, v1, v2 with
   | Int , Vint  i1, Vint  i2 -> Vbool (B.equal i1 i2)
   | _   , Vptr  p1, Vptr  p2 -> Vbool (Ptr.equal p1 p2)
@@ -169,32 +183,34 @@ let eeq bty (v1,v2) =
   | W ws, Vint  i1, Vint  i2 -> Vbool (B.equal (of_int ws i1) (of_int ws i2))
   | _, _, _                  -> Vunknown
 
-let ecast_w ws v = 
+let ecast_w ws v =
   match v with
   | Vint i -> Vint (of_int ws i)
   | _      -> Vunknown
 
-let ecast_int s ws v = 
+let ecast_int s ws v =
   match v with
   | Vint i -> Vint (if s = Signed then to_int ws i else to_uint ws i)
-  | Vptr p -> Vptr p  
+  | Vptr p -> Vptr p
   | _      -> Vunknown
 
-let eval_op op vs = 
+let eval_op op vs =
   match op.od with
   | Oadd ws -> eadd ws (as_seq2 vs)
   | Osub ws -> esub ws (as_seq2 vs)
+  | Olsl ws -> elsl ws (as_seq2 vs)
+  | Olsr ws -> elsr ws (as_seq2 vs)
   | Oxor ws -> exor ws (as_seq2 vs)
   | Onot ws -> enot ws (as_seq1 vs)
-  | Oeq bty -> eeq bty (as_seq2 vs) 
+  | Oeq bty -> eeq bty (as_seq2 vs)
   | Ocast_w ws -> ecast_w ws (as_seq1 vs)
   | Ocast_int (s,ws) -> ecast_int s ws (as_seq1 vs)
-  | _       -> 
-    ev_hierror () "op %s not implemented please repport" (op_string op) 
+  | _       ->
+    ev_hierror () "op %s not implemented please repport" (op_string op)
 
 (* ********************************************** *)
 (* Expressions evaluation                         *)
- 
+
 let eval_var st x =
   match Mv.find x st.st_mvar with
   | Vbase v -> v
@@ -209,14 +225,14 @@ let eval_get st x (v,ei) =
     if not (B.le i1 i && B.le i i2) then
       ev_hierror () "eval_get : out of bound";
     let ofs = B.to_int (B.sub i i1) in
-    let vi = 
-      match Mv.find x st.st_mvar with 
+    let vi =
+      match Mv.find x st.st_mvar with
       | Varr t              -> t.(ofs)
       | Vbase Vunknown      -> Vunknown
-      | exception Not_found -> Vunknown 
+      | exception Not_found -> Vunknown
       | _                   -> assert false in
     vi, Eget(x,Eint i)
-  | _ -> 
+  | _ ->
     Vunknown, Eget(x, ei)
 
 let get_ofs ws p i =
@@ -226,54 +242,54 @@ let get_ofs ws p i =
   assert (ofs mod q = 0);
   ofs / q
 
-let eval_load st ws m (v,ei) = 
+let eval_load st ws m (v,ei) =
   match v with
   | Vptr p when V.equal m p.p_mem ->
-    let t = 
-      try Mv.find p.p_dest st.st_mregion 
+    let t =
+      try Mv.find p.p_dest st.st_mregion
       with Not_found -> assert false in
     let bty, i1, i2 = get_arr p.p_dest.v_ty in
-    if bty <> W ws then 
+    if bty <> W ws then
       ev_hierror () "eval_load : invalid word size";
 (*
     if not (B.le i1 p.p_ofs && B.le p.p_ofs i2) then
       ev_hierror () "eval_load : out of bound"; *)
     let ofs = get_ofs ws p i1 in
     t.(ofs), Eget(p.p_dest, Eint p.p_ofs)
-  | _ -> 
+  | _ ->
     ev_hierror () "eval_load : can not evaluate pointer"
-  
-let rec eval_e st e = 
+
+let rec eval_e st e =
   match e with
   | Eint i  -> Vint i, e
   | Ebool b -> Vbool b, e
   | Evar x  -> eval_var st x, e
   | Eget(x,e) -> eval_get st x (eval_e st e)
   | Eload(ws, x, e) -> eval_load st ws x (eval_e st e)
-  | Eop(op, es) -> 
+  | Eop(op, es) ->
     let vs, es = eval_es st es in
     let v = eval_op op vs in
-    let e = 
+    let e =
       match v with
       | Vint i  -> Eint i
-      | Vbool b -> Ebool b 
+      | Vbool b -> Ebool b
       | _       -> Eop(op, es) in
     v, e
- 
+
 and eval_es st es = List.split (List.map (eval_e st) es)
-  
+
 (* ********************************************* *)
 (* Programs evaluation                           *)
 
-let find_label lbl st = 
-  let rec aux c = 
+let find_label lbl st =
+  let rec aux c =
     match c with
-    | [] -> raise Not_found 
+    | [] -> raise Not_found
     | i :: c' ->
       match i.i_desc with
       | Iif(_,c1,c2) | Iwhile(c1,_,c2) ->
         begin
-          try aux c' 
+          try aux c'
           with Not_found ->
             try aux c1
             with Not_found ->
@@ -283,27 +299,27 @@ let find_label lbl st =
   | (Ilabel _ | Iassgn _ | Ileak _ | Imacro _ | Igoto _ | Iigoto _) ->
     aux c' in
   try aux st.st_prog
-  with Not_found -> 
-    ev_hierror () "unknown label %a" Lbl.pp_dbg lbl 
+  with Not_found ->
+    ev_hierror () "unknown label %a" Lbl.pp_dbg lbl
 
-let unknown_arr i1 i2 = 
+let unknown_arr i1 i2 =
   assert (B.le i1 i2);
   let size = B.to_int (B.add (B.sub i2 i1) B.one) in
   Array.make size Vunknown
 
-let rec eval_i st = 
+let rec eval_i st =
 (*  Format.eprintf "%a@." pp_state st; *)
   match st.st_pc with
   | [] -> ()
   | i :: c ->
     match i.i_desc with
-    | Iassgn (x, e) -> eval_assgn st i.i_loc x e c 
-    | Ileak(li, es) -> 
+    | Iassgn (x, e) -> eval_assgn st i.i_loc x e c
+    | Ileak(li, es) ->
       let i' = { i_desc = Ileak(li, snd (eval_es st es)); i_loc = i.i_loc } in
-      next st (Some i') c 
-    | Imacro (m,_) -> ev_hierror () "still macro %s" m.mc_name 
-    | Ilabel _ -> 
-      next st None c 
+      next st (Some i') c
+    | Imacro (m,_) -> ev_hierror () "still macro %s" m.mc_name
+    | Ilabel _ ->
+      next st None c
     | Igoto lbl ->
       let c = find_label lbl st in
       next st None c
@@ -314,50 +330,50 @@ let rec eval_i st =
         next st None c
       | _ -> assert false (* FIXME : error msg *)
       end
-    | Iif(e,c1,c2) -> 
+    | Iif(e,c1,c2) ->
       begin match eval_e st e with
       | Vbool b, _  -> next st None ((if b then c1 else c2) @ c)
       | Vunknown, _ -> ev_hierror () "can not evaluate conditionnal expresssion"
-      | _, _        -> assert false 
+      | _, _        -> assert false
       end
-    | Iwhile (c1, e, c2) -> 
+    | Iwhile (c1, e, c2) ->
       let c = c1 @ {i_desc = Iif (e, c2 @ [i], []); i_loc = i.i_loc} :: c in
-      next st None c 
+      next st None c
 
-and next st i c = 
+and next st i c =
   oiter (fun i ->  st.st_eprog <- i :: st.st_eprog) i;
   st. st_pc <- c;
-  eval_i st 
+  eval_i st
 
-and eval_assgn st loc lv e c = 
+and eval_assgn st loc lv e c =
   let v, e = eval_e st e in
-  let lv = 
+  let lv =
     match lv with
-    | Lvar x -> 
+    | Lvar x ->
       st.st_mvar <- Mv.add x (Vbase v) st.st_mvar;
       lv
 
     | Lset(x,ei) ->
       let vi, ei = eval_e st e in
-      begin match vi with 
+      begin match vi with
       | Vint i   ->
         let _, i1, i2 = get_arr x.v_ty in
         if not (B.le i1 i && B.le i i2) then
           ev_hierror () "eval_set : out of bound";
         let ofs = B.to_int (B.sub i i1) in
-        let t = 
+        let t =
           match Mv.find x st.st_mvar with
-          | Varr t              -> t 
+          | Varr t              -> t
           | Vbase Vunknown      -> unknown_arr i1 i2
           | exception Not_found -> unknown_arr i1 i2
           | _                   -> assert false in
         t.(ofs) <- v;
-        st.st_mvar <- Mv.add x (Varr t) st.st_mvar 
+        st.st_mvar <- Mv.add x (Varr t) st.st_mvar
 
-      | Vunknown -> 
-        st.st_mvar <- Mv.remove x st.st_mvar 
+      | Vunknown ->
+        st.st_mvar <- Mv.remove x st.st_mvar
 
-      | _        -> assert false 
+      | _        -> assert false
       end;
       Lset(x,ei)
 
@@ -365,19 +381,19 @@ and eval_assgn st loc lv e c =
       let vi, ei = eval_e st ei in
       begin match vi with
       | Vptr p when V.equal m p.p_mem ->
-        let t = 
-          try Mv.find p.p_dest st.st_mregion 
+        let t =
+          try Mv.find p.p_dest st.st_mregion
           with Not_found -> assert false in
         let bty, i1, i2 = get_arr p.p_dest.v_ty in
-        if bty <> W ws then 
+        if bty <> W ws then
           ev_hierror () "eval_store : invalid word size";
 (*        if not (B.le i1 p.p_ofs && B.le p.p_ofs i2) then
           ev_hierror () "eval_load : out of bound"; *)
         let ofs = get_ofs ws p i1 in
         t.(ofs) <- v;
         Lset(p.p_dest, Eint p.p_ofs)
-      | v -> 
-        ev_hierror () 
+      | v ->
+        ev_hierror ()
           "eval_store : can not evaluate pointer %a"
           pp_bvalue v
       end in
@@ -388,21 +404,21 @@ type region = {
     r_dest  : V.t;    (* variable destination *)
   }
 
-type ival = 
+type ival =
   | Iint       of B.zint
   | Ibool      of bool
-  | Iregion    of V.t * B.zint 
-  | Icptr_exit     
-    
+  | Iregion    of V.t * B.zint
+  | Icptr_exit
+
 type initial = {
     init_region : region list;
     init_var    : (V.t * ival) list;
   }
 
-let partial_eval init m = 
+let partial_eval init m =
   let mdest = ref Mv.empty in
-    
-  let init_region mr r = 
+
+  let init_region mr r =
     assert (r.r_from.v_ty = Tmem);
     let _, i1, i2 = get_arr r.r_dest.v_ty in
     let t = unknown_arr i1 i2 in
@@ -410,36 +426,30 @@ let partial_eval init m =
     mdest := Mv.add r.r_dest r.r_from !mdest;
     Mv.add r.r_dest t mr in
   let st_mregion = List.fold_left init_region Mv.empty init.init_region in
-  
-  let init_var mv (x, iv) = 
+
+  let init_var mv (x, iv) =
     let v =
       match iv with
-      | Iint    i       -> Vint i  
+      | Iint    i       -> Vint i
       | Ibool   b       -> Vbool b
       | Iregion (d,ofs) ->
-        let m = 
+        let m =
           try Mv.find d !mdest with Not_found -> assert false in
         Vptr { p_mem = m; p_dest = d; p_ofs = ofs }
       | Icptr_exit      -> Vcptr Lbl.exit_ in
     Mv.add x (Vbase v) mv in
   let st_mvar = List.fold_left init_var Mv.empty init.init_var in
-  
+
   let st = {
     st_mregion;
     st_mvar;
-    st_prog  = 
-      m.mc_body @ 
+    st_prog  =
+      m.mc_body @
       [ { i_desc = Ilabel Lbl.exit_; i_loc = dummy_full_loc; } ];
     st_pc    = m.mc_body;
     st_eprog = []
     } in
-  
+
   eval_i st;
-  
+
   List.rev st.st_eprog
-  
-
-
-                                                                          
-    
- 
