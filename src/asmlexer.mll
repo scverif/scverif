@@ -15,7 +15,7 @@ let newline = '\n'
 let upper   = ['A'-'Z']
 let lower   = ['a'-'z']
 let digit   = ['0'-'9']
-let char    = upper | lower | digit | '_' | '.' 
+let char    = upper | lower | digit | '_' | '.' | '-'
 
 
 

@@ -95,21 +95,21 @@ end
 let process_gvar genv x = 
   let x    = Iltyping.process_var_decl x in
   let genv = Iltyping.add_gvar genv x in
-  Format.eprintf "%a@." (Il.pp_global ~full:true) (Gvar x);  
+  Format.printf "%a@." (Il.pp_global ~full:true) (Gvar x);  
   genv
 
 let process_macro genv m = 
   let m = Iltyping.process_macro genv m in
-  Format.eprintf "%a@." (Il.pp_global ~full:true) (Gmacro m);
+  Format.printf "%a@." (Il.pp_global ~full:true) (Gmacro m);
   let m = Ilinline.inline_macro m in
-  Format.eprintf "@[<v>after inlining@ %a@]@." (Il.pp_global ~full:true) (Gmacro m);
+  Format.printf "@[<v>after inlining@ %a@]@." (Il.pp_global ~full:true) (Gmacro m);
   let genv = Iltyping.add_macro genv m in
   genv
 
 let process_eval genv evi = 
   let m, initial = Iltyping.process_eval genv evi in
   let c = partial_eval initial m in
-  Format.eprintf "@[<v>partial evaluation of %s@ %a@]@."
+  Format.printf "@[<v>partial evaluation of %s@ %a@]@."
     m.mc_name (pp_cmd ~full:true) c;
   genv
 
