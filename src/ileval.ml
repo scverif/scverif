@@ -255,7 +255,7 @@ let eval_load st ws m (v,ei) =
     if not (B.le i1 p.p_ofs && B.le p.p_ofs i2) then
       ev_hierror () "eval_load : out of bound"; *)
     let ofs = get_ofs ws p i1 in
-    t.(ofs), Eget(p.p_dest, Eint p.p_ofs)
+    t.(ofs), Eget(p.p_dest, Eint (B.of_int ofs))
   | _ ->
     ev_hierror () "eval_load : can not evaluate pointer"
 
@@ -391,7 +391,7 @@ and eval_assgn st loc lv e c =
           ev_hierror () "eval_load : out of bound"; *)
         let ofs = get_ofs ws p i1 in
         t.(ofs) <- v;
-        Lset(p.p_dest, Eint p.p_ofs)
+        Lset(p.p_dest, Eint (B.of_int ofs))
       | v ->
         ev_hierror ()
           "eval_store : can not evaluate pointer %a"
