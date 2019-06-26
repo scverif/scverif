@@ -41,8 +41,10 @@ module type TheInterface = sig
 
   val parity : zint -> [`Even |  `Odd]
 
-  val lshift : zint -> int -> zint
-  val rshift : zint -> int -> zint
+  val lshl : zint -> int -> zint
+  val lshr : zint -> int -> zint
+  val ashr : zint -> int -> zint
+
   val lgand : zint -> zint -> zint
   val lgor  : zint -> zint -> zint
   val lgxor : zint -> zint -> zint

@@ -36,8 +36,10 @@ module ZImpl : BigintCore.TheInterface = struct
   let parity (z : zint) =
     if Z.sign (Z.extract z 0 1) = 0 then `Even else `Odd
 
-  let lshift = (Z.shift_left  : zint -> int -> zint)
-  let rshift = (Z.shift_right : zint -> int -> zint)
+  let lshl = (Z.shift_left  : zint -> int -> zint)
+  let ashr = (Z.shift_right : zint -> int -> zint)
+  let lshr = (Z.shift_right_trunc : zint -> int -> zint)
+
   let lgand = (Z.logand : zint -> zint -> zint)
   let lgor  = (Z.logor  : zint -> zint -> zint)
   let lgxor = (Z.logxor : zint -> zint -> zint)
