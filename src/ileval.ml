@@ -284,8 +284,6 @@ let eval_op op vs =
   | Ozeroextend(ws1,ws2) -> ezeroextend ws1 ws2 (as_seq1 vs)
   | Ocast_w ws -> ecast_w ws (as_seq1 vs)
   | Ocast_int (s,ws) -> ecast_int s ws (as_seq1 vs)
-  | _       ->
-    ev_hierror () "op %s not implemented please report" (op_string op)
 
 (* ********************************************** *)
 (* Expressions evaluation                         *)
