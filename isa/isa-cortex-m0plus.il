@@ -24,7 +24,7 @@ bool apsrv;
 mem [];
 
 /************** HELPERS **************/
-macro AddWithCarry(w32 x, w32 y, bool carry_in, w32 result, bool carry_out, bool overflow)
+macro AddWithCarry (w32 x, w32 y, bool carry_in, w32 result, bool carry_out, bool overflow)
   int unsigned_sum, int signed_sum
 {
   unsigned_sum <- (uint) x + (uint) y + (uint) carry_in;
@@ -34,290 +34,64 @@ macro AddWithCarry(w32 x, w32 y, bool carry_in, w32 result, bool carry_out, bool
   overflow     <- ! ((int)  result ==   signed_sum);
 }
 
-macro IsZero(w32 x, bool r)
+macro IsZero (w32 x, bool result)
 {
-  r <- (uint) x == 0;
+  result <- (uint) x == 0;
 }
 
-macro ExtractBit(w32 x, int i, bool r)
+macro ExtractBit (w32 x, int i, bool result)
 /* counting from zero */
 {
-  r <- (x >>w32 i) ==w32 (w32) 1;
+  result <- (x >>w32 i) ==w32 (w32) 1;
 }
 
-macro Not (w32 op, w32 r)
-/* Complement of bitstring  */
+macro LSL_C (w32 x, int shift, w32 result, bool carry_out)
 {
-  r <- op ^w32 (w32) -1;
+  result <- x <<w32 (uint) shift;
+  ExtractBit(x, (31 - (uint) shift), carry_out);
 }
 
 /************** INSTRUCTIONS **************/
 
-
-macro mov2 (w32 r, w32 i)
+macro mov2 (w32 dst, w32 op)
 {
-   r <- i;
+  dst <- op;
 }
 
-macro movs2 (w32 r, w32 i)
+macro movs2 (w32 dst, w32 op)
 {
-   mov2(r, i);
-   apsrn <- (i >>w32 31) ==w32 (w32) 1;
-   apsrz <- i ==w32 (w32) 0;
+  mov2(dst, op);
+  ExtractBit(dst, 31, apsrn);
+  IsZero(op, apsrz);
 }
 
-macro push1 (w32 r)
+macro adds3 (w32 dst, w32 op1, w32 op2)
 {
-   sp <- sp -w32 ((w32) 4);
-   [w32 mem (int)sp] <- r;
+  AddWithCarry(op1, op2, false, dst, apsrc, apsrv);
+  ExtractBit(dst, 31, apsrn);
+  IsZero(dst, apsrz);
 }
 
-macro push2 (w32 r1, w32 r2)
+macro adds2 (w32 op1, w32 op2)
 {
-   sp <- sp -w32 ((w32) 8);
-   [w32 mem ((int)sp) + 0] <- r1;
-   [w32 mem ((int)sp) + 4] <- r2;
+  adds3(op1, op1, op2);
 }
 
-macro push3 (w32 r1, w32 r2, w32 r3)
-{
-   sp <- sp -w32 ((w32) 12);
-   [w32 mem ((int)sp) + 0] <- r1;
-   [w32 mem ((int)sp) + 4] <- r2;
-   [w32 mem ((int)sp) + 8] <- r3;
-}
-
-macro push4 (w32 r1, w32 r2, w32 r3, w32 r4)
-{
-   sp <- sp -w32 ((w32) 16);
-   [w32 mem ((int)sp) + 0]  <- r1;
-   [w32 mem ((int)sp) + 4]  <- r2;
-   [w32 mem ((int)sp) + 8]  <- r3;
-   [w32 mem ((int)sp) + 12] <- r4;
-}
-
-macro push5 (w32 r1, w32 r2, w32 r3, w32 r4, w32 r5)
-{
-   sp <- sp -w32 ((w32) 20);
-   [w32 mem ((int)sp) + 0]  <- r1;
-   [w32 mem ((int)sp) + 4]  <- r2;
-   [w32 mem ((int)sp) + 8]  <- r3;
-   [w32 mem ((int)sp) + 12] <- r4;
-   [w32 mem ((int)sp) + 16] <- r5;
-}
-
-macro push6 (w32 r1, w32 r2, w32 r3, w32 r4, w32 r5, w32 r6)
-{
-   sp <- sp -w32 ((w32) 24);
-   [w32 mem ((int)sp) + 0]  <- r1;
-   [w32 mem ((int)sp) + 4]  <- r2;
-   [w32 mem ((int)sp) + 8]  <- r3;
-   [w32 mem ((int)sp) + 12] <- r4;
-   [w32 mem ((int)sp) + 16] <- r5;
-   [w32 mem ((int)sp) + 20] <- r6;
-}
-
-macro push7 (w32 r1, w32 r2, w32 r3, w32 r4, w32 r5, w32 r6, w32 r7)
-{
-   sp <- sp -w32 ((w32) 28);
-   [w32 mem ((int)sp) + 0]  <- r1;
-   [w32 mem ((int)sp) + 4]  <- r2;
-   [w32 mem ((int)sp) + 8]  <- r3;
-   [w32 mem ((int)sp) + 12] <- r4;
-   [w32 mem ((int)sp) + 16] <- r5;
-   [w32 mem ((int)sp) + 20] <- r6;
-   [w32 mem ((int)sp) + 24] <- r7;
-}
-
-macro push8 (w32 r1, w32 r2, w32 r3, w32 r4, w32 r5, w32 r6, w32 r7, w32 r8)
-{
-   sp <- sp -w32 ((w32) 32);
-   [w32 mem ((int)sp) + 0]  <- r1;
-   [w32 mem ((int)sp) + 4]  <- r2;
-   [w32 mem ((int)sp) + 8]  <- r3;
-   [w32 mem ((int)sp) + 12] <- r4;
-   [w32 mem ((int)sp) + 16] <- r5;
-   [w32 mem ((int)sp) + 20] <- r6;
-   [w32 mem ((int)sp) + 24] <- r7;
-   [w32 mem ((int)sp) + 28] <- r8;
-}
-
-macro push9 (w32 r1, w32 r2, w32 r3, w32 r4, w32 r5, w32 r6, w32 r7, w32 r8, w32 r9)
-{
-   sp <- sp -w32 ((w32) 36);
-   [w32 mem ((int)sp) + 0]  <- r1;
-   [w32 mem ((int)sp) + 4]  <- r2;
-   [w32 mem ((int)sp) + 8]  <- r3;
-   [w32 mem ((int)sp) + 12] <- r4;
-   [w32 mem ((int)sp) + 16] <- r5;
-   [w32 mem ((int)sp) + 20] <- r6;
-   [w32 mem ((int)sp) + 24] <- r7;
-   [w32 mem ((int)sp) + 28] <- r8;
-   [w32 mem ((int)sp) + 32] <- r9;
-}
-
-macro pop1 (w32 r)
-{
-   r <- [w32 mem (int)sp];
-   sp <- sp +w32 ((w32) 4);
-}
-
-macro pop2 (w32 r1, w32 r2)
-{
-   r1 <- [w32 mem ((int)sp + 0)];
-   r2 <- [w32 mem ((int)sp + 4)];
-   sp <- sp +w32 ((w32) 8);
-}
-
-macro pop3 (w32 r1, w32 r2, w32 r3)
-{
-   r1 <- [w32 mem ((int)sp) + 0];
-   r2 <- [w32 mem ((int)sp) + 4];
-   r3 <- [w32 mem ((int)sp) + 8];
-   sp <- sp +w32 ((w32) 12);
-}
-
-macro pop4 (w32 r1, w32 r2, w32 r3, w32 r4)
-{
-   r1 <- [w32 mem ((int)sp) + 0];
-   r2 <- [w32 mem ((int)sp) + 4];
-   r3 <- [w32 mem ((int)sp) + 8];
-   r4 <- [w32 mem ((int)sp) + 12];
-   sp <- sp +w32 ((w32) 16);
-}
-
-macro pop5 (w32 r1, w32 r2, w32 r3, w32 r4, w32 r5)
-{
-   r1 <- [w32 mem ((int)sp) + 0];
-   r2 <- [w32 mem ((int)sp) + 4];
-   r3 <- [w32 mem ((int)sp) + 8];
-   r4 <- [w32 mem ((int)sp) + 12];
-   r5 <- [w32 mem ((int)sp) + 16];
-   sp <- sp +w32 ((w32) 20);
-}
-
-macro pop6 (w32 r1, w32 r2, w32 r3, w32 r4, w32 r5, w32 r6)
-{
-   r1 <- [w32 mem ((int)sp) + 0];
-   r2 <- [w32 mem ((int)sp) + 4];
-   r3 <- [w32 mem ((int)sp) + 8];
-   r4 <- [w32 mem ((int)sp) + 12];
-   r5 <- [w32 mem ((int)sp) + 16];
-   r6 <- [w32 mem ((int)sp) + 20];
-   sp <- sp +w32 ((w32) 24);
-}
-
-macro pop7 (w32 r1, w32 r2, w32 r3, w32 r4, w32 r5, w32 r6, w32 r7)
-{
-   r1 <- [w32 mem ((int)sp) + 0];
-   r2 <- [w32 mem ((int)sp) + 4];
-   r3 <- [w32 mem ((int)sp) + 8];
-   r4 <- [w32 mem ((int)sp) + 12];
-   r5 <- [w32 mem ((int)sp) + 16];
-   r6 <- [w32 mem ((int)sp) + 20];
-   r7 <- [w32 mem ((int)sp) + 24];
-   sp <- sp +w32 ((w32) 28);
-}
-
-macro pop8 (w32 r1, w32 r2, w32 r3, w32 r4, w32 r5, w32 r6, w32 r7, w32 r8)
-{
-   r1 <- [w32 mem ((int)sp) + 0];
-   r2 <- [w32 mem ((int)sp) + 4];
-   r3 <- [w32 mem ((int)sp) + 8];
-   r4 <- [w32 mem ((int)sp) + 12];
-   r5 <- [w32 mem ((int)sp) + 16];
-   r6 <- [w32 mem ((int)sp) + 20];
-   r7 <- [w32 mem ((int)sp) + 24];
-   r8 <- [w32 mem ((int)sp) + 28];
-   sp <- sp +w32 ((w32) 32);
-}
-
-macro pop9 (w32 r1, w32 r2, w32 r3, w32 r4, w32 r5, w32 r6, w32 r7, w32 r8, w32 r9)
-{
-   r1 <- [w32 mem ((int)sp) + 0];
-   r2 <- [w32 mem ((int)sp) + 4];
-   r3 <- [w32 mem ((int)sp) + 8];
-   r4 <- [w32 mem ((int)sp) + 12];
-   r5 <- [w32 mem ((int)sp) + 16];
-   r6 <- [w32 mem ((int)sp) + 20];
-   r7 <- [w32 mem ((int)sp) + 24];
-   r8 <- [w32 mem ((int)sp) + 28];
-   r8 <- [w32 mem ((int)sp) + 32];
-   sp <- sp +w32 ((w32) 36);
-}
-
-macro ldr3 (w32 d, w32 r, w32 ofs)
-{
-   d <- [w32 mem (int)(r +w32 ofs)];
-}
-
-macro str3 (w32 r, w32 d, w32 ofs)
-{
-  /* writes 4 bytes per address, not equal to w32 array */
-  [w32 mem (int)(d +w32 ofs)] <- r;
-}
-
-macro lsls3 (w32 r1, w32 r2, w32 imm5)
-{
-  if(imm5 !=w32 (w32) 0) {
-    apsrc <- (r2 >>w32 (int) ((w32) 32 -w32 imm5)) ==w32 (w32) 1;
-    /* depends on semantic of <<w32 */
-    r1 <- r2 <<w32 (int) imm5;
-    /* computes on new r1 value */
-    apsrn <- (r1 >>w32 31) ==w32 (w32) 1;
-    apsrz <- r1 ==w32 (w32) 0;
-  }
-}
-
-macro lsls2 (w32 r1, w32 imm5)
-{
-  lsls3 (r1, r1, imm5);
-}
-
-macro eors2 (w32 r1, w32 r2)
-{
-  r1 <- r1 ^w32 r2;
-  /* computes on new r1 value */
-  apsrn <- (r1 >>w32 31) ==w32 (w32) 1;
-  apsrz <- r1 ==w32 (w32) 0;
-}
-
-macro ands2 (w32 r1, w32 r2)
-{
-  r1 <- r1 &w32 r2;
-  /* computes on new r1 value */
-  apsrn <- (r1 >>w32 31) ==w32 (w32) 1;
-  apsrz <- r1 ==w32 (w32) 0;
-}
-
-macro adds3 (w32 d, w32 r1, w32 r2)
-{
-  AddWithCarry(r1, r2, false, d, apsrc, apsrv);
-  ExtractBit(d, 31, apsrn);
-  IsZero(d, apsrz);
-}
-
-macro adds2 (w32 r1, w32 r2)
-{
-  adds3(r1, r1, r2);
-}
-
-macro add3 (w32 d, w32 r1, w32 r2)
+macro add3 (w32 dst, w32 op1, w32 op2)
   bool i, bool j
 {
-  AddWithCarry(r1, r2, false, d, i, j);
+  AddWithCarry(op1, op2, false, dst, i, j);
 }
 
-macro add2 (w32 r1, w32 r2)
+macro add2 (w32 op1, w32 op2)
 {
-  add3(r1, r1, r2);
+  add3(op1, op1, op2);
 }
 
-macro sub3 (w32 d, w32 r1, w32 r2)
+macro sub3 (w32 dst, w32 op1, w32 op2)
   bool i, bool j
 {
-  Not(r2, r2);
-  AddWithCarry(r1, r2, true, d, i, j);
+  AddWithCarry(op1, !w32 op2, true, dst, i, j);
 }
 
 macro sub2 (w32 op1, w32 op2)
@@ -325,17 +99,237 @@ macro sub2 (w32 op1, w32 op2)
   sub3(op1, op1, op2);
 }
 
-macro cmp2 (w32 r1, w32 i)
+macro ldr3 (w32 dst, w32 adr, w32 ofs)
+  w32 address
 {
-  apsrn <- ((r1 +w32 i) >>w32 31) ==w32 (w32) 1;
-  apsrz  <- ((r1 +w32 i) ==w32 (w32) 0);
-  apsrc <- ((r1 >>w32 31) &w32 (i >>w32 31)) ==w32 (w32) 1;
-  /* TODO overflow (apsrv) missing */
+  add3(address, adr, ofs);
+  dst <- [w32 mem (int) address];
+}
+
+macro str3 (w32 op, w32 adr, w32 ofs)
+  w32 address
+{
+  add3(address, adr, ofs);
+  [w32 mem (int) address] <- op;
+}
+
+macro push1 (w32 op1)
+{
+  sub2(sp, (w32) 4);
+  str3(op1, sp, (w32) 0);
+}
+
+macro push2 (w32 op1, w32 op2)
+{
+  sub2(sp, (w32) 8);
+  str3(op1, sp, (w32) 0);
+  str3(op2, sp, (w32) 4);
+}
+
+macro push3 (w32 op1, w32 op2, w32 op3)
+{
+  sub2(sp, (w32) 12);
+  str3(op1, sp, (w32) 0);
+  str3(op2, sp, (w32) 4);
+  str3(op3, sp, (w32) 8);
+}
+
+macro push4 (w32 op1, w32 op2, w32 op3, w32 op4)
+{
+  sub2(sp, (w32) 16);
+  str3(op1, sp, (w32) 0);
+  str3(op2, sp, (w32) 4);
+  str3(op3, sp, (w32) 8);
+  str3(op4, sp, (w32) 12);
+}
+
+macro push5 (w32 op1, w32 op2, w32 op3, w32 op4, w32 op5)
+{
+  sub2(sp, (w32) 20);
+  str3(op1, sp, (w32) 0);
+  str3(op2, sp, (w32) 4);
+  str3(op3, sp, (w32) 8);
+  str3(op4, sp, (w32) 12);
+  str3(op5, sp, (w32) 16);
+}
+
+macro push6 (w32 op1, w32 op2, w32 op3, w32 op4, w32 op5, w32 op6)
+{
+  sub2(sp, (w32) 24);
+  str3(op1, sp, (w32) 0);
+  str3(op2, sp, (w32) 4);
+  str3(op3, sp, (w32) 8);
+  str3(op4, sp, (w32) 12);
+  str3(op5, sp, (w32) 16);
+  str3(op6, sp, (w32) 20);
+}
+
+macro push7 (w32 op1, w32 op2, w32 op3, w32 op4, w32 op5, w32 op6, w32 op7)
+{
+  sub2(sp, (w32) 28);
+  str3(op1, sp, (w32) 0);
+  str3(op2, sp, (w32) 4);
+  str3(op3, sp, (w32) 8);
+  str3(op4, sp, (w32) 12);
+  str3(op5, sp, (w32) 16);
+  str3(op6, sp, (w32) 20);
+  str3(op7, sp, (w32) 24);
+}
+
+macro push8 (w32 op1, w32 op2, w32 op3, w32 op4, w32 op5, w32 op6, w32 op7, w32 op8)
+{
+  sub2(sp, (w32) 32);
+  str3(op1, sp, (w32) 0);
+  str3(op2, sp, (w32) 4);
+  str3(op3, sp, (w32) 8);
+  str3(op4, sp, (w32) 12);
+  str3(op5, sp, (w32) 16);
+  str3(op6, sp, (w32) 20);
+  str3(op7, sp, (w32) 24);
+  str3(op8, sp, (w32) 28);
+}
+
+macro push9 (w32 op1, w32 op2, w32 op3, w32 op4, w32 op5, w32 op6, w32 op7, w32 op8, w32 op9)
+{
+  sub2(sp, (w32) 36);
+  str3(op1, sp, (w32) 0);
+  str3(op2, sp, (w32) 4);
+  str3(op3, sp, (w32) 8);
+  str3(op4, sp, (w32) 12);
+  str3(op5, sp, (w32) 16);
+  str3(op6, sp, (w32) 20);
+  str3(op7, sp, (w32) 24);
+  str3(op8, sp, (w32) 28);
+  str3(op9, sp, (w32) 32);
+}
+
+macro pop1 (w32 op1)
+{
+  ldr3(op1, sp, (w32) 0);
+  add2(sp, (w32) 4);
+}
+
+macro pop2 (w32 op1, w32 op2)
+{
+  ldr3(op1, sp, (w32) 0);
+  ldr3(op2, sp, (w32) 4);
+  add2(sp, (w32) 8);
+}
+
+macro pop3 (w32 op1, w32 op2, w32 op3)
+{
+  ldr3(op1, sp, (w32) 0);
+  ldr3(op2, sp, (w32) 4);
+  ldr3(op3, sp, (w32) 8);
+  add2(sp, (w32) 12);
+}
+
+macro pop4 (w32 op1, w32 op2, w32 op3, w32 op4)
+{
+  ldr3(op1, sp, (w32) 0);
+  ldr3(op2, sp, (w32) 4);
+  ldr3(op3, sp, (w32) 8);
+  ldr3(op4, sp, (w32) 12);
+  add2(sp, (w32) 16);
+}
+
+macro pop5 (w32 op1, w32 op2, w32 op3, w32 op4, w32 op5)
+{
+  ldr3(op1, sp, (w32) 0);
+  ldr3(op2, sp, (w32) 4);
+  ldr3(op3, sp, (w32) 8);
+  ldr3(op4, sp, (w32) 12);
+  ldr3(op5, sp, (w32) 16);
+  add2(sp, (w32) 20);
+}
+
+macro pop6 (w32 op1, w32 op2, w32 op3, w32 op4, w32 op5, w32 op6)
+{
+  ldr3(op1, sp, (w32) 0);
+  ldr3(op2, sp, (w32) 4);
+  ldr3(op3, sp, (w32) 8);
+  ldr3(op4, sp, (w32) 12);
+  ldr3(op5, sp, (w32) 16);
+  ldr3(op6, sp, (w32) 20);
+  add2(sp, (w32) 24);
+}
+
+macro pop7 (w32 op1, w32 op2, w32 op3, w32 op4, w32 op5, w32 op6, w32 op7)
+{
+  ldr3(op1, sp, (w32) 0);
+  ldr3(op2, sp, (w32) 4);
+  ldr3(op3, sp, (w32) 8);
+  ldr3(op4, sp, (w32) 12);
+  ldr3(op5, sp, (w32) 16);
+  ldr3(op6, sp, (w32) 20);
+  ldr3(op7, sp, (w32) 24);
+  add2(sp, (w32) 28);
+}
+
+macro pop8 (w32 op1, w32 op2, w32 op3, w32 op4, w32 op5, w32 op6, w32 op7, w32 op8)
+{
+  ldr3(op1, sp, (w32) 0);
+  ldr3(op2, sp, (w32) 4);
+  ldr3(op3, sp, (w32) 8);
+  ldr3(op4, sp, (w32) 12);
+  ldr3(op5, sp, (w32) 16);
+  ldr3(op6, sp, (w32) 20);
+  ldr3(op7, sp, (w32) 24);
+  ldr3(op8, sp, (w32) 28);
+  add2(sp, (w32) 32);
+}
+
+macro pop9 (w32 op1, w32 op2, w32 op3, w32 op4, w32 op5, w32 op6, w32 op7, w32 op8, w32 op9)
+{
+  ldr3(op1, sp, (w32) 0);
+  ldr3(op2, sp, (w32) 4);
+  ldr3(op3, sp, (w32) 8);
+  ldr3(op4, sp, (w32) 12);
+  ldr3(op5, sp, (w32) 16);
+  ldr3(op6, sp, (w32) 20);
+  ldr3(op7, sp, (w32) 24);
+  ldr3(op8, sp, (w32) 28);
+  ldr3(op9, sp, (w32) 32);
+  add2(sp, (w32) 36);
+}
+
+macro lsls3 (w32 dst, w32 op1, w32 shift)
+  int shift_n
+{
+  shift_n <- (uint) shift;
+  LSL_C(op1, shift_n, dst, apsrc);
+  ExtractBit(dst, 31, apsrn);
+  IsZero(dst, apsrz);
+}
+
+macro lsls2 (w32 op1, w32 op2)
+{
+  lsls3(op1, op1, op2);
+}
+
+macro eors2 (w32 op1, w32 op2)
+{
+  op1 <- op1 ^w32 op2;
+  ExtractBit(op1, 31, apsrn);
+  IsZero(op1, apsrz);
+}
+
+macro ands2 (w32 op1, w32 op2)
+{
+  op1 <- op1 &w32 op2;
+  ExtractBit(op1, 31, apsrn);
+  IsZero(op1, apsrz);
+}
+
+macro cmp2 (w32 op1, w32 op2)
+{
+  AddWithCarry(op1, !w32 op2, true, op1, apsrc, apsrv);
+  ExtractBit(op1, 31, apsrn);
+  IsZero(op1, apsrz);
 }
 
 macro bn1 (label l)
 {
-   /*BEWARE: apsrv not implemented*/
    if (!apsrv) { goto l; }
 }
 
