@@ -322,10 +322,11 @@ macro ands2 (w32 op1, w32 op2)
 }
 
 macro cmp2 (w32 op1, w32 op2)
+  w32 cmpr
 {
-  AddWithCarry(op1, !w32 op2, true, op1, apsrc, apsrv);
-  ExtractBit(op1, 31, apsrn);
-  IsZero(op1, apsrz);
+  AddWithCarry(op1, !w32 op2, true, cmpr, apsrc, apsrv);
+  ExtractBit(cmpr, 31, apsrn);
+  IsZero(cmpr, apsrz);
 }
 
 macro bn1 (label l)
