@@ -115,8 +115,8 @@ let to_int ws i =
   if B.le i (maxsigned_w ws) then i
   else B.sub i (basis ws)
 
-let to_int_s s ws i = 
-  if s = Signed then to_int ws i 
+let to_int_s s ws i =
+  if s = Signed then to_int ws i
   else to_uint ws i
 
 (* ***************************************************** *)
@@ -141,7 +141,7 @@ let op_ww_b op ws i1 i2 =
   let w2 = of_int ws i2 in
   Vbool (op w1 w2)
 
-let eif (v1,v2,v3) = 
+let eif (v1,v2,v3) =
   match v1 with
   | Vbool b -> if b then v2 else v3
   | _       -> Vunknown
@@ -168,7 +168,7 @@ let eopp ws v1 =
   | Some ws, Vint i -> op_w_w B.neg ws i
   | _               -> Vunknown
 
-let emul ws (v1,v2) = 
+let emul ws (v1,v2) =
   match ws, v1, v2 with
   | None, Vint i1, Vint i2    -> Vint (B.mul i1 i2)
   | Some ws, Vint i1, Vint i2 -> op_ww_w B.mul ws i1 i2
@@ -221,26 +221,26 @@ let eeq bty (v1,v2) =
   | W ws, Vint  i1, Vint  i2 -> Vbool (B.equal (of_int ws i1) (of_int ws i2))
   | _, _, _                  -> Vunknown
 
-let elt s ws (v1, v2) = 
+let elt s ws (v1, v2) =
   match ws, v1, v2 with
   | None, Vint i1, Vint i2 -> Vbool (B.lt i1 i2)
-  | Some ws, Vint i1, Vint i2 -> 
-    Vbool (B.lt (to_int_s s ws i1) (to_int_s s ws i2)) 
+  | Some ws, Vint i1, Vint i2 ->
+    Vbool (B.lt (to_int_s s ws i1) (to_int_s s ws i2))
   | _ -> Vunknown
 
-let ele s ws (v1, v2) = 
+let ele s ws (v1, v2) =
   match ws, v1, v2 with
   | None, Vint i1, Vint i2 -> Vbool (B.le i1 i2)
-  | Some ws, Vint i1, Vint i2 -> 
-    Vbool (B.le (to_int_s s ws i1) (to_int_s s ws i2)) 
+  | Some ws, Vint i1, Vint i2 ->
+    Vbool (B.le (to_int_s s ws i1) (to_int_s s ws i2))
   | _ -> Vunknown
 
-let esignextend ws1 ws2 v = 
+let esignextend ws1 ws2 v =
   match v with
   | Vint i -> Vint (of_int ws2 (to_int ws1 i))
   | _      -> Vunknown
 
-let ezeroextend ws1 ws2 v = 
+let ezeroextend ws1 ws2 v =
   match v with
   | Vint i -> Vint (of_int ws2 (to_uint ws1 i))
   | _      -> Vunknown
@@ -251,17 +251,21 @@ let ecast_w ws v =
   | _      -> Vunknown
 
 let ecast_int s ws v =
-  match v with
-  | Vint i -> Vint (if s = Signed then to_int ws i else to_uint ws i)
-  | Vptr p -> Vptr p
-  | _      -> Vunknown
+  match v, ws, s with
+  | Vint i, Some w, Signed   -> Vint (to_int w i)
+  | Vint i, Some w, Unsigned -> Vint (to_uint w i)
+  | Vint i, None  , Signed   -> Vint i
+  | Vint i, None  , Unsigned -> Vint (B.abs i)
+  | Vbool b, _    , _        -> if b then Vint B.one else Vint B.zero
+  | Vptr p, _     , _        -> Vptr p
+  | _     , _     , _        -> Vunknown
 
 let eval_op op vs =
   match op.od with
-  | Oif   _  -> eif (as_seq3 vs) 
+  | Oif   _  -> eif (as_seq3 vs)
   | Oadd  ws -> eadd ws (as_seq2 vs)
   | Omul  ws -> emul ws (as_seq2 vs)
-  | Omulh _ -> 
+  | Omulh _ ->
     ev_hierror () "op %s not implemented please repport" (op_string op)
   | Osub  ws -> esub ws (as_seq2 vs)
   | Oopp  ws -> eopp ws (as_seq1 vs)
@@ -275,11 +279,13 @@ let eval_op op vs =
   | Oeq  bty -> eeq bty (as_seq2 vs)
   | Olt (s,ws) -> elt s ws (as_seq2 vs)
   | Ole (s,ws) -> ele s ws (as_seq2 vs)
-  | Osignextend(ws1,ws2) -> esignextend ws1 ws2 (as_seq1 vs) 
+  | Osignextend(ws1,ws2) -> esignextend ws1 ws2 (as_seq1 vs)
   | Ozeroextend(ws1,ws2) -> ezeroextend ws1 ws2 (as_seq1 vs)
   | Ocast_w ws -> ecast_w ws (as_seq1 vs)
   | Ocast_int (s,ws) -> ecast_int s ws (as_seq1 vs)
- 
+  | _       ->
+    ev_hierror () "op %s not implemented please report" (op_string op)
+
 (* ********************************************** *)
 (* Expressions evaluation                         *)
 

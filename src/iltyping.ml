@@ -145,6 +145,15 @@ let check_ty_base loc ty =
     ty_error loc "the expression has type %a while a base type is expected"
       pp_ty ty
 
+let check_cast loc bty s =
+  match s, bty with
+  | _, W w -> Some w
+  | _, Int -> None
+  | _, Bool -> None
+  | _, _ ->
+    ty_error loc "cast to %a int is not defined for %a"
+      pp_sign s pp_bty bty
+
 let check_type loc ety ty =
   if not (ty_eq ety ty) then
     ty_error loc "the expression has type %a instead of %a"
@@ -278,8 +287,9 @@ let rec type_e env e =
       let loc = loc e in
       let e = get_e1 loc es in
       let e, ety = type_e env e in
-      let wse = check_ty_ws loc ety in
-      let od = Ocast_int(s, wse)  in
+      let bty = check_ty_base loc ety in
+      let wse = check_cast loc bty s in
+      let od = Ocast_int(s, wse) in
       let o = { od } in
       Eop(o, [e]), tint
 
