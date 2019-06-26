@@ -19,6 +19,7 @@ module V : sig
   val pp_full : full:bool -> Format.formatter -> t -> unit
   val pp_dbg  : Format.formatter -> t -> unit
   val pp      : Format.formatter -> t -> unit
+  val pp_g    : Format.formatter -> t -> unit
 
 end = struct
 
@@ -45,6 +46,7 @@ end = struct
 
   let pp_dbg fmt v = pp_full ~full:true fmt v
 
+  let pp_g fmt v = pp_full ~full:!Glob_option.full fmt v
 
 end
 

@@ -113,7 +113,7 @@ let to_uint ws i = B.erem i (basis ws)
 let to_int ws i =
   let i = to_uint ws i in
   if B.le i (maxsigned_w ws) then i
-  else B.sub i (basis ws)
+  else B.sub i (basis ws) 
 
 let to_int_s s ws i =
   if s = Signed then to_int ws i
@@ -248,7 +248,7 @@ let ezeroextend ws1 ws2 v =
 let ecast_w ws v =
   match v with
   | Vint i -> Vint (of_int ws i)
-  | Vptr p -> Vptr { p with p_ofs = of_int ws p.p_ofs }
+  | Vptr _ -> v (* Vptr { p with p_ofs = of_int ws p.p_ofs } *)
   | _      -> Vunknown
 
 let ecast_int s ws v =
@@ -258,7 +258,9 @@ let ecast_int s ws v =
   | Vint i, None  , Signed   -> Vint i
   | Vint i, None  , Unsigned -> Vint (B.abs i)
   | Vbool b, _    , _        -> if b then Vint B.one else Vint B.zero
-  | Vptr p, _     , _        -> Vptr p
+  | Vptr p, Some w, Signed   -> Vptr {p with p_ofs = to_int w p.p_ofs}
+  | Vptr p, Some w, Unsigned -> Vptr {p with p_ofs = to_uint w p.p_ofs}
+
   | _     , _     , _        -> Vunknown
 
 let eval_op op vs =
@@ -294,14 +296,17 @@ let eval_var st x =
   | Varr _ -> Vunknown
   | exception Not_found -> Vunknown
 
+let eval_index msg x i =
+  let _, i1, i2 = get_arr x.v_ty in
+  if not (B.le i1 i && B.le i i2) then
+    ev_hierror () "%s out of bound (%a:[%a:%a]) [%a] " msg
+      V.pp_g x B.pp_print i1 B.pp_print i2 B.pp_print i;
+  B.to_int (B.sub i i1)
 
 let eval_get st x (v,ei) =
   match v with
   | Vint i ->
-    let _, i1, i2 = get_arr x.v_ty in
-    if not (B.le i1 i && B.le i i2) then
-      ev_hierror () "eval_get : out of bound";
-    let ofs = B.to_int (B.sub i i1) in
+    let ofs = eval_index "eval_get" x i in
     let vi =
       match Mv.find x st.st_mvar with
       | Varr t              -> t.(ofs)
@@ -312,33 +317,32 @@ let eval_get st x (v,ei) =
   | _ ->
     Vunknown, Eget(x, ei)
 
-let get_ofs ws p i =
-  let q = ws_byte ws in
-  let ofs = B.to_int (B.sub p.p_ofs (B.mul i (B.of_int q))) in
-(*  Format.eprintf "ofs = %i, q = %i@." ofs q; *)
-  assert (ofs mod q = 0);
-  ofs / q
+let get_ofs ws p =
+  let q = B.of_int (ws_byte ws) in
+  assert (B.equal (B.erem p.p_ofs q) B.zero);
+  B.div p.p_ofs q 
 
-let eval_load st ws m (v,ei) =
+let eval_mem_index st ws m e (v,_ei) = 
   match v with
   | Vptr p when V.equal m p.p_mem ->
-    let t =
-      try Mv.find p.p_dest st.st_mregion
-      with Not_found -> assert false in
-    let bty, i1, i2 = get_arr p.p_dest.v_ty in
+    let bty, _i1, _i2 = get_arr p.p_dest.v_ty in
     if bty <> W ws then
-      ev_hierror () "eval_load : invalid word size";
-(*
-    if not (B.le i1 p.p_ofs && B.le p.p_ofs i2) then
-      ev_hierror () "eval_load : out of bound"; *)
-    let ofs = get_ofs ws p i1 in
-    t.(ofs), Eget(p.p_dest, Eint (B.of_int ofs))
-  | Vunknown ->
-    ev_hierror () "eval_load : cannot evaluate pointer of unknown value in expression %a"
-      (pp_e ~full:!Glob_option.full) ei
+      ev_hierror () "eval_mem_index : invalid word size";
+    let ofs = get_ofs ws p in
+    let iofs = eval_index "eval_load region" p.p_dest ofs in
+    let t =  
+      try Mv.find p.p_dest st.st_mregion
+      with Not_found -> 
+        ev_hierror () "eval_mem_index : unknown region" (* assert false *) in
+    t, iofs, p.p_dest, Eint ofs
   | _ ->
-    ev_hierror () "eval_load : cannot evaluate pointer %a"
-      pp_bvalue v
+    ev_hierror () "@[<v>%a@ eval_mem_index : cannot evaluate pointer %a@]"
+      pp_state st
+      (pp_e ~full:!Glob_option.full) e
+
+let eval_load st ws m e (v,ei) =
+  let t, iofs, dest, eofs = eval_mem_index st ws m e (v,ei) in
+  t.(iofs), Eget(dest, eofs)
 
 let rec eval_e st e =
   match e with
@@ -346,7 +350,7 @@ let rec eval_e st e =
   | Ebool b -> Vbool b, e
   | Evar x  -> eval_var st x, e
   | Eget(x,e) -> eval_get st x (eval_e st e)
-  | Eload(ws, x, e) -> eval_load st ws x (eval_e st e)
+  | Eload(ws, m, e) -> eval_load st ws m e (eval_e st e)
   | Eop(op, es) ->
     let vs, es = eval_es st es in
     let v = eval_op op vs in
@@ -435,7 +439,7 @@ and eval_assgn st loc lv e c =
       lv
 
     | Lset(x,ei) ->
-      let vi, ei = eval_e st e in
+      let vi, ei = eval_e st ei in
       begin match vi with
       | Vint i   ->
         let _, i1, i2 = get_arr x.v_ty in
@@ -459,25 +463,10 @@ and eval_assgn st loc lv e c =
       Lset(x,ei)
 
     | Lstore(ws, m, ei) ->
-      let vi, ei = eval_e st ei in
-      begin match vi with
-      | Vptr p when V.equal m p.p_mem ->
-        let t =
-          try Mv.find p.p_dest st.st_mregion
-          with Not_found -> assert false in
-        let bty, i1, i2 = get_arr p.p_dest.v_ty in
-        if bty <> W ws then
-          ev_hierror () "eval_store : invalid word size";
-(*        if not (B.le i1 p.p_ofs && B.le p.p_ofs i2) then
-          ev_hierror () "eval_load : out of bound"; *)
-        let ofs = get_ofs ws p i1 in
-        t.(ofs) <- v;
-        Lset(p.p_dest, Eint (B.of_int ofs))
-      | v ->
-        ev_hierror ()
-          "eval_store : can not evaluate pointer %a"
-          pp_bvalue v
-      end in
+      let t, iofs, dest, eofs = eval_mem_index st ws m ei (eval_e st ei) in
+      t.(iofs) <- v;
+      Lset(dest, eofs)
+  in
   next st (Some {i_desc = Iassgn(lv, e); i_loc = loc }) c
 
 type region = {
