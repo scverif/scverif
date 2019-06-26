@@ -1,6 +1,7 @@
+verbose 0
 include il "isa/isa-cortex-m0plus.il"
+verbose 1
 include asm "testasm/secxor-cortex-m0plus-O3.objdump"
-
 eval secxor
   region mem w32 a[0:2]
   region mem w32 b[0:2]

@@ -31,6 +31,7 @@
     "signextend", SIGNEXTEND;
     "region", REGION ;
     "true"  , TRUE   ;
+    "verbose", VERBOSE;
     "while" , WHILE  ;
     "zeroextend", ZEROEXTEND;
   ]

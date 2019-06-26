@@ -140,6 +140,7 @@ type command =
   | Gmacro of macro_decl located
   | Ginclude of (read_kind * string located)
   | Geval  of eval_info
+  | Gverbose of int
   | Gexit
 [@@deriving show]
 

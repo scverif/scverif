@@ -454,6 +454,8 @@ and pp_else ~full fmt c =
   else
     Format.fprintf fmt "@ else@ %a" (pp_cmd ~full) c
 
+let pp_cmd_g fmt = pp_cmd ~full:!Glob_option.full fmt
+
 let pp_macro ~full fmt m =
   let pp_locals fmt locals =
     if locals == [] then ()
@@ -466,6 +468,8 @@ let pp_macro ~full fmt m =
 let pp_global ~full fmt = function
   | Gvar x -> Format.fprintf fmt "%a;" (pp_var_decl ~full) x
   | Gmacro m -> pp_macro ~full fmt m
+
+let pp_global_g fmt = pp_global ~full:!Glob_option.full fmt
 
 let pp_globals ~full fmt gs =
   Format.fprintf fmt "@[<v>%a@]"
