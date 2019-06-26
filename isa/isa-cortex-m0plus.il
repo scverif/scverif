@@ -23,6 +23,37 @@ bool apsrv;
 
 mem [];
 
+/************** HELPERS **************/
+macro AddWithCarry(w32 x, w32 y, bool carry_in, w32 result, bool carry_out, bool overflow)
+  int unsigned_sum, int signed_sum
+{
+  unsigned_sum <- (uint) x + (uint) y + (uint) carry_in;
+  signed_sum   <- (int) x  + (int) y  + (uint) carry_in;
+  result       <- (w32) unsigned_sum;
+  carry_out    <- ! ((uint) result == unsigned_sum);
+  overflow     <- ! ((int)  result ==   signed_sum);
+}
+
+macro IsZero(w32 x, bool r)
+{
+  r <- (uint) x == 0;
+}
+
+macro ExtractBit(w32 x, int i, bool r)
+/* counting from zero */
+{
+  r <- (x >>w32 i) ==w32 (w32) 1;
+}
+
+macro Not (w32 op, w32 r)
+/* Complement of bitstring  */
+{
+  r <- op ^w32 (w32) -1;
+}
+
+/************** INSTRUCTIONS **************/
+
+
 macro mov2 (w32 r, w32 i)
 {
    r <- i;
@@ -261,12 +292,9 @@ macro ands2 (w32 r1, w32 r2)
 
 macro adds3 (w32 d, w32 r1, w32 r2)
 {
-  apsrc <- ((r1 >>w32 31) &w32 (r2 >>w32 31)) ==w32 (w32) 1;
-
-  d <- r1 +w32 r2;
-  apsrn <- (d >>w32 31) ==w32 (w32) 1;
-  apsrz <- d ==w32 (w32) 0;
-  /* TODO overflow (apsrv) missing */
+  AddWithCarry(r1, r2, false, d, apsrc, apsrv);
+  ExtractBit(d, 31, apsrn);
+  IsZero(d, apsrz);
 }
 
 macro adds2 (w32 r1, w32 r2)
@@ -274,14 +302,27 @@ macro adds2 (w32 r1, w32 r2)
   adds3(r1, r1, r2);
 }
 
-macro add2 (w32 d, w32 i)
+macro add3 (w32 d, w32 r1, w32 r2)
+  bool i, bool j
 {
-  d <- d +w32 i;
+  AddWithCarry(r1, r2, false, d, i, j);
 }
 
-macro sub2 (w32 d, w32 i)
+macro add2 (w32 r1, w32 r2)
 {
-  d <- d -w32 i;
+  add3(r1, r1, r2);
+}
+
+macro sub3 (w32 d, w32 r1, w32 r2)
+  bool i, bool j
+{
+  Not(r2, r2);
+  AddWithCarry(r1, r2, true, d, i, j);
+}
+
+macro sub2 (w32 op1, w32 op2)
+{
+  sub3(op1, op1, op2);
 }
 
 macro cmp2 (w32 r1, w32 i)
