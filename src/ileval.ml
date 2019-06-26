@@ -334,8 +334,12 @@ let eval_load st ws m (v,ei) =
       ev_hierror () "eval_load : out of bound"; *)
     let ofs = get_ofs ws p i1 in
     t.(ofs), Eget(p.p_dest, Eint (B.of_int ofs))
+  | Vunknown ->
+    ev_hierror () "eval_load : cannot evaluate pointer of unknown value in expression %a"
+      (pp_e ~full:!Glob_option.full) ei
   | _ ->
-    ev_hierror () "eval_load : can not evaluate pointer"
+    ev_hierror () "eval_load : cannot evaluate pointer %a"
+      pp_bvalue v
 
 let rec eval_e st e =
   match e with
