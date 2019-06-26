@@ -330,10 +330,10 @@ macro cmp2 (w32 op1, w32 op2)
 
 macro bn1 (label l)
 {
-   if (!apsrv) { goto l; }
+  if (!apsrv) { goto l; }
 }
 
 macro bnen1 (label l)
 {
-   if (!apsrz) { goto l; }
+  if (!apsrz) { goto l; }
 }

@@ -248,6 +248,7 @@ let ezeroextend ws1 ws2 v =
 let ecast_w ws v =
   match v with
   | Vint i -> Vint (of_int ws i)
+  | Vptr p -> Vptr { p with p_ofs = of_int ws p.p_ofs }
   | _      -> Vunknown
 
 let ecast_int s ws v =
