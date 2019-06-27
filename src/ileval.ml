@@ -113,7 +113,7 @@ let to_uint ws i = B.erem i (basis ws)
 let to_int ws i =
   let i = to_uint ws i in
   if B.le i (maxsigned_w ws) then i
-  else B.sub i (basis ws) 
+  else B.sub i (basis ws)
 
 let to_int_s s ws i =
   if s = Signed then to_int ws i
@@ -320,9 +320,9 @@ let eval_get st x (v,ei) =
 let get_ofs ws p =
   let q = B.of_int (ws_byte ws) in
   assert (B.equal (B.erem p.p_ofs q) B.zero);
-  B.div p.p_ofs q 
+  B.div p.p_ofs q
 
-let eval_mem_index st ws m e (v,_ei) = 
+let eval_mem_index st ws m e (v,_ei) =
   match v with
   | Vptr p when V.equal m p.p_mem ->
     let bty, _i1, _i2 = get_arr p.p_dest.v_ty in
@@ -330,9 +330,9 @@ let eval_mem_index st ws m e (v,_ei) =
       ev_hierror () "eval_mem_index : invalid word size";
     let ofs = get_ofs ws p in
     let iofs = eval_index "eval_load region" p.p_dest ofs in
-    let t =  
+    let t =
       try Mv.find p.p_dest st.st_mregion
-      with Not_found -> 
+      with Not_found ->
         ev_hierror () "eval_mem_index : unknown region" (* assert false *) in
     t, iofs, p.p_dest, Eint ofs
   | _ ->
@@ -435,8 +435,11 @@ and eval_assgn st loc lv e c =
   let lv =
     match lv with
     | Lvar x ->
-      st.st_mvar <- Mv.add x (Vbase v) st.st_mvar;
-      lv
+      if x.v_name = "pc" then
+        ev_hierror () "assignment to pc not yet supported"
+      else
+        st.st_mvar <- Mv.add x (Vbase v) st.st_mvar;
+        lv
 
     | Lset(x,ei) ->
       let vi, ei = eval_e st ei in

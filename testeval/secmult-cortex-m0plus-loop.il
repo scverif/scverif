@@ -1,7 +1,7 @@
 include il "isa/isa-cortex-m0plus.il"
 include asm "testasm/secmult-cortex-m0plus-Os.objdump"
 
-verbose 1
+verbose 2
 
 eval secmult
   region mem w32 a[0:2]
