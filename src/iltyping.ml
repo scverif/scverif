@@ -150,9 +150,6 @@ let check_cast loc bty s =
   | _, W w -> Some w
   | _, Int -> None
   | _, Bool -> None
-  | _, _ ->
-    ty_error loc "cast to %a int is not defined for %a"
-      pp_sign s pp_bty bty
 
 let check_type loc ety ty =
   if not (ty_eq ety ty) then

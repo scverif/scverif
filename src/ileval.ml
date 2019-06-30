@@ -211,7 +211,11 @@ let enot ws v =
   match ws, v with
   | None   , Vbool b -> Vbool (not b)
   | Some ws, Vint i  -> op_w_w B.lgnot ws i
-  | _                -> Vunknown
+  | _                ->
+    Format.printf "@[<v>enot: cannot evaluate Onot %a@]"
+      pp_bvalue v;
+    Vunknown
+
 
 let eeq bty (v1,v2) =
   match bty, v1, v2 with
@@ -219,7 +223,11 @@ let eeq bty (v1,v2) =
   | _   , Vptr  p1, Vptr  p2 -> Vbool (Ptr.equal p1 p2)
   | Bool, Vbool b1, Vbool b2 -> Vbool (b1 = b2)
   | W ws, Vint  i1, Vint  i2 -> Vbool (B.equal (of_int ws i1) (of_int ws i2))
-  | _, _, _                  -> Vunknown
+  | _, _, _                  ->
+    Format.printf "@[<v>eeq: cannot evaluate Oeq %a %a@]"
+      pp_bvalue v1 pp_bvalue v2;
+    Vunknown
+
 
 let elt s ws (v1, v2) =
   match ws, v1, v2 with
@@ -269,7 +277,7 @@ let eval_op op vs =
   | Oadd  ws -> eadd ws (as_seq2 vs)
   | Omul  ws -> emul ws (as_seq2 vs)
   | Omulh _ ->
-    ev_hierror () "op %s not implemented please repport" (op_string op)
+    ev_hierror () "op %s not yet implemented please report" (op_string op)
   | Osub  ws -> esub ws (as_seq2 vs)
   | Oopp  ws -> eopp ws (as_seq1 vs)
   | Olsl  ws -> elsl ws (as_seq2 vs)
@@ -333,7 +341,7 @@ let eval_mem_index st ws m e (v,_ei) =
     let t =
       try Mv.find p.p_dest st.st_mregion
       with Not_found ->
-        ev_hierror () "eval_mem_index : unknown region" (* assert false *) in
+        ev_hierror () "eval_mem_index : unknown region" in
     t, iofs, p.p_dest, Eint ofs
   | _ ->
     ev_hierror () "@[<v>%a@ eval_mem_index : cannot evaluate pointer %a@]"
@@ -402,7 +410,10 @@ let rec eval_i st =
     | Ileak(li, es) ->
       let i' = { i_desc = Ileak(li, snd (eval_es st es)); i_loc = i.i_loc } in
       next st (Some i') c
-    | Imacro (m,_) -> ev_hierror () "found macro %s but expected it to be inlined" m.mc_name
+    | Imacro (m,_) ->
+      ev_hierror () "@[<v>%a@ eval Imacro: found macro %s but expected it to be inlined]"
+        pp_state st
+        m.mc_name
     | Ilabel _ ->
       next st (Some i) c
     | Igoto lbl ->
@@ -418,7 +429,10 @@ let rec eval_i st =
     | Iif(e,c1,c2) ->
       begin match eval_e st e with
       | Vbool b, _  -> next st None ((if b then c1 else c2) @ c)
-      | Vunknown, _ -> ev_hierror () "cannot evaluate conditional expression"
+      | Vunknown, _ ->
+        ev_hierror () "@[<v>%a@ eval Iif: cannot evaluate conditional expression %a@]"
+          pp_state st
+          (pp_e ~full:!Glob_option.full) e
       | _, _        -> assert false
       end
     | Iwhile (c1, e, c2) ->
