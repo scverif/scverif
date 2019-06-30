@@ -402,23 +402,23 @@ let rec eval_i st =
     | Ileak(li, es) ->
       let i' = { i_desc = Ileak(li, snd (eval_es st es)); i_loc = i.i_loc } in
       next st (Some i') c
-    | Imacro (m,_) -> ev_hierror () "still macro %s" m.mc_name
+    | Imacro (m,_) -> ev_hierror () "found macro %s but expected it to be inlined" m.mc_name
     | Ilabel _ ->
-      next st None c
+      next st (Some i) c
     | Igoto lbl ->
       let c = find_label lbl st in
-      next st None c
+      next st (Some i) c
     | Iigoto x ->
       begin match eval_var st x with
       | Vcptr lbl ->
         let c = find_label lbl st in
-        next st None c
+        next st (Some i) c
       | _ -> assert false (* FIXME : error msg *)
       end
     | Iif(e,c1,c2) ->
       begin match eval_e st e with
       | Vbool b, _  -> next st None ((if b then c1 else c2) @ c)
-      | Vunknown, _ -> ev_hierror () "can not evaluate conditionnal expresssion"
+      | Vunknown, _ -> ev_hierror () "cannot evaluate conditional expression"
       | _, _        -> assert false
       end
     | Iwhile (c1, e, c2) ->
@@ -432,15 +432,14 @@ and next st i c =
 
 and eval_assgn st loc lv e c =
   let v, e = eval_e st e in
-  let lv =
+  let lv, c =
     match lv with
     | Lvar x ->
+      st.st_mvar <- Mv.add x (Vbase v) st.st_mvar;
       if x.v_name = "pc" then
-        ev_hierror () "assignment to pc not yet supported"
+        lv, {i_desc = Iigoto x; i_loc = loc}::c
       else
-        st.st_mvar <- Mv.add x (Vbase v) st.st_mvar;
-        lv
-
+        lv, c
     | Lset(x,ei) ->
       let vi, ei = eval_e st ei in
       begin match vi with
@@ -463,12 +462,12 @@ and eval_assgn st loc lv e c =
 
       | _        -> assert false
       end;
-      Lset(x,ei)
+      Lset(x,ei), c
 
     | Lstore(ws, m, ei) ->
       let t, iofs, dest, eofs = eval_mem_index st ws m ei (eval_e st ei) in
       t.(iofs) <- v;
-      Lset(dest, eofs)
+      Lset(dest, eofs), c
   in
   next st (Some {i_desc = Iassgn(lv, e); i_loc = loc }) c
 
