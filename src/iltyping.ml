@@ -34,12 +34,23 @@ let add_macro genv m =
   with Not_found ->
     { genv with macro = Ms.add m.mc_name m genv.macro }
 
+let update_macro genv m =
+  try
+    { genv with macro = Ms.update m.mc_name m.mc_name m genv.macro}
+  with Not_found ->
+    { genv with macro = Ms.add m.mc_name m genv.macro}
+
 let find_macro genv m =
   let loc = loc m in
   let m = unloc m in
   try Ms.find m genv.macro
   with Not_found -> ty_error loc "unknown macro %s" m
 
+let find_macro_opt genv mname =
+  Ms.Exceptionless.find mname genv.macro
+
+let get_macros genv =
+  List.map snd (Ms.bindings genv.macro)
 
 (* ************************************************* *)
 (* Local environment                                 *)
@@ -568,3 +579,8 @@ let process_eval genv evi =
   m, { init_region = List.rev !ir;
        init_var    = List.rev !iv; }
 
+let process_apply genv api =
+  match api.Ilast.apply_ms with
+  | [] -> get_macros genv
+  | ms  ->
+    List.map (find_macro genv) ms

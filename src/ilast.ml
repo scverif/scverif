@@ -130,6 +130,12 @@ type eval_info = {
 }
 [@@deriving show]
 
+type apply_info = {
+  apply_t  : ident;
+  apply_ms : ident list
+}
+[@@deriving show]
+
 type read_kind =
   | Asm
   | Il
@@ -140,6 +146,7 @@ type command =
   | Gmacro of macro_decl located
   | Ginclude of (read_kind * string located)
   | Geval  of eval_info
+  | Gapply of apply_info
   | Gverbose of int
   | Gexit
 [@@deriving show]

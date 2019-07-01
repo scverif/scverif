@@ -1,7 +1,14 @@
 include il "isa/isa-cortex-m0plus.il"
+include il "isa/leakyisa-cortex-m0plus.il"
 include asm "testasm/secxor-cortex-m0plus-O3.objdump"
 
 verbose 1
+
+apply addleakage
+  secxor;
+
+apply inline
+  secxor;
 
 eval secxor
   region mem w32 a[0:2]

@@ -16,6 +16,7 @@
     "int"   , TINT ;
     "uint"  , UINT ;
 
+    "apply" , APPLY  ;
     "else"  , ELSE   ;
     "eval"  , EVAL   ;
     "exit"  , EXIT   ;

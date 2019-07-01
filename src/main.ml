@@ -100,10 +100,8 @@ let process_gvar genv x =
 
 let process_macro genv m =
   let m = Iltyping.process_macro genv m in
-  Glob_option.print_full "@[<v>before inlining@ %a@]@."
+  Glob_option.print_full "@[<v>type checked b inlining@ %a@]@."
     Il.pp_global_g (Gmacro m);
-  let m = Ilinline.inline_macro m in
-  Glob_option.print_normal "@[<v>%a@]@." Il.pp_global_g (Gmacro m);
   let genv = Iltyping.add_macro genv m in
   genv
 
@@ -120,10 +118,34 @@ let process_verbose genv i =
     !Glob_option.verbose !Glob_option.full;
   genv
 
+let process_trans_inline genv m =
+  let m = Ilinline.inline_macro m in
+  Glob_option.print_normal "@[<v>%a@]@." Il.pp_global_g (Gmacro m);
+  let genv = Iltyping.update_macro genv m in
+  genv
+
+let process_trans_inlines genv ms =
+  List.fold_left process_trans_inline genv ms
+
+let process_trans_addleakage genv ms =
+  let open Illeakage in
+  let addleak genv m = Illeakage.add_leakage genv m in
+  List.fold_left addleak genv ms
+
+let process_apply_transformation genv api =
+  let ms = Iltyping.process_apply genv api in
+  match unloc api.apply_t with
+  | "inline" -> process_trans_inlines genv ms
+  | "addleakage" -> process_trans_addleakage genv ms
+  | i ->
+    Utils.hierror "apply_transformation" (Some (loc api.apply_t))
+      "@[<v> transformation %s unknown@]" i
+
 let rec process_command really_exit genv = function
   | Ilast.Gvar x   -> process_gvar genv x
   | Ilast.Gmacro m -> process_macro genv m
   | Ilast.Geval evi -> process_eval genv evi
+  | Ilast.Gapply api -> process_apply_transformation genv api
   | Ilast.Ginclude (Asm, filename) -> process_asm genv filename
   | Ilast.Ginclude (Il, filename) -> process_il genv filename
   | Ilast.Gverbose i -> process_verbose genv i
