@@ -187,14 +187,14 @@ eval_command:
 include_kind:
   | ASM { Asm }
   | IL  { Il }
- 
+
 include_:
   | INCLUDE k=include_kind s=loc(STRING) { (k,s) }
 
 command1:
   | x=loc(var_decl) SEMICOLON { Gvar   x }
   | m=loc(macro_decl)         { Gmacro m }
-  | i=include_                { Ginclude i } 
+  | i=include_                { Ginclude i }
   | e=eval_command            { Geval  e }
   | VERBOSE i=INT             { Gverbose (B.to_int i) }
   | error        { parse_error (Location.make $startpos $endpos) "" }

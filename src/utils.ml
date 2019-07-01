@@ -8,9 +8,9 @@ module Sint = Set.Make (BatInt)
 module Mint = Map.Make (BatInt)
 
 (* -------------------------------------------------------------------- *)
-module Scmp = struct 
+module Scmp = struct
   type t = string
-  let compare = compare 
+  let compare = compare
 end
 module Ss = Set.Make(Scmp)
 
@@ -724,9 +724,9 @@ type full_loc = Location.t * Location.t list
 let dummy_full_loc = Location._dummy, []
 
 let append_locs (loc,locs1) locs2 = (loc, locs1 @ locs2)
-  
+
 let pp_full_loc fmt (l,ls) =
-  let pp_loc fmt loc = 
+  let pp_loc fmt loc =
     Format.fprintf fmt "@ from %s"
       (Location.tostring loc) in
   let pp_locs fmt = List.iter (pp_loc fmt) in
@@ -768,9 +768,9 @@ let pp_error fmt (s, loc, msg) =
   Format.fprintf fmt "@[%s at %a:@ %s@]"
     s pp_full_loc loc msg
 
-let parse_error loc = 
+let parse_error loc =
   hierror "parse error" (Some loc)
-  
+
 let unterminated_comment loc =
   parse_error loc "unterminated comment"
 
@@ -811,15 +811,13 @@ let pp_paren pp fmt x =
 (* -------------------------------------------------------------------- *)
 let pp_maybe_paren c pp =
   pp_maybe c pp_paren pp
-  
+
 (* -------------------------------------------------------------------- *)
-let pp_string fmt s = 
+let pp_string fmt s =
   Format.fprintf fmt "%s" s
 
 (* -------------------------------------------------------------------- *)
-type model = 
+type model =
   | ConstantTime
   | Safety
   | Normal
-
-

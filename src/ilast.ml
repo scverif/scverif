@@ -145,14 +145,12 @@ type command =
 [@@deriving show]
 
 (* ***************************************************** *)
-let mk_var id = 
+let mk_var id =
   mk_loc (loc id) (Evar id)
 
-let mk_int i = 
+let mk_int i =
   mk_loc (loc i) (Eint (unloc i))
 
 let mk_cast_w ws e =
-  let loc = loc e in 
+  let loc = loc e in
   mk_loc loc (Eop(mk_loc loc (Op1(Cast (CW ws))), [e]))
-
-

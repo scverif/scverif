@@ -92,41 +92,41 @@ module AsmParse = struct
 
 end
 
-let process_gvar genv x = 
+let process_gvar genv x =
   let x    = Iltyping.process_var_decl x in
   let genv = Iltyping.add_gvar genv x in
-  Glob_option.print_normal "%a@." Il.pp_global_g (Gvar x);  
+  Glob_option.print_normal "%a@." Il.pp_global_g (Gvar x);
   genv
 
-let process_macro genv m = 
+let process_macro genv m =
   let m = Iltyping.process_macro genv m in
-  Glob_option.print_full "@[<v>before inlining@ %a@]@." 
+  Glob_option.print_full "@[<v>before inlining@ %a@]@."
     Il.pp_global_g (Gmacro m);
   let m = Ilinline.inline_macro m in
   Glob_option.print_normal "@[<v>%a@]@." Il.pp_global_g (Gmacro m);
   let genv = Iltyping.add_macro genv m in
   genv
 
-let process_eval genv evi = 
+let process_eval genv evi =
   let m, initial = Iltyping.process_eval genv evi in
   let c = partial_eval initial m in
   Glob_option.print_silent "@[<v>partial evaluation of %s@ %a@]@."
     m.mc_name pp_cmd_g c;
   genv
 
-let process_verbose genv i = 
+let process_verbose genv i =
   Glob_option.set_verbose i;
-  Format.printf "verbose = %i; full = %b@." 
+  Format.printf "verbose = %i; full = %b@."
     !Glob_option.verbose !Glob_option.full;
   genv
 
 let rec process_command really_exit genv = function
   | Ilast.Gvar x   -> process_gvar genv x
   | Ilast.Gmacro m -> process_macro genv m
-  | Ilast.Geval evi -> process_eval genv evi 
-  | Ilast.Ginclude (Asm, filename) -> process_asm genv filename 
-  | Ilast.Ginclude (Il, filename) -> process_il genv filename 
-  | Ilast.Gverbose i -> process_verbose genv i 
+  | Ilast.Geval evi -> process_eval genv evi
+  | Ilast.Ginclude (Asm, filename) -> process_asm genv filename
+  | Ilast.Ginclude (Il, filename) -> process_il genv filename
+  | Ilast.Gverbose i -> process_verbose genv i
   | Ilast.Gexit    -> if really_exit then exit 0 else genv
 
 and process_asm genv filename =
@@ -138,7 +138,7 @@ and process_asm genv filename =
     Ilast.pp_command ilast;
   process_command false genv ilast
 
-and process_il genv filename = 
+and process_il genv filename =
   let ilast = ILParse.process_file (Location.unloc filename) in
   List.fold_left (process_command false) genv ilast
 
