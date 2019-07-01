@@ -22,7 +22,7 @@ let char    = upper | lower | digit | '_' | '.' | '-'
 rule main = parse
   | newline        { Lexing.new_line lexbuf; main lexbuf}
   | blank+         { main lexbuf }
-  | char* as id    { IDENT id }       
+  | char* as id    { IDENT id }
   | "<"            { LT }
   | ">"            { GT }
   | "["            { LBRACKET }
@@ -32,6 +32,7 @@ rule main = parse
   | ","            { COMMA }
   | "+"            { PLUS }
   | ":"            { COLON }
-  | '#'            { SHARP } 
+  | '#'            { SHARP }
+  | ";" [^'\n']*   { main lexbuf }
   | _ as x         { invalid_char (L.of_lexbuf lexbuf) x }
   | eof            { EOF }
