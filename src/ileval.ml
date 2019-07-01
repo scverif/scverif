@@ -212,7 +212,7 @@ let enot ws v =
   | None   , Vbool b -> Vbool (not b)
   | Some ws, Vint i  -> op_w_w B.lgnot ws i
   | _                ->
-    Format.printf "@[<v>enot: cannot evaluate Onot %a@]"
+    Format.printf "@[<v>enot: cannot evaluate Onot %a@]@."
       pp_bvalue v;
     Vunknown
 
