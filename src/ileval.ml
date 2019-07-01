@@ -224,7 +224,7 @@ let eeq bty (v1,v2) =
   | Bool, Vbool b1, Vbool b2 -> Vbool (b1 = b2)
   | W ws, Vint  i1, Vint  i2 -> Vbool (B.equal (of_int ws i1) (of_int ws i2))
   | _, _, _                  ->
-    Format.printf "@[<v>eeq: cannot evaluate Oeq %a %a@]"
+    Format.printf "@[<v>eeq: cannot evaluate Oeq %a %a@]@."
       pp_bvalue v1 pp_bvalue v2;
     Vunknown
 
