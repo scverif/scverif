@@ -152,15 +152,30 @@ let eadd ws (v1, v2) =
   | _      , Vptr p , Vint i
   | _      , Vint i , Vptr p  -> Vptr { p with p_ofs = B.add p.p_ofs i }
   | Some ws, Vint i1, Vint i2 -> op_ww_w B.add ws i1 i2
-  | _                         -> Vunknown
+  | _                         ->
+    Format.printf "@[<v>eadd: cannot evaluate Oadd %a %a@]@."
+      pp_bvalue v1 pp_bvalue v2;
+    Vunknown
 
 let esub ws (v1, v2) =
   match ws, v1, v2 with
   | None   , Vint i1, Vint i2 -> Vint (B.sub i1 i2)
   | _      , Vptr p , Vint i
   | _      , Vint i , Vptr p  -> Vptr { p with p_ofs = B.sub p.p_ofs i }
+  | _      , Vptr p1, Vptr p2 ->
+    if p1.p_mem == p2.p_mem && p1.p_dest == p2.p_dest then
+      Vint (B.sub p1.p_ofs p2.p_ofs)
+    else
+      begin
+        Format.printf "@[<v>esub: cannot evaluate Osub of two different ptr %a %a@]@."
+          pp_bvalue v1 pp_bvalue v2;
+        Vunknown
+      end
   | Some ws, Vint i1, Vint i2 -> op_ww_w B.sub ws i1 i2
-  | _                         -> Vunknown
+  | _                         ->
+    Format.printf "@[<v>esub: cannot evaluate Osub %a %a@]@."
+      pp_bvalue v1 pp_bvalue v2;
+    Vunknown
 
 let eopp ws v1 =
   match ws, v1 with
@@ -177,12 +192,19 @@ let emul ws (v1,v2) =
 let elsl ws (v1, v2) =
   match v1, v2 with
   | Vint i1 , Vint i2  -> op_wi_w B.lshl ws i1 i2
-  | _                  -> Vunknown
+  | _                  ->
+    Format.printf "@[<v>elsl: cannot evaluate Olsl %a %a@]@."
+      pp_bvalue v1 pp_bvalue v2;
+    Vunknown
+
 
 let elsr ws (v1, v2) =
   match v1, v2 with
   | Vint i1 , Vint i2  -> op_wi_w B.lshr ws i1 i2
-  | _                  -> Vunknown
+  | _                  ->
+    Format.printf "@[<v>elsr: cannot evaluate Olsr %a %a@]@."
+      pp_bvalue v1 pp_bvalue v2;
+    Vunknown
 
 let easr ws (v1, v2) =
   match v1, v2 with
@@ -223,6 +245,10 @@ let eeq bty (v1,v2) =
   | _   , Vptr  p1, Vptr  p2 -> Vbool (Ptr.equal p1 p2)
   | Bool, Vbool b1, Vbool b2 -> Vbool (b1 = b2)
   | W ws, Vint  i1, Vint  i2 -> Vbool (B.equal (of_int ws i1) (of_int ws i2))
+  | _,    Vptr  p , _        ->
+    Format.printf "@[<v>eeq: cannot evaluate Oeq of ptr %a %a@]@."
+      pp_bvalue v1 pp_bvalue v2;
+    Vunknown
   | _, _, _                  ->
     Format.printf "@[<v>eeq: cannot evaluate Oeq %a %a@]@."
       pp_bvalue v1 pp_bvalue v2;

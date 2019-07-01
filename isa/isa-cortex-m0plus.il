@@ -34,6 +34,16 @@ macro AddWithCarry (w32 x, w32 y, bool carry_in, w32 result, bool carry_out, boo
   overflow     <- ! ((int)  result ==   signed_sum);
 }
 
+macro SubWithCarry (w32 x, w32 y, w32 result, bool carry_out, bool overflow)
+  int unsigned_sub, int signed_sub
+{
+  unsigned_sub <- (uint) x - (uint) y;
+  signed_sub   <- (int) x  - (int) y + 1;
+  result       <- (w32) unsigned_sub;
+  carry_out    <- ! ((uint) result == unsigned_sub);
+  overflow     <- ! ((int)  result ==   signed_sub);
+}
+
 macro IsZero (w32 x, bool result)
 {
   result <- (uint) x == 0;
@@ -91,7 +101,7 @@ macro add2 (w32 op1, w32 op2)
 macro sub3 (w32 dst, w32 op1, w32 op2)
   bool i, bool j
 {
-  AddWithCarry(op1, !w32 op2, true, dst, i, j);
+  SubWithCarry(op1, op2, dst, i, j);
 }
 
 macro sub2 (w32 op1, w32 op2)
@@ -324,7 +334,7 @@ macro ands2 (w32 op1, w32 op2)
 macro cmp2 (w32 op1, w32 op2)
   w32 cmpr
 {
-  AddWithCarry(op1, !w32 op2, true, cmpr, apsrc, apsrv);
+  SubWithCarry(op1, op2, cmpr, apsrc, apsrv);
   ExtractBit(cmpr, 31, apsrn);
   IsZero(cmpr, apsrz);
 }
