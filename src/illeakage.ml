@@ -4,14 +4,29 @@ open Location
 open Il
 open Iltyping
 
-let add_leakicall genv ms margs =
-  let mlname = ms.mc_name ^ "_leak" in
+let check_param_eq m ml =
+  let param_eq b p1 p2 =
+    match p1, p2 with
+    | Pvar v1, Pvar v2 -> true (* FIXME V.equal v1 v2*)
+    | Plabel l1, Plabel l2 -> true (* FIXME Lbl.equal l1 l2*)
+    | _, _ -> false in
+  try
+    List.fold_left2 param_eq true m.mc_params ml.mc_params
+  with Invalid_argument _ ->
+    false
+
+let add_leakicall genv m margs =
+  let mlname = m.mc_name ^ "_leak" in
   match find_macro_opt genv mlname with
   | None -> None
   | Some ml ->
-    Some {i_desc = Imacro(ml, margs); i_loc = (ms.mc_loc, []) }
+    if check_param_eq m ml then
+      Some {i_desc = Imacro(ml, margs); i_loc = (ml.mc_loc, []) }
+    else
+      error "add_leakicall:" (ml.mc_loc, [])
+        "parameters of %s do not match %s" ml.mc_name m.mc_name
 
-let rec traverse_code genv (instrs:Il.instr list) =
+let rec traverse_code genv instrs =
   match instrs with
   | [] -> []
   | i::is ->
