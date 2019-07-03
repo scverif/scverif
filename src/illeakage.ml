@@ -7,8 +7,8 @@ open Iltyping
 let check_param_eq m ml =
   let param_eq b p1 p2 =
     match p1, p2 with
-    | Pvar v1, Pvar v2 -> true (* FIXME V.equal v1 v2*)
-    | Plabel l1, Plabel l2 -> true (* FIXME Lbl.equal l1 l2*)
+    | Pvar v1, Pvar v2 -> ty_eq v1.v_ty v2.v_ty
+    | Plabel l1, Plabel l2 -> true
     | _, _ -> false in
   try
     List.fold_left2 param_eq true m.mc_params ml.mc_params
