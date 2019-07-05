@@ -2,7 +2,7 @@ include il "isa/isa-cortex-m0plus.il"
 include il "isa/leakyisa-cortex-m0plus.il"
 include asm "testasm/secxor-cortex-m0plus-O3.objdump"
 
-verbose 1
+verbose 0
 
 apply addleakage
   secxor;
@@ -20,3 +20,9 @@ annotation secxor
   init r0 [c 0]
   init sp [stack 0]
   init lr exit;
+
+apply partialeval
+  secxor;
+
+apply deadcodeelim
+  secxor;

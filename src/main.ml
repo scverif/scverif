@@ -92,85 +92,123 @@ module AsmParse = struct
 
 end
 
-let process_gvar genv x =
+type mainenv = {
+  genv : Iltyping.genv;
+  eenv : Ileval.eenv;
+}
+
+let empty_mainenv = {
+  genv = Iltyping.empty_genv;
+  eenv = Ileval.empty_eenv;
+}
+
+let process_gvar menv x =
+  let genv = menv.genv in
   let x    = Iltyping.process_var_decl x in
   let genv = Iltyping.add_gvar genv x in
   Glob_option.print_normal "%a@." Il.pp_global_g (Gvar x);
-  genv
+  { menv with genv = genv }
 
-let process_macro genv m =
+let process_macro menv m =
+  let genv = menv.genv in
   let m = Iltyping.process_macro genv m in
-  Glob_option.print_full "@[<v>type checked b inlining@ %a@]@."
-    Il.pp_global_g (Gmacro m);
+  Glob_option.print_full "@[<v>type checked %s@ %a@]@."
+    m.mc_name Il.pp_global_g (Gmacro m);
   let genv = Iltyping.add_macro genv m in
-  genv
+  { menv with genv = genv }
 
-let process_eval genv evi =
-  let m, initial = Iltyping.process_eval genv evi in
-  let c = partial_eval initial m in
-  Glob_option.print_silent "@[<v>partial evaluation of %s@ %a@]@."
-    m.mc_name pp_cmd_g c;
-  genv
-
-let process_verbose genv i =
-  Glob_option.set_verbose i;
+let process_verbose menv i =
+  let genv = menv.genv in
+    Glob_option.set_verbose i;
   Format.printf "verbose = %i; full = %b@."
     !Glob_option.verbose !Glob_option.full;
-  genv
+  { menv with genv = genv }
 
-let process_trans_inline genv m =
-  let m = Ilinline.inline_macro m in
-  Glob_option.print_normal "@[<v>%a@]@." Il.pp_global_g (Gmacro m);
-  let genv = Iltyping.update_macro genv m in
-  genv
+let process_trans_eval (eenv:Ileval.eenv) ms =
+  let open Ileval in
+  let peval eenv m =
+    let estate = Ileval.partial_eval eenv m in
+    Glob_option.print_silent "@[<v>partial evaluation of %s@ %a@]@."
+      m.mc_name pp_state estate;
+    let eenv = Ileval.update_state eenv m estate in
+    eenv in
+  List.fold_left peval eenv ms
 
-let process_trans_inlines genv ms =
-  List.fold_left process_trans_inline genv ms
+let process_trans_inline genv ms =
+  let pinline genv m =
+    let m = Ilinline.inline_macro m in
+    Glob_option.print_normal "@[<v>%a@]@." Il.pp_global_g (Gmacro m);
+    let genv = Iltyping.update_macro genv m in
+    genv in
+  List.fold_left pinline genv ms
 
 let process_trans_addleakage genv ms =
-  let open Illeakage in
-  let addleak genv m = Illeakage.add_leakage genv m in
+  let addleak genv m =
+    let open Illeakage in
+    Illeakage.add_leakage genv m in
   List.fold_left addleak genv ms
 
-let process_apply_transformation genv api =
-  let ms = Iltyping.process_apply genv api in
+let process_trans_deadcodeelim eenv ms =
+  let pelim eenv m =
+(*    let open Ilcodeelim in
+      Ilcodeelim.deadcodeelim eenv m in *)
+    eenv in
+  List.fold_left pelim eenv ms
+
+let process_apply_transformation menv api =
+  let genv = menv.genv in
+  let eenv = menv.eenv in
+  let macros = Iltyping.process_apply_ms genv api in
   match unloc api.apply_t with
-  | "inline" -> process_trans_inlines genv ms
-  | "addleakage" -> process_trans_addleakage genv ms
+  | "inline" ->
+    { menv with genv = process_trans_inline genv macros }
+  | "addleakage" ->
+    { menv with genv = process_trans_addleakage genv macros }
+  | "partialeval" ->
+    { menv with eenv = process_trans_eval eenv macros }
+  | "deadcodeelim" ->
+    { menv with eenv = process_trans_deadcodeelim eenv macros }
   | i ->
     Utils.hierror "apply_transformation" (Some (loc api.apply_t))
       "@[<v> transformation %s unknown@]" i
 
-let rec process_command really_exit genv = function
-  | Ilast.Gvar x   -> process_gvar genv x
-  | Ilast.Gmacro m -> process_macro genv m
-  | Ilast.Geval evi -> process_eval genv evi
-  | Ilast.Gapply api -> process_apply_transformation genv api
-  | Ilast.Ginclude (Asm, filename) -> process_asm genv filename
-  | Ilast.Ginclude (Il, filename) -> process_il genv filename
-  | Ilast.Gverbose i -> process_verbose genv i
-  | Ilast.Gexit    -> if really_exit then exit 0 else genv
+let process_annotation menv ai =
+  let genv = menv.genv in
+  let eenv = menv.eenv in
+  let m, initial = Iltyping.process_annotation genv ai in
+  let eenv = Ileval.update_initial eenv m initial in
+  { menv with eenv = eenv }
 
-and process_asm genv filename =
+let rec process_command really_exit mainenv = function
+  | Ilast.Gvar x   -> process_gvar mainenv x
+  | Ilast.Gmacro m -> process_macro mainenv m
+  | Ilast.Gannotation evi -> process_annotation mainenv evi
+  | Ilast.Gapply api -> process_apply_transformation mainenv api
+  | Ilast.Ginclude (Asm, filename) -> process_asm mainenv filename
+  | Ilast.Ginclude (Il, filename) -> process_il mainenv filename
+  | Ilast.Gverbose i -> process_verbose mainenv i
+  | Ilast.Gexit    -> if really_exit then exit 0 else mainenv
+
+and process_asm mainenv filename =
   let asmast = AsmParse.process_file (Location.unloc filename) in
   Glob_option.print_full "@[<v>ASM program parsed@ %a@]@."
     Asmast.pp_section asmast;
   let ilast = Asmlifter.lift_section asmast in
   Glob_option.print_full "@[<v>ASM lifted to IL@ %a@]@."
     Ilast.pp_command ilast;
-  process_command false genv ilast
+  process_command false mainenv ilast
 
-and process_il genv filename =
+and process_il mainenv filename =
   let ilast = ILParse.process_file (Location.unloc filename) in
-  List.fold_left (process_command false) genv ilast
+  List.fold_left (process_command false) mainenv ilast
 
 let main =
-  let genv = ref Iltyping.empty_genv in
+  let mainenv = ref empty_mainenv in
   while true do
     try
     (*  Format.printf ">"; Format.print_flush (); *)
       let c = ILParse.process_command () in
-      genv := process_command true !genv c
+      mainenv := process_command true !mainenv c
     with
     | Utils.HiError (s,loc,msg) ->
       Format.eprintf "%a@." Utils.pp_hierror (s, loc, msg);

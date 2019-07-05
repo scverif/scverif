@@ -1,34 +1,19 @@
+open Location
 open Utils
 open Common
 open Il
 
 let ev_hierror () = hierror "evaluation" None
 
-type pointer =
-  { p_mem  : V.t;
-    p_dest : V.t;
-    p_ofs  : B.zint }
-
-type cpointer = Lbl.t
-
-type bvalue =
-  | Vcptr of Lbl.t
-  | Vptr  of pointer
-  | Vint  of B.zint
-  | Vbool of bool
-  | Vunknown
-
-type value =
-  | Varr  of bvalue array
-  | Vbase of bvalue
-
-type state = {
-    mutable st_mregion : bvalue array Mv.t;
-    mutable st_mvar    : value Mv.t;
-            st_prog    : cmd;
-    mutable st_pc      : cmd;
-    mutable st_eprog   : cmd;
-  }
+type pointer = [%import: Ileval.pointer];;
+type cpointer = [%import: Ileval.cpointer];;
+type bvalue = [%import: Ileval.bvalue];;
+type value = [%import: Ileval.value];;
+type state = [%import: Ileval.state];;
+type region = [%import: Ileval.region];;
+type ival = [%import: Ileval.ival];;
+type initial = [%import: Ileval.initial];;
+type eenv = [%import: Ileval.eenv];;
 
 module Ptr = struct
   type t = pointer
@@ -245,7 +230,7 @@ let eeq bty (v1,v2) =
   | _   , Vptr  p1, Vptr  p2 -> Vbool (Ptr.equal p1 p2)
   | Bool, Vbool b1, Vbool b2 -> Vbool (b1 = b2)
   | W ws, Vint  i1, Vint  i2 -> Vbool (B.equal (of_int ws i1) (of_int ws i2))
-  | _,    Vptr  p , _        ->
+  | _,    Vptr  _ , _        ->
     Format.printf "@[<v>eeq: cannot evaluate Oeq of ptr %a %a@]@."
       pp_bvalue v1 pp_bvalue v2;
     Vunknown
@@ -511,24 +496,33 @@ and eval_assgn st loc lv e c =
   in
   next st (Some {i_desc = Iassgn(lv, e); i_loc = loc }) c
 
-type region = {
-    r_from  : V.t;    (* name of the memory *)
-    r_dest  : V.t;    (* variable destination *)
-  }
+let empty_eenv = {
+  state     = Ms.empty;
+  initial   = Ms.empty;
+}
 
-type ival =
-  | Iint       of B.zint
-  | Ibool      of bool
-  | Iregion    of V.t * B.zint
-  | Icptr_exit
+let find_initial eenv m =
+  try
+    Ms.find m eenv.initial
+  with Not_found ->
+    ev_hierror () "no initials give for macro %s" m
 
-type initial = {
-    init_region : region list;
-    init_var    : (V.t * ival) list;
-  }
+let update_initial eenv m initial =
+  try
+    { eenv with initial = Ms.update m.mc_name m.mc_name initial eenv.initial }
+  with Not_found ->
+    { eenv with initial = Ms.add m.mc_name initial eenv.initial }
 
-let partial_eval init m =
+let update_state eenv m state =
+  try
+    { eenv with state = Ms.update m.mc_name m.mc_name state eenv.state }
+  with Not_found ->
+    { eenv with state = Ms.add m.mc_name state eenv.state }
+
+let partial_eval eenv m =
   let mdest = ref Mv.empty in
+
+  let init = find_initial eenv m.mc_name in
 
   let init_region mr r =
     assert (r.r_from.v_ty = Tmem);
@@ -563,5 +557,4 @@ let partial_eval init m =
     } in
 
   eval_i st;
-
-  List.rev st.st_eprog
+  { st with st_eprog = List.rev st.st_eprog }

@@ -536,6 +536,7 @@ let process_macro genv m =
   m
 
 let check_initval env loc v ty =
+  let open Ileval in
   match v with
   | Ilast.Iptr (x,ofs) ->
     let x = find_var env x in
@@ -551,7 +552,7 @@ let check_initval env loc v ty =
     (* FIXME : label ??? *)
     Ileval.Icptr_exit
 
-let process_eval genv evi =
+let process_annotation genv evi =
   let open Ileval in
   let m = find_macro genv evi.Ilast.eval_m in
   let ir = ref [] in
@@ -579,7 +580,7 @@ let process_eval genv evi =
   m, { init_region = List.rev !ir;
        init_var    = List.rev !iv; }
 
-let process_apply genv api =
+let process_apply_ms genv api =
   match api.Ilast.apply_ms with
   | [] -> get_macros genv
   | ms  ->
