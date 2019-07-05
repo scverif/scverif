@@ -16,9 +16,9 @@
     "int"   , TINT ;
     "uint"  , UINT ;
 
+    "annotation", ANNOTATION;
     "apply" , APPLY  ;
     "else"  , ELSE   ;
-    "eval"  , EVAL   ;
     "exit"  , EXIT   ;
     "false" , FALSE  ;
     "goto"  , GOTO   ;
@@ -48,10 +48,10 @@
   let mk_sign : char option -> sign =
     function
     | Some c -> sign_of_char c
-    | None   -> Unsigned 
+    | None   -> Unsigned
 
   let mk_shr = function
-    | Unsigned -> LSR 
+    | Unsigned -> LSR
     | Signed   -> ASR
 
 }
@@ -80,8 +80,8 @@ rule main = parse
 
   | "\"" { STRING (Buffer.contents (string (Buffer.create 0) lexbuf)) }
 
-  | (digit+) as s   
-      { INT (Bigint.of_string s) } 
+  | (digit+) as s
+      { INT (Bigint.of_string s) }
 
   | ("0x" hexdigit+) as s
       { INT (Bigint.of_string s) }

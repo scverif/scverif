@@ -9,7 +9,7 @@
 %token LPAREN RPAREN LCURLY RCURLY LBRACKET RBRACKET
 %token LEFTARROW COLON SEMICOLON QUESTIONMARK COMMA EOF
 %token MACRO LEAK IF ELSE WHILE LABEL GOTO
-%token EVAL INIT REGION EXIT APPLY
+%token ANNOTATION INIT REGION EXIT APPLY
 %token INCLUDE ASM IL VERBOSE
 %token BOOL TINT UINT W8 W16 W32 W64
 %token ADD SUB MUL MULH AND XOR OR NOT EQ NEQ LSL LSR ASR ZEROEXTEND SIGNEXTEND TRUE FALSE
@@ -182,7 +182,7 @@ initialization:
   | INIT x=ident v=initval                  { Init(x,v) }
 
 eval_command:
-  | EVAL m=ident i=initialization* SEMICOLON { {eval_m = m; eval_i = i } }
+  | ANNOTATION m=ident i=initialization* SEMICOLON { {eval_m = m; eval_i = i } }
 
 applicationlist:
   | is=separated_list(COMMA,ident)
@@ -203,7 +203,7 @@ command1:
   | x=loc(var_decl) SEMICOLON { Gvar   x }
   | m=loc(macro_decl)         { Gmacro m }
   | i=include_                { Ginclude i }
-  | e=eval_command            { Geval e }
+  | e=eval_command            { Gannotation e }
   | a=apply_command           { Gapply a }
   | VERBOSE i=INT             { Gverbose (B.to_int i) }
   | error        { parse_error (Location.make $startpos $endpos) "" }

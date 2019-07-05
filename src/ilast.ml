@@ -145,7 +145,7 @@ type command =
   | Gvar   of var_decl located
   | Gmacro of macro_decl located
   | Ginclude of (read_kind * string located)
-  | Geval  of eval_info
+  | Gannotation  of eval_info
   | Gapply of apply_info
   | Gverbose of int
   | Gexit

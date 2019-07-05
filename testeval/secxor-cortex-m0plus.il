@@ -10,7 +10,7 @@ apply addleakage
 apply inline
   secxor;
 
-eval secxor
+annotation secxor
   region mem w32 a[0:2]
   region mem w32 b[0:2]
   region mem w32 c[0:2]
