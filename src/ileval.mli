@@ -55,8 +55,11 @@ val empty_eenv : eenv
 val pp_regions : Format.formatter -> bvalue array Il.Mv.t -> unit
 val pp_vars    : Format.formatter -> value Il.Mv.t -> unit
 val pp_state   : Format.formatter -> state -> unit
+(* TODO: val pp_initial : Format.formatter -> initial -> unit*)
 
+val find_state     : eenv -> string -> state
 val update_state   : eenv -> macro -> state -> eenv
+val find_initial   : eenv -> string -> initial
 val update_initial : eenv -> macro -> initial -> eenv
 
 val partial_eval : eenv -> macro -> state

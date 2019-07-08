@@ -24,5 +24,10 @@ annotation secxor
 apply partialeval
   secxor;
 
+print
+  /*macro secxor*/
+  /*state secxor*/
+  trace secxor;
+
 apply deadcodeelim
   secxor;

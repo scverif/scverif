@@ -26,11 +26,14 @@
     "if"    , IF     ;
     "il"    , IL     ;
     "init"  , INIT   ;
+    "print" , PRINT  ;
     "label" , LABEL  ;
     "leak"  , LEAK   ;
     "macro" , MACRO  ;
     "signextend", SIGNEXTEND;
+    "state" , STATE  ;
     "region", REGION ;
+    "trace" , TRACE  ;
     "true"  , TRUE   ;
     "verbose", VERBOSE;
     "while" , WHILE  ;

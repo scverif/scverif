@@ -9,13 +9,13 @@ let set_full b = full := b
 
 let verbose = ref v_silent
 
-let set_verbose lvl = 
+let set_verbose lvl =
   verbose := lvl;
   set_full (v_normal_debug <= lvl)
 
-let if_fprintf lvl = 
-  if lvl <= !verbose then Format.fprintf 
-  else Format.ifprintf 
+let if_fprintf lvl =
+  if lvl <= !verbose then Format.fprintf
+  else Format.ifprintf
 
 let if_printf lvl = if_fprintf lvl Format.std_formatter
 

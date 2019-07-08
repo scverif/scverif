@@ -8,8 +8,8 @@
 
 %token LPAREN RPAREN LCURLY RCURLY LBRACKET RBRACKET
 %token LEFTARROW COLON SEMICOLON QUESTIONMARK COMMA EOF
-%token MACRO LEAK IF ELSE WHILE LABEL GOTO
-%token ANNOTATION INIT REGION EXIT APPLY
+%token MACRO LEAK IF ELSE WHILE LABEL GOTO TRACE STATE
+%token ANNOTATION INIT REGION EXIT APPLY PRINT
 %token INCLUDE ASM IL VERBOSE
 %token BOOL TINT UINT W8 W16 W32 W64
 %token ADD SUB MUL MULH AND XOR OR NOT EQ NEQ LSL LSR ASR ZEROEXTEND SIGNEXTEND TRUE FALSE
@@ -192,6 +192,20 @@ apply_command:
   | APPLY t=ident ms=applicationlist SEMICOLON
     { {apply_t = t; apply_ms = ms } }
 
+printlist:
+  | MACRO id=ident
+    { { p_pk = Macro; p_id = id} }
+  | INIT id=ident
+    { { p_pk = InitialEnv; p_id = id} }
+  | STATE id=ident
+    { { p_pk = State; p_id = id} }
+  | TRACE id=ident
+    { { p_pk = EvalTrace; p_id = id} }
+
+print_command:
+  | PRINT ps=printlist* SEMICOLON
+    { ps }
+
 include_kind:
   | ASM { Asm }
   | IL  { Il }
@@ -205,6 +219,7 @@ command1:
   | i=include_                { Ginclude i }
   | e=eval_command            { Gannotation e }
   | a=apply_command           { Gapply a }
+  | p=print_command           { Gprint p }
   | VERBOSE i=INT             { Gverbose (B.to_int i) }
   | error        { parse_error (Location.make $startpos $endpos) "" }
 

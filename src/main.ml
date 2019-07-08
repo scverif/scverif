@@ -118,17 +118,16 @@ let process_macro menv m =
   { menv with genv = genv }
 
 let process_verbose menv i =
-  let genv = menv.genv in
-    Glob_option.set_verbose i;
+  Glob_option.set_verbose i;
   Format.printf "verbose = %i; full = %b@."
     !Glob_option.verbose !Glob_option.full;
-  { menv with genv = genv }
+  menv
 
 let process_trans_eval (eenv:Ileval.eenv) ms =
   let open Ileval in
   let peval eenv m =
     let estate = Ileval.partial_eval eenv m in
-    Glob_option.print_silent "@[<v>partial evaluation of %s@ %a@]@."
+    Glob_option.print_normal "@[<v>partial evaluation of %s@ %a@]@."
       m.mc_name pp_state estate;
     let eenv = Ileval.update_state eenv m estate in
     eenv in
@@ -179,6 +178,35 @@ let process_annotation menv ai =
   let eenv = Ileval.update_initial eenv m initial in
   { menv with eenv = eenv }
 
+let process_print menv pi =
+  (* FIXME: typecheck pi.p_ms *)
+  let tprint menv pi =
+    match pi.p_pk with
+    | Macro ->
+      begin
+        match Iltyping.find_macro_opt menv.genv (unloc pi.p_id) with
+        | Some m ->
+          Format.printf "@[<v>%a@]@."
+            (pp_macro ~full:!Glob_option.full) m
+        | None ->
+          Utils.hierror "process_print" (Some (loc pi.p_id))
+        "@[<v> unknown macro %s@]" (unloc pi.p_id)
+      end
+    | State ->
+      begin
+        let st = Ileval.find_state menv.eenv (unloc pi.p_id) in
+        Format.printf "@[<v>state of %s:@ %a@]@."
+          (unloc pi.p_id) (pp_state) st
+      end
+    | EvalTrace ->
+      begin
+        let st = Ileval.find_state menv.eenv (unloc pi.p_id) in
+        Format.printf "@[<v>partial evaluated trace of %s:@ %a]@."
+          (unloc pi.p_id) (pp_cmd ~full:true) st.st_eprog
+      end in
+  List.iter (tprint menv) pi;
+  menv
+
 let rec process_command really_exit mainenv = function
   | Ilast.Gvar x   -> process_gvar mainenv x
   | Ilast.Gmacro m -> process_macro mainenv m
@@ -187,6 +215,7 @@ let rec process_command really_exit mainenv = function
   | Ilast.Ginclude (Asm, filename) -> process_asm mainenv filename
   | Ilast.Ginclude (Il, filename) -> process_il mainenv filename
   | Ilast.Gverbose i -> process_verbose mainenv i
+  | Ilast.Gprint i -> process_print mainenv i
   | Ilast.Gexit    -> if really_exit then exit 0 else mainenv
 
 and process_asm mainenv filename =

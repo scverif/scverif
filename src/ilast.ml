@@ -141,6 +141,19 @@ type read_kind =
   | Il
 [@@deriving show]
 
+type print_kind =
+  | Macro
+  | InitialEnv
+  | State
+  | EvalTrace
+[@@deriving show]
+
+type print_info = {
+  p_pk : print_kind;
+  p_id : ident;
+}
+[@@deriving show]
+
 type command =
   | Gvar   of var_decl located
   | Gmacro of macro_decl located
@@ -148,6 +161,7 @@ type command =
   | Gannotation  of eval_info
   | Gapply of apply_info
   | Gverbose of int
+  | Gprint of print_info list
   | Gexit
 [@@deriving show]
 

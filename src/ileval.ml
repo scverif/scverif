@@ -5,15 +5,15 @@ open Il
 
 let ev_hierror () = hierror "evaluation" None
 
-type pointer = [%import: Ileval.pointer];;
-type cpointer = [%import: Ileval.cpointer];;
-type bvalue = [%import: Ileval.bvalue];;
-type value = [%import: Ileval.value];;
-type state = [%import: Ileval.state];;
-type region = [%import: Ileval.region];;
-type ival = [%import: Ileval.ival];;
-type initial = [%import: Ileval.initial];;
-type eenv = [%import: Ileval.eenv];;
+type pointer = [%import: Ileval.pointer]
+type cpointer = [%import: Ileval.cpointer]
+type bvalue = [%import: Ileval.bvalue]
+type value = [%import: Ileval.value]
+type state = [%import: Ileval.state]
+type region = [%import: Ileval.region]
+type ival = [%import: Ileval.ival]
+type initial = [%import: Ileval.initial]
+type eenv = [%import: Ileval.eenv]
 
 module Ptr = struct
   type t = pointer
@@ -505,7 +505,13 @@ let find_initial eenv m =
   try
     Ms.find m eenv.initial
   with Not_found ->
-    ev_hierror () "no initials give for macro %s" m
+    ev_hierror () "no initials given for macro %s" m
+
+let find_state eenv m =
+  try
+    Ms.find m eenv.state
+  with Not_found ->
+    ev_hierror () "no state given for macro %s" m
 
 let update_initial eenv m initial =
   try
