@@ -1,9 +1,15 @@
 include il "isa/isa-cortex-m0plus.il"
+include il "isa/leakyisa-cortex-m0plus.il"
 include asm "testasm/secmult_direct-cortex-m0plus-O3.objdump"
 
-verbose 1
+verbose 0
 
-eval secmult_direct
+apply addleakage
+  secmult_direct;
+
+apply inline;
+
+annotate secmult_direct
   region mem w32 a[0:2]
   region mem w32 b[0:2]
   region mem w32 c[0:2]
@@ -14,4 +20,14 @@ eval secmult_direct
   init r1 [a 0]
   init r2 [b 0]
   init r3 [rnd 0]
-  init lr exit;
+  init lr exit
+  outcome c;
+
+apply partialeval
+  secmult_direct;
+
+apply deadcodeelim
+  secmult_direct;
+
+print 0
+  trace secmult_direct;

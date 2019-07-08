@@ -1,9 +1,15 @@
 include il "isa/isa-cortex-m0plus.il"
+include il "isa/leakyisa-cortex-m0plus.il"
 include asm "testasm/secmult_flaw-cortex-m0plus-Os.objdump"
 
-verbose 1
+verbose 0
 
-eval secmult_flaw
+apply addleakage
+  secmult_flaw;
+
+apply inline;
+
+annotate secmult_flaw
   region mem w32 a[0:2]
   region mem w32 b[0:2]
   region mem w32 c[0:2]
@@ -14,4 +20,14 @@ eval secmult_flaw
   init r1 [a 0]
   init r2 [b 0]
   init r3 [rnd 0]
-  init lr exit;
+  init lr exit
+  outcome c;
+
+apply partialeval
+  secmult_flaw;
+
+apply deadcodeelim
+  secmult_flaw;
+
+print 0
+  trace secmult_flaw;
