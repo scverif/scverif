@@ -10,7 +10,7 @@ apply addleakage
 apply inline
   secxor;
 
-annotation secxor
+annotate secxor
   region mem w32 a[0:2]
   region mem w32 b[0:2]
   region mem w32 c[0:2]
@@ -28,7 +28,7 @@ apply partialeval
 apply deadcodeelim
   secxor;
 
-print
+print 0
   /*macro secxor*/
   /*state secxor*/
   trace secxor;

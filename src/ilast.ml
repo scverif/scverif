@@ -162,7 +162,7 @@ type command =
   | Gannotation  of eval_info
   | Gapply of apply_info
   | Gverbose of int
-  | Gprint of print_info list
+  | Gprint of int * (print_info list)
   | Gexit
 [@@deriving show]
 

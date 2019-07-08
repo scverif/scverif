@@ -30,7 +30,8 @@ let deadcodeelim eenv m =
       | Iassgn(Lvar lv, dexpr) ->
         if Sv.mem lv !liveset then
           begin
-            liveset := liveset_of_expr !liveset dexpr;
+            let lvs = Sv.remove lv !liveset in
+            liveset := liveset_of_expr lvs dexpr;
             true
           end
         else
@@ -39,7 +40,9 @@ let deadcodeelim eenv m =
       | Iassgn(Lset(lv, iexpr), dexpr) ->
         if Sv.mem lv !liveset then
           begin
-            liveset := liveset_of_expr (liveset_of_expr !liveset dexpr) iexpr;
+            let lvs = Sv.remove lv !liveset in
+            let lvs = liveset_of_expr lvs dexpr in
+            liveset := liveset_of_expr lvs iexpr;
             true
           end
         else

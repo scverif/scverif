@@ -16,7 +16,7 @@
     "int"   , TINT ;
     "uint"  , UINT ;
 
-    "annotation", ANNOTATION;
+    "annotate", ANNOTATION;
     "apply" , APPLY  ;
     "else"  , ELSE   ;
     "exit"  , EXIT   ;

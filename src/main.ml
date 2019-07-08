@@ -178,8 +178,9 @@ let process_annotation menv ai =
   let eenv = Ileval.update_initial eenv m initial in
   { menv with eenv = eenv }
 
-let process_print menv pi =
-  (* FIXME: typecheck pi.p_ms *)
+let process_print menv vb pi =
+  let ovb = !Glob_option.verbose in
+    (* FIXME: typecheck pi.p_ms *)
   let tprint menv pi =
     match pi.p_pk with
     | Macro ->
@@ -204,7 +205,9 @@ let process_print menv pi =
         Format.printf "@[<v>evaluated trace of %s:@ %a]@."
           (unloc pi.p_id) (pp_cmd ~full:!Glob_option.full) st.st_eprog
       end in
+  Glob_option.set_verbose vb;
   List.iter (tprint menv) pi;
+  Glob_option.set_verbose ovb;
   menv
 
 let rec process_command really_exit mainenv = function
@@ -215,7 +218,7 @@ let rec process_command really_exit mainenv = function
   | Ilast.Ginclude (Asm, filename) -> process_asm mainenv filename
   | Ilast.Ginclude (Il, filename) -> process_il mainenv filename
   | Ilast.Gverbose i -> process_verbose mainenv i
-  | Ilast.Gprint i -> process_print mainenv i
+  | Ilast.Gprint (vb, pi) -> process_print mainenv vb pi
   | Ilast.Gexit    -> if really_exit then exit 0 else mainenv
 
 and process_asm mainenv filename =

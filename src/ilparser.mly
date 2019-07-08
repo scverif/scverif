@@ -207,8 +207,8 @@ printlist:
     { { p_pk = EvalTrace; p_id = id} }
 
 print_command:
-  | PRINT ps=printlist* SEMICOLON
-    { ps }
+  | PRINT vb=INT ps=printlist* SEMICOLON
+    { Gprint((B.to_int vb), ps) }
 
 include_kind:
   | ASM { Asm }
@@ -223,7 +223,7 @@ command1:
   | i=include_                { Ginclude i }
   | e=eval_command            { Gannotation e }
   | a=apply_command           { Gapply a }
-  | p=print_command           { Gprint p }
+  | p=print_command           { p }
   | VERBOSE i=INT             { Gverbose (B.to_int i) }
   | error        { parse_error (Location.make $startpos $endpos) "" }
 
