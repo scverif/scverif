@@ -19,15 +19,16 @@ annotation secxor
   init r2 [b 0]
   init r0 [c 0]
   init sp [stack 0]
-  init lr exit;
+  init lr exit
+  outcome c;
 
 apply partialeval
+  secxor;
+
+apply deadcodeelim
   secxor;
 
 print
   /*macro secxor*/
   /*state secxor*/
   trace secxor;
-
-apply deadcodeelim
-  secxor;

@@ -120,8 +120,9 @@ type initval =
 [@@deriving show]
 
 type init_info =
-  | Region of ident * wsize * ident * range
-  | Init   of ident * initval
+  | Region  of ident * wsize * ident * range
+  | Init    of ident * initval
+  | Outcome of ident
 [@@deriving show]
 
 type eval_info = {

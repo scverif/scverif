@@ -30,6 +30,7 @@
     "label" , LABEL  ;
     "leak"  , LEAK   ;
     "macro" , MACRO  ;
+    "outcome", OUTCOME;
     "signextend", SIGNEXTEND;
     "state" , STATE  ;
     "region", REGION ;

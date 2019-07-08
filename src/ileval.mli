@@ -16,6 +16,7 @@ type ival =
 type initial = {
   init_region : region list;
   init_var    : (V.t * ival) list;
+  outcome_var  : V.t list;
 }
 
 type pointer = {

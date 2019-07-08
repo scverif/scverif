@@ -119,7 +119,7 @@ let process_macro menv m =
 
 let process_verbose menv i =
   Glob_option.set_verbose i;
-  Format.printf "verbose = %i; full = %b@."
+  Glob_option.print_full "verbose = %i; full = %b@."
     !Glob_option.verbose !Glob_option.full;
   menv
 
@@ -149,10 +149,9 @@ let process_trans_addleakage genv ms =
 
 let process_trans_deadcodeelim eenv ms =
   let pelim eenv m =
-(*    let open Ilcodeelim in
-      Ilcodeelim.deadcodeelim eenv m in *)
-    eenv in
-  List.fold_left pelim eenv ms
+    let open Ilcodeelim in
+      Ilcodeelim.deadcodeelim eenv m in
+   List.fold_left pelim eenv ms
 
 let process_apply_transformation menv api =
   let genv = menv.genv in
@@ -166,6 +165,7 @@ let process_apply_transformation menv api =
   | "partialeval" ->
     { menv with eenv = process_trans_eval eenv macros }
   | "deadcodeelim" ->
+    (* FIXME: check availablity of eprog for m *)
     { menv with eenv = process_trans_deadcodeelim eenv macros }
   | i ->
     Utils.hierror "apply_transformation" (Some (loc api.apply_t))
@@ -201,8 +201,8 @@ let process_print menv pi =
     | EvalTrace ->
       begin
         let st = Ileval.find_state menv.eenv (unloc pi.p_id) in
-        Format.printf "@[<v>partial evaluated trace of %s:@ %a]@."
-          (unloc pi.p_id) (pp_cmd ~full:true) st.st_eprog
+        Format.printf "@[<v>evaluated trace of %s:@ %a]@."
+          (unloc pi.p_id) (pp_cmd ~full:!Glob_option.full) st.st_eprog
       end in
   List.iter (tprint menv) pi;
   menv

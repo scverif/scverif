@@ -158,7 +158,7 @@ let esub ws (v1, v2) =
       end
   | Some ws, Vint i1, Vint i2 -> op_ww_w B.sub ws i1 i2
   | _                         ->
-    Format.printf "@[<v>esub: cannot evaluate Osub %a %a@]@."
+    Glob_option.print_full "@[<v>esub: cannot evaluate Osub %a %a@]@."
       pp_bvalue v1 pp_bvalue v2;
     Vunknown
 
@@ -178,7 +178,7 @@ let elsl ws (v1, v2) =
   match v1, v2 with
   | Vint i1 , Vint i2  -> op_wi_w B.lshl ws i1 i2
   | _                  ->
-    Format.printf "@[<v>elsl: cannot evaluate Olsl %a %a@]@."
+    Glob_option.print_full "@[<v>elsl: cannot evaluate Olsl %a %a@]@."
       pp_bvalue v1 pp_bvalue v2;
     Vunknown
 
@@ -187,7 +187,7 @@ let elsr ws (v1, v2) =
   match v1, v2 with
   | Vint i1 , Vint i2  -> op_wi_w B.lshr ws i1 i2
   | _                  ->
-    Format.printf "@[<v>elsr: cannot evaluate Olsr %a %a@]@."
+    Glob_option.print_full "@[<v>elsr: cannot evaluate Olsr %a %a@]@."
       pp_bvalue v1 pp_bvalue v2;
     Vunknown
 
@@ -219,7 +219,7 @@ let enot ws v =
   | None   , Vbool b -> Vbool (not b)
   | Some ws, Vint i  -> op_w_w B.lgnot ws i
   | _                ->
-    Format.printf "@[<v>enot: cannot evaluate Onot %a@]@."
+    Glob_option.print_full "@[<v>enot: cannot evaluate Onot %a@]@."
       pp_bvalue v;
     Vunknown
 
@@ -231,11 +231,11 @@ let eeq bty (v1,v2) =
   | Bool, Vbool b1, Vbool b2 -> Vbool (b1 = b2)
   | W ws, Vint  i1, Vint  i2 -> Vbool (B.equal (of_int ws i1) (of_int ws i2))
   | _,    Vptr  _ , _        ->
-    Format.printf "@[<v>eeq: cannot evaluate Oeq of ptr %a %a@]@."
+    Glob_option.print_full "@[<v>eeq: cannot evaluate Oeq of ptr %a %a@]@."
       pp_bvalue v1 pp_bvalue v2;
     Vunknown
   | _, _, _                  ->
-    Format.printf "@[<v>eeq: cannot evaluate Oeq %a %a@]@."
+    Glob_option.print_full "@[<v>eeq: cannot evaluate Oeq %a %a@]@."
       pp_bvalue v1 pp_bvalue v2;
     Vunknown
 

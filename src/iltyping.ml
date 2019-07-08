@@ -548,6 +548,7 @@ let process_annotation genv evi =
   let m = find_macro genv evi.Ilast.eval_m in
   let ir = ref [] in
   let iv = ref [] in
+  let ov = ref [] in
   let env0 = empty_env genv in
   let env = ref env0 in
   let process_ii = function
@@ -566,10 +567,14 @@ let process_annotation genv evi =
       let x = find_var !env x in
       let ty = x.v_ty in
       let v = check_initval !env loc v ty in
-      iv := (x,v) :: !iv in
+      iv := (x,v) :: !iv
+    | Ilast.Outcome x ->
+      let x = find_var !env x in
+      ov := x :: !ov in
   List.iter process_ii evi.eval_i;
   m, { init_region = List.rev !ir;
-       init_var    = List.rev !iv; }
+       init_var    = List.rev !iv;
+       outcome_var = List.rev !ov;}
 
 let process_apply_ms genv api =
   match api.Ilast.apply_ms with
