@@ -10,18 +10,18 @@ type 'a located = [%import: 'a Location.located]
 type ident = string located [@@deriving show]
 type hex   = B.zint located [@@deriving show]
 
-type regimm = 
+type regimm =
  | Reg of ident
  | Imm of B.zint located
 [@@deriving show]
 
 type operand =
-  | Regimm  of regimm 
+  | Regimm  of regimm
   | RegOffs of ident * regimm
   | Label   of ident * hex
 [@@deriving show]
 
-type operands = 
+type operands =
   | Ofixed    of operand list
   | Oflexible of ident list
 [@@deriving show]

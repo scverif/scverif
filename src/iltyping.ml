@@ -8,10 +8,7 @@ let ty_error loc = error "type error" (loc, [])
 (* ************************************************* *)
 (* Global environment                                *)
 
-type genv =
-  { glob_var: V.t Ms.t;
-    macro   : macro Ms.t;
-  }
+type genv = [%import: Iltyping.genv]
 
 let empty_genv =
   { glob_var = Ms.empty;
@@ -55,14 +52,8 @@ let get_macros genv =
 (* ************************************************* *)
 (* Local environment                                 *)
 
-type id_kind =
-  | Label of Lbl.t * bool (* true means local label *)
-  | Var   of var
-
-type env =
-  { genv  : genv;
-    locals : id_kind Ms.t;
-  }
+type id_kind = [%import: Iltyping.id_kind]
+type env = [%import: Iltyping.env]
 
 let empty_env genv =
   { genv; locals = Ms.empty; }

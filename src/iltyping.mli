@@ -1,7 +1,20 @@
 open Utils
 open Common
 open Il
-type genv
+
+type genv = {
+  glob_var : V.t Ms.t;
+  macro    : macro Ms.t;
+}
+
+type id_kind =
+  | Label of Lbl.t * bool (* true means local label *)
+  | Var   of var
+
+type env = {
+  genv   : genv;
+  locals : id_kind Ms.t;
+}
 
 val empty_genv : genv
 
