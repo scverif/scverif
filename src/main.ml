@@ -180,30 +180,35 @@ let process_annotation menv ai =
 
 let process_print menv vb pi =
   let ovb = !Glob_option.verbose in
-    (* FIXME: typecheck pi.p_ms *)
+  (* FIXME: typecheck pi.p_ms *)
   let tprint menv pi =
+    let m =
+      match Iltyping.find_macro_opt menv.genv (unloc pi.p_id) with
+      | Some m -> m
+      | None ->
+        Utils.hierror "process_print" (Some (loc pi.p_id))
+          "@[<v> unknown macro %s@]" (unloc pi.p_id) in
     match pi.p_pk with
     | Macro ->
-      begin
-        match Iltyping.find_macro_opt menv.genv (unloc pi.p_id) with
-        | Some m ->
-          Format.printf "@[<v>%a@]@."
-            (pp_macro ~full:!Glob_option.full) m
-        | None ->
-          Utils.hierror "process_print" (Some (loc pi.p_id))
-        "@[<v> unknown macro %s@]" (unloc pi.p_id)
-      end
+      Format.printf "@[<v>%a@]@."
+        (pp_macro ~full:!Glob_option.full) m
     | State ->
       begin
         let st = Ileval.find_state menv.eenv (unloc pi.p_id) in
         Format.printf "@[<v>state of %s:@ %a@]@."
-          (unloc pi.p_id) (pp_state) st
+         m.mc_name (Ileval.pp_state) st
+      end
+    | InitialEnv ->
+      begin
+        let ii = Ileval.find_initial menv.eenv (unloc pi.p_id) in
+        Format.printf "@[<v>initials of %s:@ %a@]@."
+          m.mc_name (Ileval.pp_initial) ii
       end
     | EvalTrace ->
       begin
         let st = Ileval.find_state menv.eenv (unloc pi.p_id) in
-        Format.printf "@[<v>evaluated trace of %s:@ %a]@."
-          (unloc pi.p_id) (pp_cmd ~full:!Glob_option.full) st.st_eprog
+        let an = Ileval.find_initial menv.eenv (unloc pi.p_id) in
+        Ilexport.print_mv st an m
       end in
   Glob_option.set_verbose vb;
   List.iter (tprint menv) pi;

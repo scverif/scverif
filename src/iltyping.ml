@@ -548,9 +548,28 @@ let process_annotation genv evi =
   let m = find_macro genv evi.Ilast.eval_m in
   let ir = ref [] in
   let iv = ref [] in
-  let ov = ref [] in
+  let ipv = ref [] in
+  let opv = ref [] in
   let env0 = empty_env genv in
   let env = ref env0 in
+  let convty ty =
+    match ty with
+    | Ilast.Sharing -> Ileval.Sharing
+    | Ilast.URandom -> Ileval.URandom
+    | Ilast.Public  -> Ileval.Public
+    | Ilast.Secret  -> Ileval.Secret in
+  let process_io_annot ty x orng =
+    let lx = loc x in
+    let x = find_var !env x in
+    let ity = convty ty in
+    match ity, orng with
+    | _, Some(i1, i2) ->
+      let _, j1, j2 = check_ty_arr lx x.v_ty in
+      check_bound lx i1 i2 j1 j2;
+      (ity, x)
+    | _, None ->
+      (ity, x)
+  in
   let process_ii = function
     | Ilast.Region (mem, ws, dest, (i1,i2)) ->
       let mloc = loc mem in
@@ -568,13 +587,17 @@ let process_annotation genv evi =
       let ty = x.v_ty in
       let v = check_initval !env loc v ty in
       iv := (x,v) :: !iv
-    | Ilast.Outcome x ->
-      let x = find_var !env x in
-      ov := x :: !ov in
+    | Ilast.Input(ty, x, orng) ->
+      let (ty, x) = process_io_annot ty x orng in
+      ipv := (ty, x) :: !ipv
+    | Ilast.Output(ty, x, orng) ->
+      let (ty, x) = process_io_annot ty x orng in
+      opv := (ty, x) :: !opv in
   List.iter process_ii evi.eval_i;
   m, { init_region = List.rev !ir;
        init_var    = List.rev !iv;
-       outcome_var = List.rev !ov;}
+       input_var   = List.rev !ipv;
+       output_var  = List.rev !opv;}
 
 let process_apply_ms genv api =
   match api.Ilast.apply_ms with

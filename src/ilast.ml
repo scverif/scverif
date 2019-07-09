@@ -119,10 +119,18 @@ type initval =
   | Iexit
 [@@deriving show]
 
+type io_ty =
+  | Sharing
+  | URandom
+  | Public
+  | Secret
+[@@deriving show]
+
 type init_info =
   | Region  of ident * wsize * ident * range
   | Init    of ident * initval
-  | Outcome of ident
+  | Input   of io_ty * ident * (range option)
+  | Output  of io_ty * ident * (range option)
 [@@deriving show]
 
 type eval_info = {
@@ -144,8 +152,8 @@ type read_kind =
 
 type print_kind =
   | Macro
-  | InitialEnv
   | State
+  | InitialEnv
   | EvalTrace
 [@@deriving show]
 

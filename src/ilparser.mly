@@ -9,7 +9,8 @@
 %token LPAREN RPAREN LCURLY RCURLY LBRACKET RBRACKET
 %token LEFTARROW COLON SEMICOLON QUESTIONMARK COMMA EOF
 %token MACRO LEAK IF ELSE WHILE LABEL GOTO TRACE STATE
-%token ANNOTATION INIT REGION EXIT APPLY PRINT OUTCOME
+%token ANNOTATION INIT REGION EXIT APPLY PRINT
+%token INPUT OUTPUT SECRET PUBLIC URANDOM SHARING
 %token INCLUDE ASM IL VERBOSE
 %token BOOL TINT UINT W8 W16 W32 W64
 %token ADD SUB MUL MULH AND XOR OR NOT EQ NEQ LSL LSR ASR ZEROEXTEND SIGNEXTEND TRUE FALSE
@@ -177,13 +178,21 @@ initval:
   | i=INT                             { Iint i }
   | EXIT                              { Iexit }
 
+annot_ty_kind:
+  | SHARING                           { Sharing }
+  | URANDOM                           { URandom }
+  | PUBLIC                            { Public }
+  | SECRET                            { Secret }
+
 initialization:
   | REGION m=ident ws=wsize x=ident r=range
     { Region(m, ws, x, r) }
   | INIT x=ident v=initval
     { Init(x,v) }
-  | OUTCOME x=ident
-    { Outcome x }
+  | OUTPUT ty=annot_ty_kind i=ident r=range?
+    { Output(ty, i, r) }
+  | INPUT ty=annot_ty_kind i=ident r=range?
+    { Input(ty, i, r) }
 
 eval_command:
   | ANNOTATION m=ident i=initialization* SEMICOLON { {eval_m = m; eval_i = i } }
@@ -199,10 +208,10 @@ apply_command:
 printlist:
   | MACRO id=ident
     { { p_pk = Macro; p_id = id} }
-  | INIT id=ident
-    { { p_pk = InitialEnv; p_id = id} }
   | STATE id=ident
     { { p_pk = State; p_id = id} }
+  | INIT id=ident
+    { { p_pk = InitialEnv; p_id = id} }
   | TRACE id=ident
     { { p_pk = EvalTrace; p_id = id} }
 

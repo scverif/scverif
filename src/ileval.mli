@@ -13,10 +13,17 @@ type ival =
   | Iregion    of V.t * B.zint
   | Icptr_exit
 
+type t_ty =
+  | Sharing
+  | URandom
+  | Public
+  | Secret
+
 type initial = {
   init_region : region list;
   init_var    : (V.t * ival) list;
-  outcome_var  : V.t list;
+  input_var   : (t_ty * V.t) list;
+  output_var  : (t_ty * V.t) list;
 }
 
 type pointer = {
@@ -56,7 +63,7 @@ val empty_eenv : eenv
 val pp_regions : Format.formatter -> bvalue array Il.Mv.t -> unit
 val pp_vars    : Format.formatter -> value Il.Mv.t -> unit
 val pp_state   : Format.formatter -> state -> unit
-(* TODO: val pp_initial : Format.formatter -> initial -> unit*)
+val pp_initial : Format.formatter -> initial -> unit
 
 val find_state     : eenv -> string -> state
 val update_state   : eenv -> macro -> state -> eenv

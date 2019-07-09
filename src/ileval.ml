@@ -12,6 +12,7 @@ type value = [%import: Ileval.value]
 type state = [%import: Ileval.state]
 type region = [%import: Ileval.region]
 type ival = [%import: Ileval.ival]
+type t_ty = [%import: Ileval.t_ty]
 type initial = [%import: Ileval.initial]
 type eenv = [%import: Ileval.eenv]
 
@@ -65,6 +66,54 @@ let pp_state fmt st =
     pp_vars    st.st_mvar
     (pp_cmd ~full:true) st.st_pc
     (pp_cmd ~full:true) (List.rev st.st_eprog)
+
+let pp_iregions fmt ir =
+  Format.fprintf fmt "  @[<v>";
+  List.iter (fun r ->
+      Format.fprintf fmt "%a -> @[%a@]@ "
+        V.pp_g r.r_from
+        V.pp_g r.r_dest) ir;
+  Format.fprintf fmt "@]"
+
+let pp_ival fmt = function
+  | Iint i       -> B.pp_print fmt i
+  | Ibool b      -> Format.fprintf fmt "%b" b
+  | Iregion(x,i) ->
+    Format.fprintf fmt "[%a %a]"
+      V.pp_g x
+      B.pp_print i
+  | Icptr_exit   -> Format.fprintf fmt "exitlabel "
+
+let pp_ivars fmt iv =
+  Format.fprintf fmt "  @[<v>";
+  List.iter (fun (x,i) ->
+      Format.fprintf fmt "%a = @[%a@]@ "
+        V.pp_g x
+        pp_ival i) iv;
+  Format.fprintf fmt "@]"
+
+let pp_t_ty fmt = function
+  | Sharing -> Format.fprintf fmt "sharing "
+  | URandom -> Format.fprintf fmt "urandom "
+  | Public  -> Format.fprintf fmt "public "
+  | Secret  -> Format.fprintf fmt "secret "
+
+let pp_iovars fmt iov =
+  Format.fprintf fmt "  @[<v>";
+  List.iter (fun (t,x) ->
+      Format.fprintf fmt "%a %a@ "
+        pp_t_ty t
+        V.pp_g x) iov;
+  Format.fprintf fmt "@]"
+
+
+let pp_initial fmt ii =
+  Format.fprintf fmt "@[<v>regions:@ %a@ vars:@ %a@ inputs:@ %a@ outputs:@ %a@]"
+    pp_iregions ii.init_region
+    pp_ivars ii.init_var
+    pp_iovars ii.input_var
+    pp_iovars ii.output_var
+
 
 (* *********************************************************** *)
 (* Word operations                                             *)

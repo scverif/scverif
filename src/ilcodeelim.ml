@@ -16,14 +16,23 @@ let rec liveset_of_expr lset expr =
   | Eint _
   | Ebool _ -> lset
 
-let liveset_of_annot (lvlst:Il.V.t list) =
-  List.fold_left (fun s v -> Sv.add v s) Sv.empty lvlst
+(*let liveset_of_annot lvlst =
+  let lst = List.map snd lvlst in
+  List.fold_left (fun s v -> Sv.add v s) Sv.empty lst*)
+
+let liveset_of_annot lvlst =
+  let filter s (t,v) =
+    match v.v_ty with
+    | Common.Tbase _ -> Sv.add v s
+    | Common.Tarr (_, i1, i2) -> Sv.add v s
+    | Common.Tmem -> assert false in
+  List.fold_left filter Sv.empty lvlst
 
 let deadcodeelim eenv m =
   let st = Ileval.find_state eenv m.mc_name in
   let eprog = st.st_eprog in
   let annot = Ileval.find_initial eenv m.mc_name in
-  let liveset = ref (liveset_of_annot annot.outcome_var) in
+  let liveset = ref (liveset_of_annot annot.output_var) in
   let is_livestmt instr =
     begin
       match instr.i_desc with
@@ -40,8 +49,7 @@ let deadcodeelim eenv m =
       | Iassgn(Lset(lv, iexpr), dexpr) ->
         if Sv.mem lv !liveset then
           begin
-            let lvs = Sv.remove lv !liveset in
-            let lvs = liveset_of_expr lvs dexpr in
+            let lvs = liveset_of_expr !liveset dexpr in
             liveset := liveset_of_expr lvs iexpr;
             true
           end
