@@ -207,6 +207,13 @@ let process_print menv vb pi =
     | EvalTrace ->
       begin
         let st = Ileval.find_state menv.eenv (unloc pi.p_id) in
+        Format.printf "@[<v>evaluated trace of %s:@  %a@]@"
+          m.mc_name
+          pp_cmd_g st.st_eprog
+      end
+    | MaskVerif ->
+      begin
+        let st = Ileval.find_state menv.eenv (unloc pi.p_id) in
         let an = Ileval.find_initial menv.eenv (unloc pi.p_id) in
         Ilexport.print_mv st an m
       end in

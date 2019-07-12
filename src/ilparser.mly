@@ -9,7 +9,7 @@
 %token LPAREN RPAREN LCURLY RCURLY LBRACKET RBRACKET
 %token LEFTARROW COLON SEMICOLON QUESTIONMARK COMMA EOF
 %token MACRO LEAK IF ELSE WHILE LABEL GOTO TRACE STATE
-%token ANNOTATION INIT REGION EXIT APPLY PRINT
+%token ANNOTATION INIT REGION EXIT APPLY PRINT MASKVERIF
 %token INPUT OUTPUT SECRET PUBLIC URANDOM SHARING
 %token INCLUDE ASM IL VERBOSE
 %token BOOL TINT UINT W8 W16 W32 W64
@@ -214,6 +214,8 @@ printlist:
     { { p_pk = InitialEnv; p_id = id} }
   | TRACE id=ident
     { { p_pk = EvalTrace; p_id = id} }
+  | MASKVERIF id=ident
+    { { p_pk = MaskVerif; p_id = id} }
 
 print_command:
   | PRINT vb=INT ps=printlist* SEMICOLON

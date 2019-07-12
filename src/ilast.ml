@@ -155,6 +155,7 @@ type print_kind =
   | State
   | InitialEnv
   | EvalTrace
+  | MaskVerif
 [@@deriving show]
 
 type print_info = {

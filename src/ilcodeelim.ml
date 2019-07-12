@@ -8,6 +8,7 @@ type lvpos =
   | LVbasePos
   | LVoPos of B.zint list
   | LVunknownPos
+[@@deriving show]
 
 let merge_pos lv1 lv2 =
   match lv1, lv2 with
@@ -16,8 +17,8 @@ let merge_pos lv1 lv2 =
     LVunknownPos
   | LVoPos l1   , LVoPos l2 ->
     LVoPos (List.sort_uniq B.compare (List.append l1 l2))
-  | LVoPos l    , LVbasePos
-  | LVbasePos   , LVoPos l ->
+  | LVoPos _    , LVbasePos
+  | LVbasePos   , LVoPos _ ->
     Utils.hierror "deadcodeelim" None
       "merge_pos: cannot merge base and index.@"
   | LVbasePos     , LVbasePos -> LVbasePos
@@ -103,8 +104,11 @@ let liveset_remove_v_is lmap v is =
         "cannot remove a position of variable %a as it is live on base.@"
         V.pp_g v
     | LVoPos l ->
-      let l' = List.filter (fun e -> List.mem e is) l in
-      Mv.update v v (LVoPos l') lmap
+      let l' = List.filter (fun e -> not (List.mem e is)) l in
+      if List.length l' == 0 then
+        Mv.remove v lmap
+      else
+        Mv.update v v (LVoPos l') lmap
   with Not_found ->
     lmap
 
@@ -146,6 +150,17 @@ let is_live_v_i lmap var i =
     else false in
   Mv.exists livefilter lmap
 
+let infer_inputs (ainv:(Ileval.t_ty * V.t) list) lmap =
+  let aninpt = List.fold_left (fun s (t,v) -> Mv.add v t s) Mv.empty ainv in
+  let conv_live_to_annot lv pos cnvrtmp =
+    if Mv.mem lv cnvrtmp then
+      cnvrtmp
+    else
+      (* TODO better inference of security type *)
+      Mv.add lv Ileval.Public cnvrtmp in
+  let inputmap = Mv.fold conv_live_to_annot lmap aninpt in
+  List.fold_right (fun (x,y) l -> (y,x)::l) (Mv.bindings inputmap) []
+
 let liveset_of_annot aoutv =
   let lmap = Mv.empty in
   List.fold_left (fun m (_,v) -> liveset_add_v m v) lmap aoutv
@@ -161,8 +176,8 @@ let deadcodeelim eenv m =
       | Iassgn(Lvar lv, dexpr) ->
         if Mv.mem lv !lmap then
           begin
-            (*let lvm = liveset_remove_v_pos !lmap lv LVbasePos in*)
-            lmap := liveset_add_expr !lmap dexpr;
+            let lvm = liveset_remove_v_pos !lmap lv LVbasePos in
+            lmap := liveset_add_expr lvm dexpr;
             true
           end
         else
@@ -171,8 +186,8 @@ let deadcodeelim eenv m =
       | Iassgn(Lset(lv, iexpr), dexpr) ->
         if Mv.mem lv !lmap then
           begin
-            (*let lmp = liveset_remove_v_e !lmap lv iexpr in*)
-            let lmp = liveset_add_expr !lmap iexpr in
+            let lmp = liveset_remove_v_e !lmap lv iexpr in
+            let lmp = liveset_add_expr lmp iexpr in
             lmap := liveset_add_expr lmp dexpr;
             true
           end
@@ -191,6 +206,8 @@ let deadcodeelim eenv m =
           (pp_i ~full:false) instr
     end in
   let elimprog = List.rev (List.filter is_livestmt (List.rev eprog)) in
+  let nan = {annot with input_var = infer_inputs annot.input_var !lmap } in
+  let eenv = Ileval.update_initial eenv m nan in
   let nst = { st with st_eprog = elimprog } in
   let eenv = Ileval.update_state eenv m nst in
   eenv

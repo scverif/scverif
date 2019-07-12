@@ -31,6 +31,7 @@
     "label" , LABEL  ;
     "leak"  , LEAK   ;
     "macro" , MACRO  ;
+    "maskverif", MASKVERIF;
     "output", OUTPUT ;
     "public", PUBLIC ;
     "sharing", SHARING;

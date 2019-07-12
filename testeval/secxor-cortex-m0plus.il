@@ -36,5 +36,5 @@ apply deadcodeelim
 print 0
   /*macro secxor*/
   /*state secxor*/
-  init secxor
-  trace secxor;
+  /*init secxor*/
+  maskverif secxor;

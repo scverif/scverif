@@ -38,7 +38,8 @@ let mv_pp_body fmt tr =
     (pp_list "@ " (pp_i ~full:!Glob_option.full)) tr
 
 let print_mv st an m =
-  Format.printf "@[<v>proc %s:@   %a@ @ %a@ end@ @]"
+  Format.printf "@[<v>proc %s:@   %a@ @ %a@ end@ para noglitch NI %s@ @]"
     m.mc_name
     mv_pp_header an
     mv_pp_body st.st_eprog
+    m.mc_name
