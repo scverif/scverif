@@ -33,6 +33,7 @@ rule main = parse
   | "+"            { PLUS }
   | ":"            { COLON }
   | '#'            { SHARP }
+  | '!'            { EXCLAMATION }
   | ";" [^'\n']*   { main lexbuf }
   | _ as x         { invalid_char (L.of_lexbuf lexbuf) x }
   | eof            { EOF }

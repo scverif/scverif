@@ -8,7 +8,7 @@
 %token LCURLY RCURLY
 %token LT GT
 %token <string> IDENT
-%token SHARP
+%token SHARP EXCLAMATION
 %token EOF
 
 %start section
@@ -36,6 +36,9 @@
 %inline instr_disasm:
   | id=loc(IDENT) { id }
 
+%inline instr_diasm_excl:
+  | ib=loc(IDENT) { mk_loc (loc ib) ((unloc ib)^"excl") }
+
 %inline regident:
   | n=loc(IDENT) { n }
 
@@ -46,15 +49,21 @@ regimm:
 
 operand:
   | ri=regimm                                     { Regimm ri }
-  | LBRACKET r=regident COMMA ofs=regimm RBRACKET { RegOffs(r,ofs) } 
-  | IDENT LT sid=loc(IDENT) PLUS loffs=immediate_ GT { Label(sid,loffs) } 
+  | LBRACKET r=regident COMMA ofs=regimm RBRACKET { RegOffs(r,ofs) }
+  | IDENT LT sid=loc(IDENT) PLUS loffs=immediate_ GT { Label(sid,loffs) }
 
 operands:
   | LCURLY regs=separated_list(COMMA,regident) RCURLY { Oflexible regs }
   | ops=separated_nonempty_list(COMMA, operand)       { Ofixed ops     }
 
+operands_excl:
+  | ra=regident EXCLAMATION COMMA LCURLY regs=separated_list(COMMA,regident) RCURLY
+    { Oflexible (List.cons ra regs) }
+
 stmt:
   | io=instr_binary COLON ib=instr_binary id=instr_disasm ir=operands
+    { { offset=io; instr_bin=ib; instr_asm=id; instr_exp=ir } }
+  | io=instr_binary COLON ib=instr_binary id=instr_diasm_excl ir=operands_excl
     { { offset=io; instr_bin=ib; instr_asm=id; instr_exp=ir } }
   | error { parse_error (Location.make $startpos $endpos) "" }
 
