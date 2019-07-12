@@ -4,66 +4,191 @@ open Location
 open Il
 open Iltyping
 
-let rec liveset_of_expr lset expr =
-  match expr with
-  | Evar v -> Sv.add v lset
-  | Eload(_,v,e)
-  | Eget(v,e) ->
-    let lset = Sv.add v lset in
-    liveset_of_expr lset e
-  | Eop(_, es) ->
-    List.fold_left liveset_of_expr lset es
-  | Eint _
-  | Ebool _ -> lset
+type lvpos =
+  | LVbasePos
+  | LVoPos of B.zint list
+  | LVunknownPos
 
-(*let liveset_of_annot lvlst =
-  let lst = List.map snd lvlst in
-  List.fold_left (fun s v -> Sv.add v s) Sv.empty lst*)
+let merge_pos lv1 lv2 =
+  match lv1, lv2 with
+  | LVunknownPos, _
+  | _           , LVunknownPos ->
+    LVunknownPos
+  | LVoPos l1   , LVoPos l2 ->
+    LVoPos (List.sort_uniq B.compare (List.append l1 l2))
+  | LVoPos l    , LVbasePos
+  | LVbasePos   , LVoPos l ->
+    Utils.hierror "deadcodeelim" None
+      "merge_pos: cannot merge base and index.@"
+  | LVbasePos     , LVbasePos -> LVbasePos
 
-let liveset_of_annot lvlst =
-  let filter s (t,v) =
-    match v.v_ty with
-    | Common.Tbase _ -> Sv.add v s
-    | Common.Tarr (_, i1, i2) -> Sv.add v s
-    | Common.Tmem -> assert false in
-  List.fold_left filter Sv.empty lvlst
+let liveset_add_v_pos lmap var pos =
+  if Mv.mem var lmap then
+    let vo = Mv.find var lmap in
+    Mv.update var var (merge_pos pos vo) lmap
+  else
+    Mv.add var pos lmap
+
+let liveset_add_v lmap var =
+  let pos =
+    match var.v_ty with
+    | Common.Tbase _ ->
+      LVbasePos
+    | Common.Tarr (_, i1, i2) ->
+      let rec range s e =
+        if s > e then []
+        else B.of_int s :: range (s + 1) e in
+      LVoPos (range (B.to_int i1) (B.to_int i2))
+    | Common.Tmem ->
+      LVunknownPos in
+  liveset_add_v_pos lmap var pos
+
+let rec liveset_add_expr lmap e =
+  match e with
+  | Il.Eint _
+  | Il.Ebool _ ->
+    lmap (* no update for constants *)
+  | Il.Evar v ->
+    (* add variable v to liveset *)
+    liveset_add_v lmap v
+  | Il.Eop (_, e) ->
+    (* descent into expressions of operation *)
+    List.fold_left liveset_add_expr lmap e
+  | Il.Eget (v, e)
+  | Il.Eload (_, v, e) ->
+    (* compute positions of indexed-variable access *)
+    let lmap,lpos = lvpos_of_e lmap e in
+    liveset_add_v_pos lmap v lpos
+
+and lvpos_of_e lmap e =
+  match e with
+  | Il.Eint i ->
+    (* constant position access *)
+    lmap, LVoPos [i]
+  | Il.Evar v ->
+    (* access based on variable=> unknown position
+     * add the variable to liveset *)
+    liveset_add_v lmap v, LVunknownPos
+  | Il.Eget (v, e)
+  | Il.Eload (_, v, e) ->
+    (* access based on indexed-variable => unknown position
+     * add the variable and descent into the expression *)
+    let lmap = liveset_add_v lmap v in
+    liveset_add_expr lmap e, LVunknownPos
+  | Il.Eop (_, e2) ->
+    (* access based on operation, descent in expressions and merge pos *)
+    let rec inner lmap es =
+      match es with
+      (* single or last expression *)
+      | e::[] -> lvpos_of_e lmap e
+      (* two or more expressions *)
+      | e1::es ->
+        let lmap1, epos1 = lvpos_of_e lmap e1 in
+        let lmap2, epos2 = inner lmap1 es in
+        (lmap2, (merge_pos epos1 epos2))
+      (* no ops on empty expr-list after typechecking *)
+      | [] -> assert false in
+    inner lmap e2
+  | Il.Ebool _ ->
+    Utils.hierror "deadcodeelim" None
+      "indexed variable access based on a bool, no idea what to do. %a@"
+      (pp_e ~full:!Glob_option.full) e
+
+let liveset_remove_v_is lmap v is =
+  try
+    match Mv.find v lmap with
+    | LVunknownPos -> lmap
+    | LVbasePos ->
+      Utils.hierror "deadcodeelim" None
+        "cannot remove a position of variable %a as it is live on base.@"
+        V.pp_g v
+    | LVoPos l ->
+      let l' = List.filter (fun e -> List.mem e is) l in
+      Mv.update v v (LVoPos l') lmap
+  with Not_found ->
+    lmap
+
+let liveset_remove_v_e lmap v e =
+  let lmap, pos = lvpos_of_e lmap e in
+  match pos with
+  | LVbasePos ->
+    assert false
+  | LVoPos l ->
+    liveset_remove_v_is lmap v l
+  | LVunknownPos ->
+    lmap
+
+let liveset_remove_v_pos lmap v pos =
+  match pos with
+  | LVbasePos ->
+    (try
+       match Mv.find v lmap with
+       | LVbasePos -> Mv.remove v lmap
+       | LVoPos _ ->
+         Utils.hierror "deadcodeelim" None
+           "cannot remove base of variable %a as it is live on a position.@"
+           V.pp_g v
+       | LVunknownPos -> lmap
+     with Not_found -> lmap)
+  | LVunknownPos ->
+    Utils.hierror "deadcodeelim" None
+      "cannot remove unknown position of variable %a.@"
+      V.pp_g v
+  | LVoPos l ->
+    liveset_remove_v_is lmap v l
+
+let is_live_v_i lmap var i =
+  let livefilter key value =
+    if V.equal key var then
+      match value with
+      | LVoPos l -> List.mem i l
+      | _ -> false
+    else false in
+  Mv.exists livefilter lmap
+
+let liveset_of_annot aoutv =
+  let lmap = Mv.empty in
+  List.fold_left (fun m (_,v) -> liveset_add_v m v) lmap aoutv
 
 let deadcodeelim eenv m =
   let st = Ileval.find_state eenv m.mc_name in
   let eprog = st.st_eprog in
   let annot = Ileval.find_initial eenv m.mc_name in
-  let liveset = ref (liveset_of_annot annot.output_var) in
+  let lmap = ref (liveset_of_annot annot.output_var) in
   let is_livestmt instr =
     begin
       match instr.i_desc with
       | Iassgn(Lvar lv, dexpr) ->
-        if Sv.mem lv !liveset then
+        if Mv.mem lv !lmap then
           begin
-            let lvs = Sv.remove lv !liveset in
-            liveset := liveset_of_expr lvs dexpr;
+            (*let lvm = liveset_remove_v_pos !lmap lv LVbasePos in*)
+            lmap := liveset_add_expr !lmap dexpr;
             true
           end
         else
           false
       | Iassgn(Lstore(_,lv,iexpr), dexpr)
       | Iassgn(Lset(lv, iexpr), dexpr) ->
-        if Sv.mem lv !liveset then
+        if Mv.mem lv !lmap then
           begin
-            let lvs = liveset_of_expr !liveset dexpr in
-            liveset := liveset_of_expr lvs iexpr;
+            (*let lmp = liveset_remove_v_e !lmap lv iexpr in*)
+            let lmp = liveset_add_expr !lmap iexpr in
+            lmap := liveset_add_expr lmp dexpr;
             true
           end
         else
           false
       | Ileak(_, dexpr) ->
-        liveset := List.fold_left liveset_of_expr !liveset dexpr;
+        lmap := List.fold_left liveset_add_expr !lmap dexpr;
         true
       | Iigoto _ (* FIXME *)
       | Igoto _
       | Ilabel _ -> false
       | Iif _
       | Iwhile _
-      | Imacro _ -> Utils.hierror "deadcodeelim" None "@[<v>cannot handle@ %a@]" (pp_i ~full:false) instr
+      | Imacro _ ->
+        Utils.hierror "deadcodeelim" None "@[<v>cannot handle@ %a@]"
+          (pp_i ~full:false) instr
     end in
   let elimprog = List.rev (List.filter is_livestmt (List.rev eprog)) in
   let nst = { st with st_eprog = elimprog } in
