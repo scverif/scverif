@@ -12,12 +12,14 @@ apply inline;
 annotate secrefresh
   region mem w32 a[0:2]
   region mem w32 rnd[0:4]
-  region mem w32 stack[-2:0]
+  region mem w32 stack[-8:0]
   init sp [stack 0]
   init r1 [a 0]
   init r3 [rnd 0]
   init lr exit
-  outcome a;
+  input sharing a
+  input urandom rnd
+  output sharing a;
 
 apply partialeval
   secrefresh;
@@ -26,4 +28,4 @@ apply deadcodeelim
   secrefresh;
 
 print 0
-  trace secrefresh;
+  maskverif secrefresh;

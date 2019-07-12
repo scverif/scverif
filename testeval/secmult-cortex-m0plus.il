@@ -21,7 +21,10 @@ annotate secmult
   init r2 [b 0]
   init r3 [rnd 0]
   init lr exit
-  outcome c;
+  input sharing a
+  input sharing b
+  input urandom rnd
+  output sharing c;
 
 apply partialeval
   secmult;
@@ -30,4 +33,4 @@ apply deadcodeelim
   secmult;
 
 print 0
-  trace secmult;
+  maskverif secmult;

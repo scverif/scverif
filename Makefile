@@ -1,4 +1,5 @@
 .PHONY: all clean logdir
+MAKEFLAGS += --silent
 
 MENHIR       := menhir
 MENHIRFLAGS  := --infer --explain
@@ -31,6 +32,10 @@ EVALSRCDIR := testeval
 EVALSRC    := $(wildcard $(EVALSRCDIR)/*.il)
 EVALTESTS  := $(patsubst $(EVALSRCDIR)/%.il, %.evaltest, $(EVALSRC))
 
+MVEXE      := ../maskverif/tool2/main_input.native
+MVTESTS    := $(patsubst $(EVALSRCDIR)/%.il, %.mvtest, $(EVALSRC))
+
+
 all: native
 
 native:
@@ -58,6 +63,10 @@ logdir:
 # rule to test ilfiles
 %.evaltest: $(EVALSRCDIR)/%.il native logdir
 	printf "include il \"$<\"\n" | ./$(MAIN).native | tee $(LOGDIR)/$@
+
+# rule to send evaltest output to maskverif
+%.mvtest: %.evaltest native logdir
+	cat $(LOGDIR)/$< | $(MVEXE)
 
 
 # shortcut for various tests

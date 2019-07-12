@@ -14,7 +14,6 @@ annotate secxor
   region mem w32 a[0:2]
   region mem w32 b[0:2]
   region mem w32 c[0:2]
-  region mem w32 rnd[0:2] /* for testing purposes */
   region mem w32 stack[-2:-1]
   init r1 [a 0]
   init r2 [b 0]
@@ -23,7 +22,6 @@ annotate secxor
   init lr exit
   input sharing a
   input sharing b
-  input urandom rnd
   output sharing c
   /* everything else assumed to be public input !and! public output */;
 

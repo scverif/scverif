@@ -21,7 +21,10 @@ annotate secmult_flaw
   init r2 [b 0]
   init r3 [rnd 0]
   init lr exit
-  outcome c;
+  input sharing a
+  input sharing b
+  input urandom rnd
+  output sharing c;
 
 apply partialeval
   secmult_flaw;
@@ -30,4 +33,4 @@ apply deadcodeelim
   secmult_flaw;
 
 print 0
-  trace secmult_flaw;
+  maskverif secmult_flaw;
