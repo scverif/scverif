@@ -604,3 +604,20 @@ let process_apply_ms genv api =
   | [] -> get_macros genv
   | ms  ->
     List.map (find_macro genv) ms
+
+let process_apply_m genv api =
+  match api.Ilast.apply_ms with
+  | m::_ ->
+    find_macro genv m
+  | [] ->
+    Utils.hierror "process_apply_m" (Some (loc api.apply_t))
+            "@[<v> no macro identifiers given]"
+
+let process_apply_ls genv api =
+  match api.Ilast.apply_ms with
+  | []
+  | _::[] ->
+    Utils.hierror "process_apply_ls" (Some (loc api.apply_t))
+      "@[<v> no leakage identifiers given]"
+  | _::ms  ->
+    ms

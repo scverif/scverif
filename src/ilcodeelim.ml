@@ -211,3 +211,35 @@ let deadcodeelim eenv m =
   let nst = { st with st_eprog = elimprog } in
   let eenv = Ileval.update_state eenv m nst in
   eenv
+
+let leakageelim eenv m ls (keep:bool) =
+  let st = Ileval.find_state eenv m.mc_name in
+  let eprog = st.st_eprog in
+  let ls = List.map unloc ls in
+  let stmt_filter instr =
+    begin
+      match instr.i_desc with
+      | Ileak(Some name, _ ) ->
+        begin
+          if List.mem name ls then
+            keep
+          else
+            not keep
+         end
+      | Ileak(None, _)
+      | Iassgn(_,_)
+      | Iassgn(_,_)
+      | Iassgn(_,_)
+      | Iigoto _
+      | Igoto _
+      | Iif _
+      | Iwhile _
+      | Ilabel _ -> true
+      | Imacro _ ->
+        Utils.hierror "leakageelim" None "@[<v>cannot handle@ %a@]"
+          (pp_i ~full:false) instr
+    end in
+  let elimprog = List.rev (List.filter stmt_filter (List.rev eprog)) in
+  let nst = { st with st_eprog = elimprog } in
+  let eenv = Ileval.update_state eenv m nst in
+  eenv

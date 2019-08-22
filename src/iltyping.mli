@@ -28,3 +28,5 @@ val find_macro_opt : genv -> string -> macro option
 
 val process_annotation : genv -> Ilast.eval_info -> Il.macro * Ileval.initial
 val process_apply_ms   : genv -> Ilast.apply_info -> Il.macro list
+val process_apply_m    : genv -> Ilast.apply_info -> Il.macro
+val process_apply_ls   : genv -> Ilast.apply_info -> Ilast.ident list

@@ -156,17 +156,28 @@ let process_trans_deadcodeelim eenv ms =
 let process_apply_transformation menv api =
   let genv = menv.genv in
   let eenv = menv.eenv in
-  let macros = Iltyping.process_apply_ms genv api in
   match unloc api.apply_t with
   | "inline" ->
+    let macros = Iltyping.process_apply_ms genv api in
     { menv with genv = process_trans_inline genv macros }
   | "addleakage" ->
+    let macros = Iltyping.process_apply_ms genv api in
     { menv with genv = process_trans_addleakage genv macros }
   | "partialeval" ->
+    let macros = Iltyping.process_apply_ms genv api in
     { menv with eenv = process_trans_eval eenv macros }
   | "deadcodeelim" ->
+    let macros = Iltyping.process_apply_ms genv api in
     (* FIXME: check availablity of eprog for m *)
     { menv with eenv = process_trans_deadcodeelim eenv macros }
+  | "blacklistleaks" ->
+    let m = Iltyping.process_apply_m genv api in
+    let ls = Iltyping.process_apply_ls genv api in
+    { menv with eenv = Ilcodeelim.leakageelim eenv m ls false}
+  | "whitelistleaks" ->
+    let m = Iltyping.process_apply_m genv api in
+    let ls = Iltyping.process_apply_ls genv api in
+    { menv with eenv = Ilcodeelim.leakageelim eenv m ls true}
   | i ->
     Utils.hierror "apply_transformation" (Some (loc api.apply_t))
       "@[<v> transformation %s unknown@]" i
