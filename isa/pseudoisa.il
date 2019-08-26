@@ -4,7 +4,7 @@
 w32 pub;
 mem [];
 
-/* verisec calling convention */
+/* call by-reference calling convention */
 w32 r0; /* pointer for output shares c   */
 w32 r1; /* pointer for input shares  a   */
 w32 r2; /* pointer for input shares  b   */
