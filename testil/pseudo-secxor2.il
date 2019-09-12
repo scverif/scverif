@@ -53,8 +53,20 @@ annotate secxor
   */
   ;
 
-apply inline
-  secxor;
+print 4
+  macro secxor;
+
+apply accumulateleaks;    /* combine all leakage statements into a single statement */
+
+print 4
+  macro secxor;
+
+verbose 4
+
+apply inline;
+
+print 4
+  macro secxor;
 
 apply partialeval
   secxor;
@@ -82,5 +94,5 @@ apply deadcodeelim
 
 print 0
   /*macro secxor*/
-  maskverif secxor
+  /*maskverif secxor*/
   ;

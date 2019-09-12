@@ -137,8 +137,7 @@ let process_trans_inline genv ms =
   let pinline genv m =
     let m = Ilinline.inline_macro m in
     Glob_option.print_normal "@[<v>%a@]@." Il.pp_global_g (Gmacro m);
-    let genv = Iltyping.update_macro genv m in
-    genv in
+    Iltyping.update_macro genv m in
   List.fold_left pinline genv ms
 
 let process_trans_addleakage genv ms =
@@ -152,6 +151,12 @@ let process_trans_deadcodeelim eenv ms =
     let open Ilcodeelim in
       Ilcodeelim.deadcodeelim eenv m in
    List.fold_left pelim eenv ms
+
+let process_trans_accumulateleaks genv ms =
+  let accumulate genv m =
+    let open Illeakage in
+    Illeakage.accumulate_leakages genv m in
+  List.fold_left accumulate genv ms
 
 let process_apply_transformation menv api =
   let genv = menv.genv in
@@ -178,6 +183,9 @@ let process_apply_transformation menv api =
     let m = Iltyping.process_apply_m genv api in
     let ls = Iltyping.process_apply_ls genv api in
     { menv with eenv = Ilcodeelim.leakageelim eenv m ls true}
+  | "accumulateleaks" ->
+    let macros = Iltyping.process_apply_ms genv api in
+    { menv with genv = process_trans_accumulateleaks genv macros }
   | i ->
     Utils.hierror "apply_transformation" (Some (loc api.apply_t))
       "@[<v> transformation %s unknown@]" i
@@ -201,6 +209,15 @@ let process_print menv vb pi =
           "@[<v> unknown macro %s@]" (unloc pi.p_id) in
     match pi.p_pk with
     | Macro ->
+(*      Format.printf
+        "@[<v>Starting debug genv.macro@]@.";
+      Utils.Ms.iter
+        (fun k m ->
+           Format.printf
+             "@[<v>Debug @[%s@ %a@]]@."
+             k
+             (pp_macro ~full:!Glob_option.full) m)
+        menv.genv.macro*)
       Format.printf "@[<v>%a@]@."
         (pp_macro ~full:!Glob_option.full) m
     | State ->

@@ -7,7 +7,7 @@ open Iltyping
 type lvpos =
   | LVbasePos
   | LVoPos of B.zint list
-  | LVunknownPos
+  | LVunknownPos (* TODO make an optional expression list to enable equality for unknown lvpos *)
 [@@deriving show]
 
 let merge_pos lv1 lv2 =
@@ -23,6 +23,24 @@ let merge_pos lv1 lv2 =
       "merge_pos: cannot merge base and index.@"
   | LVbasePos     , LVbasePos -> LVbasePos
 
+let equal_pos p1 p2 =
+  match p1, p2 with
+  | LVbasePos, LVbasePos -> true
+  | LVoPos l1, LVoPos l2 ->
+    if List.length l1 == List.length l2 then
+      begin
+        (* in both lists, there is no element which is not part of the other list *)
+        not (List.exists (fun e -> not (List.mem e l2)) l1) &&
+        not (List.exists (fun e -> not (List.mem e l1)) l2)
+        (* constant-time version ;-)
+           let b = List.fold_right (fun e b -> b && List.mem e l2) l1  true in
+           List.fold_right (fun e b -> b && List.mem e l1) l2 b                   *)
+      end
+    else
+      false
+  | LVunknownPos, LVunknownPos -> false (* by definition, yet might be equal *)
+  | _ , _ -> false
+
 let liveset_add_v_pos lmap var pos =
   if Mv.mem var lmap then
     let vo = Mv.find var lmap in
@@ -30,19 +48,51 @@ let liveset_add_v_pos lmap var pos =
   else
     Mv.add var pos lmap
 
+let lvpos_of_var (v:V.t) =
+  match v.v_ty with
+  | Common.Tbase _ ->
+    LVbasePos
+  | Common.Tarr (_, i1, i2) ->
+    let rec range s e =
+      if s > e then []
+      else B.of_int s :: range (s + 1) e in
+    LVoPos (range (B.to_int i1) (B.to_int i2))
+  | Common.Tmem ->
+    LVunknownPos
+
+let rec lvpos_of_expr e =
+  match e with
+  | Il.Eint i ->
+    (* constant position access *)
+    LVoPos [i]
+  | Il.Evar _ ->
+    (* access based on unknown variable *)
+    LVunknownPos
+  | Il.Eget (_, _)
+  | Il.Eload (_, _, _) ->
+    (* access based on unknown indexed-variable*)
+    LVunknownPos
+  | Il.Eop (_, e2) ->
+    (* access based on operation, descent in expressions and merge pos *)
+    let rec inner es =
+      match es with
+      (* single or last expression *)
+      | e::[] -> lvpos_of_expr e
+      (* two or more expressions *)
+      | e1::es ->
+        let epos1 = lvpos_of_expr e1 in
+        let epos2 = inner es in
+        merge_pos epos1 epos2
+      (* there should not be operations on empty expr-list after typechecking *)
+      | [] -> assert false in
+    inner e2
+  | Il.Ebool _ ->
+    Utils.hierror "liveness" None
+      "indexed variable access based on a bool, undefined behavior. %a@"
+      (pp_e ~full:!Glob_option.full) e
+
 let liveset_add_v lmap var =
-  let pos =
-    match var.v_ty with
-    | Common.Tbase _ ->
-      LVbasePos
-    | Common.Tarr (_, i1, i2) ->
-      let rec range s e =
-        if s > e then []
-        else B.of_int s :: range (s + 1) e in
-      LVoPos (range (B.to_int i1) (B.to_int i2))
-    | Common.Tmem ->
-      LVunknownPos in
-  liveset_add_v_pos lmap var pos
+  liveset_add_v_pos lmap var (lvpos_of_var var)
 
 let rec liveset_add_expr lmap e =
   match e with
@@ -227,8 +277,6 @@ let leakageelim eenv m ls (keep:bool) =
             not keep
          end
       | Ileak(None, _)
-      | Iassgn(_,_)
-      | Iassgn(_,_)
       | Iassgn(_,_)
       | Iigoto _
       | Igoto _
