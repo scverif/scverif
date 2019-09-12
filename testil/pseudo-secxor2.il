@@ -53,19 +53,21 @@ annotate secxor
   */
   ;
 
-print 4
+print 2
+  macro load
   macro secxor;
 
 apply accumulateleaks;    /* combine all leakage statements into a single statement */
 
-print 4
+print 2
+  macro load
   macro secxor;
 
-verbose 4
+verbose 0
 
 apply inline;
 
-print 4
+print 2
   macro secxor;
 
 apply partialeval
