@@ -47,7 +47,7 @@ macro xor (w32 op1, w32 op2)
 
 macro and (w32 op1, w32 op2)
 {
-  leak andCompResult (op1 ^w32 op2);
+  leak andCompResult (op1 &w32 op2);
   leak andOperand (opA, op1, opB, op2);
   leak andOperandA (opA, op1);
   leak andOperandB (opB, op2);
@@ -64,7 +64,7 @@ macro load (w32 dst, w32 ptr, int index)
   val <- [w32 mem (int) (ptr +w32 (w32) (index * 4))];
   leak loadMemOperand (opR, val);
   leak loadTransition (dst, val);
-  leak loadOperand (opA, val); /* Needs confirmation */
+  leak loadOperand (opB, val); /* Needs confirmation */
   opR <- val;
   opA <- val;
   dst <- val;

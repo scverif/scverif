@@ -424,8 +424,13 @@ let rec pp_i ~full fmt i =
     Format.fprintf fmt "@[leak %a (%a);@]"
     pp_leak_info i (pp_list ",@ " (pp_e ~full)) es
   | Imacro(m, args) ->
-    Format.fprintf fmt "@[%s%a;@]"
-      m.mc_name (pp_margs ~full) args
+    if full then
+      Format.fprintf fmt "@[%s.%a%a;@]"
+        m.mc_name Uid.pp m.mc_id (pp_margs ~full) args
+    else
+      Format.fprintf fmt "@[%s%a;@]"
+        m.mc_name (pp_margs ~full) args
+
   | Ilabel lbl ->
     Format.fprintf fmt "%a:" (Lbl.pp_full ~full) lbl
   | Igoto lbl ->
