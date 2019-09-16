@@ -139,9 +139,32 @@ type eval_info = {
 }
 [@@deriving show]
 
+open BatString
+
+let contains_substring search target =
+  try
+    BatString.find search target >= 0
+  with Not_found ->
+    false
+
+type apply_target =
+  | Ident of ident list
+  | Wildcard
+  | Regex of string
+[@@deriving show, yojson]
+
+type apply_kind =
+  | Accumulate of apply_target * bool
+  | AddLeakCalls
+  | DeadCodeElim
+  | FilterLeakage of apply_target * bool
+  | InlineMacros
+  | PartialEval
+[@@deriving show, yojson]
+
 type apply_info = {
-  apply_t  : ident;
-  apply_ms : ident list
+  apply_kind   : apply_kind;
+  apply_target : apply_target;
 }
 [@@deriving show]
 

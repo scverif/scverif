@@ -149,7 +149,7 @@ type param =
 type instr_desc =
   | Iassgn of lval * expr
   | Ileak  of leak_info * expr list
-  | Imacro of macro * macro_arg list
+  | Imacro of macro_name * macro_arg list
   | Ilabel of Lbl.t
   | Igoto  of Lbl.t
   | Iigoto of V.t
@@ -163,9 +163,10 @@ and instr = {
 
 and cmd = instr list
 
+and macro_name = string
+
 and macro = {
-    mc_name   : string;
-    mc_id     : Uid.t;
+    mc_name   : macro_name;
     mc_loc    : Location.t;
     mc_params : param list;
     mc_locals : param list;

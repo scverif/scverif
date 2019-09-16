@@ -9,7 +9,8 @@
 %token LPAREN RPAREN LCURLY RCURLY LBRACKET RBRACKET
 %token LEFTARROW COLON SEMICOLON QUESTIONMARK COMMA EOF
 %token MACRO LEAK IF ELSE WHILE LABEL GOTO TRACE STATE
-%token ANNOTATION INIT REGION EXIT APPLY PRINT MASKVERIF
+%token ANNOTATION INIT REGION EXIT PRINT MASKVERIF
+%token APPLY ALL ADDLEAKAGE ACCUMULATE DEADCODEELIM WHITELIST BLACKLIST INLINE PARTIALEVAL
 %token INPUT OUTPUT SECRET PUBLIC URANDOM SHARING
 %token INCLUDE ASM IL VERBOSE
 %token BOOL TINT UINT W8 W16 W32 W64
@@ -197,13 +198,25 @@ initialization:
 eval_command:
   | ANNOTATION m=ident i=initialization* SEMICOLON { {eval_m = m; eval_i = i } }
 
-applicationlist:
+apply_targets:
+  | ALL
+    { Wilcard }
   | is=separated_list(COMMA,ident)
-    { is }
+    { Macro is }
+
+%inline accumulate_params:
+  | SUB ls=separated_list(COMMA,ident) SUB KEEP
+  | SUB KEEP SUB ls=separated_list(COMMA,ident)
 
 apply_command:
   | APPLY t=ident ms=applicationlist SEMICOLON
     { {apply_t = t; apply_ms = ms } }
+  | APPLY ADDLEAKAGE COLON SUB t=apply_target SEMICOLON
+    { { apply_kind = AddLeakage; apply_target = t } }
+  | APPLY ACCUMULATE COLON SUB t=apply_target p=accumulate_params SEMICOLON
+    { { apply_kind = Accumulate(); apply_target = t } }
+
+DEADCODEELIM WHITELIST BLACKLIST INLINE PARTIALEVAL
 
 printlist:
   | MACRO id=ident

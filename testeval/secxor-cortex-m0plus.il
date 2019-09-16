@@ -5,6 +5,7 @@ include asm "testasm/secxor-cortex-m0plus-O3.objdump"
 verbose 0
 
 apply addleakage
+  ldr3,
   secxor;
 
 apply inline

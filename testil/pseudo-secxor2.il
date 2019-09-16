@@ -57,7 +57,16 @@ print 2
   macro load
   macro secxor;
 
-apply accumulateleaks;    /* combine all leakage statements into a single statement */
+apply accumulateleaks: /* combine all leakage statements into a single statement */
+  - [secxor, load, store]
+  - xorCompResult,
+
+accumulateleaks:
+  - target: [secxor, load, store]
+  - all
+  - keep;
+
+accumulateleaks: - remove;
 
 print 2
   macro load
@@ -68,6 +77,7 @@ verbose 0
 apply inline;
 
 print 2
+  macro load
   macro secxor;
 
 apply partialeval
