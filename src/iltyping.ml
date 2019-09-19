@@ -33,15 +33,24 @@ let add_macro genv m =
 
 let update_macro genv m =
   try
-    { genv with macro = Ms.update m.mc_name m.mc_name m genv.macro}
-  with Not_found ->
+    let mold = Ms.find m.mc_name genv.macro in
+    if mold.mc_uid = m.mc_uid then
+      ty_error m.mc_loc "refusing to update macro with same uid" m
+    else
+      { genv with macro = Ms.update m.mc_name m.mc_name m genv.macro}
+  with
+    Not_found ->
     { genv with macro = Ms.add m.mc_name m genv.macro}
 
-let find_macro genv m =
+let find_macro_loc genv m =
   let loc = loc m in
   let m = unloc m in
   try Ms.find m genv.macro
   with Not_found -> ty_error loc "unknown macro %s" m
+
+let find_macro genv mname =
+  try Ms.find mname genv.macro
+  with Not_found -> ty_error Location._dummy "unknown macro %s" mname
 
 let find_macro_opt genv mname =
   Ms.Exceptionless.find mname genv.macro
@@ -461,10 +470,10 @@ let rec type_i env i =
       let es = List.map (fun e -> fst (type_e env e)) es in
       Ileak(i,es)
 
-    | Ilast.Imacro(m,args) ->
-      let m = find_macro env.genv m in
+    | Ilast.Imacro(mname,args) ->
+      let m = find_macro_loc env.genv mname in
       let args = check_args env (loc i) args m.mc_params in
-      Imacro(m,args)
+      Imacro(m.mc_name,args)
 
     | Ilast.Ilabel lbl ->
       let lbl', local = find_label env lbl in
@@ -518,7 +527,7 @@ let process_macro genv m =
 
   let m = {
       mc_name = unloc m.Ilast.mc_name;
-      mc_id   = Uid.fresh ();
+      mc_uid  = Uid.fresh ();
       mc_loc  = loc;
       mc_params;
       mc_locals;
@@ -545,7 +554,7 @@ let check_initval env loc v ty =
 
 let process_annotation genv evi =
   let open Ileval in
-  let m = find_macro genv evi.Ilast.eval_m in
+  let m = find_macro_loc genv evi.Ilast.eval_m in
   let ir = ref [] in
   let iv = ref [] in
   let ipv = ref [] in

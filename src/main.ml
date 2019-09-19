@@ -135,7 +135,7 @@ let process_trans_eval (eenv:Ileval.eenv) ms =
 
 let process_trans_inline genv ms =
   let pinline genv m =
-    let m = Ilinline.inline_macro m in
+    let m = Ilinline.inline_macro genv m in
     Glob_option.print_normal "@[<v>%a@]@." Il.pp_global_g (Gmacro m);
     Iltyping.update_macro genv m in
   List.fold_left pinline genv ms
@@ -161,30 +161,29 @@ let process_trans_accumulateleaks genv ms =
 let process_apply_transformation menv api =
   let genv = menv.genv in
   let eenv = menv.eenv in
-  match unloc api.apply_t with
-  | "inline" ->
-    let macros = Iltyping.process_apply_ms genv api in
+  match unloc api.apply_kind with
+  | InlineMacros ->
+    let macros = Iltyping.process_apply_target genv api.apply_target in
     { menv with genv = process_trans_inline genv macros }
-  | "addleakage" ->
-    let macros = Iltyping.process_apply_ms genv api in
+  | AddLeakCalls ->
+    let macros = Iltyping.process_apply_target genv api.apply_target in
     { menv with genv = process_trans_addleakage genv macros }
-  | "partialeval" ->
-    let macros = Iltyping.process_apply_ms genv api in
+  | PartialEval ->
+    let macros = Iltyping.process_apply_target genv api.apply_target in
     { menv with eenv = process_trans_eval eenv macros }
-  | "deadcodeelim" ->
-    let macros = Iltyping.process_apply_ms genv api in
-    (* FIXME: check availablity of eprog for m *)
+  | DeadCodeElim ->
+    let macros = Iltyping.process_apply_target genv api.apply_target in
+    (* FIXME: typecheck availablity of eprog for m *)
     { menv with eenv = process_trans_deadcodeelim eenv macros }
-  | "blacklistleaks" ->
+  | FilterLeakage(leaktrgts, keepLeaks) ->
+    Utils.hierror "apply_transformation" (Some (loc api.apply_kind))
+      "@[<v> FilterLeakage currently broken @]"
+    (*
     let m = Iltyping.process_apply_m genv api in
-    let ls = Iltyping.process_apply_ls genv api in
-    { menv with eenv = Ilcodeelim.leakageelim eenv m ls false}
-  | "whitelistleaks" ->
-    let m = Iltyping.process_apply_m genv api in
-    let ls = Iltyping.process_apply_ls genv api in
-    { menv with eenv = Ilcodeelim.leakageelim eenv m ls true}
-  | "accumulateleaks" ->
-    let macros = Iltyping.process_apply_ms genv api in
+    let ls =  Iltyping.process_apply_target genv leaktrgts in
+    { menv with eenv = Ilcodeelim.leakageelim eenv m ls keepLeaks}*)
+  | Accumulate(targets, _) ->
+    let macros = Iltyping.process_apply_target genv api.apply_target in
     { menv with genv = process_trans_accumulateleaks genv macros }
   | i ->
     Utils.hierror "apply_transformation" (Some (loc api.apply_t))

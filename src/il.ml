@@ -166,12 +166,13 @@ and cmd = instr list
 and macro_name = string
 
 and macro = {
-    mc_name   : macro_name;
-    mc_loc    : Location.t;
-    mc_params : param list;
-    mc_locals : param list;
-    mc_body   : cmd;
-  }
+  mc_name   : macro_name;
+  mc_uid    : Uid.t;
+  mc_loc    : Location.t;
+  mc_params : param list;
+  mc_locals : param list;
+  mc_body   : cmd;
+}
 
 type global =
   | Gvar   of V.t
@@ -182,7 +183,7 @@ module M = struct
 
   let pp_full ~full fmt m =
     if full then
-      Format.fprintf fmt "%s.%a" m.mc_name Uid.pp m.mc_id
+      Format.fprintf fmt "%s.%a" m.mc_name Uid.pp m.mc_uid
     else Format.fprintf fmt "%s" m.mc_name
 
   let pp fmt m = pp_full ~full:false fmt m
@@ -424,13 +425,13 @@ let rec pp_i ~full fmt i =
   | Ileak(i, es) ->
     Format.fprintf fmt "@[leak %a (%a);@]"
     pp_leak_info i (pp_list ",@ " (pp_e ~full)) es
-  | Imacro(m, args) ->
+  | Imacro(mcname, args) ->
     if full then
-      Format.fprintf fmt "@[%s.%a%a;@]"
-        m.mc_name Uid.pp m.mc_id (pp_margs ~full) args
+      Format.fprintf fmt "@[%s%a;@]"
+        mcname (pp_margs ~full) args
     else
       Format.fprintf fmt "@[%s%a;@]"
-        m.mc_name (pp_margs ~full) args
+        mcname (pp_margs ~full) args
 
   | Ilabel lbl ->
     Format.fprintf fmt "%a:" (Lbl.pp_full ~full) lbl

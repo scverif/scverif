@@ -100,7 +100,7 @@ type var_decl = {
 [@@deriving show]
 
 type param =
-  | Pvar   of var_decl  located
+  | Pvar   of var_decl located
   | Plabel of label
 [@@deriving show]
 

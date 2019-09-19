@@ -15,16 +15,16 @@ let check_param_eq m ml =
   with Invalid_argument _ ->
     false
 
-let add_leakicall genv m margs =
-  let mlname = m.mc_name ^ "_leak" in
-  match find_macro_opt genv mlname with
-  | None -> None
-  | Some ml ->
-    if check_param_eq m ml then
-      Some {i_desc = Imacro(ml, margs); i_loc = (ml.mc_loc, []) }
+let add_leakicall genv mname margs =
+  let mlname = mname ^ "_leak" in
+  match find_macro_opt genv mname, find_macro_opt genv mlname with
+  | Some m, Some ml ->
+    (if check_param_eq m ml then
+      Some {i_desc = Imacro(ml.mc_name, margs); i_loc = (ml.mc_loc, []) }
     else
       error "add_leakicall:" (ml.mc_loc, [])
-        "parameters of %s do not match %s" ml.mc_name m.mc_name
+        "parameters of %s do not match %s" ml.mc_name m.mc_name)
+  | _, _ -> None
 
 let rec traverse_code genv instrs =
   match instrs with
@@ -32,9 +32,9 @@ let rec traverse_code genv instrs =
   | i::is ->
     begin
       match i.i_desc with
-      | Imacro(m, margs) ->
+      | Imacro(mname, margs) ->
         begin
-          match (add_leakicall genv m margs) with
+          match (add_leakicall genv mname margs) with
           | Some il -> il :: i :: traverse_code genv is
           | None -> i :: traverse_code genv is
         end

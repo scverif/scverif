@@ -146,7 +146,7 @@ let add_i env loc id =
   let i = { i_desc = id; i_loc = loc } in
   env.econt <- i :: env.econt
 
-let rec inline_i env locs i =
+let rec inline_i genv env locs i =
   let loc = append_locs i.i_loc locs in
   match i.i_desc with
   | Iassgn(x,e) ->
@@ -156,7 +156,7 @@ let rec inline_i env locs i =
   | Imacro(m,args) ->
     let args = inline_args env loc args in
     let locs = fst loc :: snd loc in
-    inline_macro_app env locs m args
+    inline_macro_app genv env locs m args
   | Ilabel lbl ->
     let lbl = find_lbl env loc lbl in
     add_i env loc (Ilabel lbl)
@@ -167,48 +167,49 @@ let rec inline_i env locs i =
     add_i env loc (Iigoto (get_var loc (inline_var env loc x)))
   | Iif(e,c1,c2) ->
     let e  = inline_e env loc e in
-    let c1 = inline_c env locs c1 in
-    let c2 = inline_c env locs c2 in
+    let c1 = inline_c genv env locs c1 in
+    let c2 = inline_c genv env locs c2 in
     add_i env loc (Iif(e,c1,c2))
   | Iwhile(c1,e,c2) ->
-    let c1 = inline_c env locs c1 in
+    let c1 = inline_c genv env locs c1 in
     let e  = inline_e env loc e in
-    let c2 = inline_c env locs c2 in
+    let c2 = inline_c genv env locs c2 in
     add_i env loc (Iwhile(c1,e,c2))
 
-and inline_c env locs c =
+and inline_c genv env locs c =
   let cont = env.econt in
   env.econt <- [];
-  List.iter (inline_i env locs) c;
+  List.iter (inline_i genv env locs) c;
   let c = List.rev env.econt in
   env.econt <- cont;
   c
 
-and inline_macro_app env locs m args =
+and inline_macro_app genv env locs mcname args =
   let envm = empty_env env.elocals env.econt in
+  let m = Iltyping.find_macro genv mcname in
   add_params envm m.mc_params args;
   add_locals envm m.mc_locals;
-  List.iter (inline_i envm locs) m.mc_body;
+  List.iter (inline_i genv envm locs) m.mc_body;
   env.elocals <- envm.elocals;
   env.econt  <- envm.econt
 
-let inline_macro m =
+let inline_macro genv m =
   let env = empty_env [] [] in
   let mc_params = add_dparams env m.mc_params in
   add_locals env m.mc_locals;
-  List.iter (inline_i env []) m.mc_body;
+  List.iter (inline_i genv env []) m.mc_body;
   { mc_name = m.mc_name;
-      mc_id = Uid.fresh ();
+      mc_uid = Uid.fresh ();
       mc_loc = m.mc_loc;
       mc_params;
       mc_locals = env.elocals;
       mc_body = List.rev env.econt;
     }
 
-let inline_global g =
+let inline_global genv g =
   match g with
   | Gvar _ -> g
-  | Gmacro m -> Gmacro (inline_macro m)
+  | Gmacro m -> Gmacro (inline_macro genv m)
 
 let inline_globals gs =
   List.map inline_global gs

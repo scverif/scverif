@@ -470,10 +470,10 @@ let rec eval_i st =
     | Ileak(li, es) ->
       let i' = { i_desc = Ileak(li, snd (eval_es st es)); i_loc = i.i_loc } in
       next st (Some i') c
-    | Imacro (m,_) ->
+    | Imacro (mname,_) ->
       ev_hierror () "@[<v>%a@ eval Imacro: found macro %s but expected it to be inlined]"
         pp_state st
-        m.mc_name
+        mname
     | Ilabel _ ->
       next st (Some i) c
     | Igoto lbl ->
