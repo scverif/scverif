@@ -10,7 +10,7 @@
 %token LEFTARROW COLON SEMICOLON QUESTIONMARK COMMA EOF
 %token MACRO LEAK IF ELSE WHILE LABEL GOTO TRACE STATE
 %token ANNOTATION INIT REGION EXIT PRINT MASKVERIF
-%token APPLY ALL ADDLEAKAGE ACCUMULATE DEADCODEELIM WHITELIST BLACKLIST INLINE PARTIALEVAL
+%token SCVDOCSTART SCVDOCEND NULL
 %token INPUT OUTPUT SECRET PUBLIC URANDOM SHARING
 %token INCLUDE ASM IL VERBOSE
 %token BOOL TINT UINT W8 W16 W32 W64
@@ -195,29 +195,6 @@ initialization:
   | INPUT ty=annot_ty_kind i=ident r=range?
     { Input(ty, i, r) }
 
-eval_command:
-  | ANNOTATION m=ident i=initialization* SEMICOLON { {eval_m = m; eval_i = i } }
-
-apply_targets:
-  | ALL
-    { Wilcard }
-  | is=separated_list(COMMA,ident)
-    { Macro is }
-
-%inline accumulate_params:
-  | SUB ls=separated_list(COMMA,ident) SUB KEEP
-  | SUB KEEP SUB ls=separated_list(COMMA,ident)
-
-apply_command:
-  | APPLY t=ident ms=applicationlist SEMICOLON
-    { {apply_t = t; apply_ms = ms } }
-  | APPLY ADDLEAKAGE COLON SUB t=apply_target SEMICOLON
-    { { apply_kind = AddLeakage; apply_target = t } }
-  | APPLY ACCUMULATE COLON SUB t=apply_target p=accumulate_params SEMICOLON
-    { { apply_kind = Accumulate(); apply_target = t } }
-
-DEADCODEELIM WHITELIST BLACKLIST INLINE PARTIALEVAL
-
 printlist:
   | MACRO id=ident
     { { p_pk = Macro; p_id = id} }
@@ -241,14 +218,47 @@ include_kind:
 include_:
   | INCLUDE k=include_kind s=loc(STRING) { (k,s) }
 
+scvmapping:
+  | k=loc(STRING) COLON v=scvvalue
+    { {key=k; value=v} }
+  | k=loc(IDENT) COLON v=scvvalue
+    { {key=k; value=v} }
+
+scvmap:
+  | kv=separated_list(COMMA, scvmapping) SEMICOLON
+    { SCVMap kv }
+
+scvlist:
+  | LBRACKET l=separated_list(COMMA, scvvalue) RBRACKET
+    { SCVList l }
+
+scvvalue:
+  | s=loc(STRING)  { SCVString s }
+  | s=loc(IDENT)   { SCVString s }
+  | i=INT          { SCVInt i }
+  | m=scvmap       { m }
+  | l=scvlist      { l }
+  | TRUE           { SCVBool true }
+  | FALSE          { SCVBool false }
+  | NULL           { SCVNull }
+
+%inline scvdoc_:
+(* No usecase for a top-level list, instead we always start with a dictionary (i.e. map)
+  | l=separated_list(COMMA, scvvalue)
+    { SCVList l } *)
+  | kv=separated_list(COMMA, scvmapping)
+    { SCVMap kv }
+
+scvdoc:
+  | SCVDOCSTART d=scvdoc_ SCVDOCEND { d }
+
 command1:
   | x=loc(var_decl) SEMICOLON { Gvar   x }
   | m=loc(macro_decl)         { Gmacro m }
   | i=include_                { Ginclude i }
-  | e=eval_command            { Gannotation e }
-  | a=apply_command           { Gapply a }
   | p=print_command           { p }
   | VERBOSE i=INT             { Gverbose (B.to_int i) }
+  | d=scvdoc                  { Gscvcmd d }
   | error        { parse_error (Location.make $startpos $endpos) "" }
 
 command:

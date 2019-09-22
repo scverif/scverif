@@ -4,13 +4,6 @@ printf "include il \"testil/pseudo-secxor2.il\"\n" | ./main.native | ../maskveri
 
 include il "isa/pseudoisa.il"
 
-verbose 0
-
-/* declare your variables here at will
-   or use the registers provided in pseudoisa.il
-*/
-w32 r42;
-
 macro secxor ()
 {
   load(r4, r1, 0);
@@ -53,58 +46,53 @@ annotate secxor
   */
   ;
 
-print 2
-  macro load
-  macro secxor;
+---
+target:
+  asd: false,
+  bsd: true;,
+params:
+  leakages: [xorCompResult, xorOperandA],
+  keep: true;
+...
 
-apply accumulateleaks: /* combine all leakage statements into a single statement */
-  - [secxor, load, store]
-  - xorCompResult,
 
-accumulateleaks:
-  - target: [secxor, load, store]
-  - all
-  - keep;
+// bigger example
+---
+addleakage:
+  targets: secxor,
+  restrict: "*transition*";
+accumulate:
+  targets: [secxor, load, store]
+  keepleaks: true
+  leakages: [xorCompResult, xorOperandA];
+inline:
+  targets: any
+deadcodeelim:
+  targets: secxor
+  print: y
+check:
+  targets: secxor
+  algorithm: NI
+    order: 2
+  print: debug
+...
 
-accumulateleaks: - remove;
+// example list (target macros, no params) -> not allowed as toplevel
+---
+[secxor, secand, secload]
+...
 
-print 2
-  macro load
-  macro secxor;
+// example target list with no params
+---
+target: [secxor, secand, secload];
+...
 
-verbose 0
+// example singleton (target macro, no params) -> not allowed as toplevel
+---
+secxor
+...
 
-apply inline;
-
-print 2
-  macro load
-  macro secxor;
-
-apply partialeval
-  secxor;
-
-apply blacklistleaks      /* remove all leaks which are in the list below */
-  secxor,                 /* 1st param is the name of the macro */
-  xorOperandA,
-  xorOperandB
-  ;
-
-/*
-apply whitelistleaks      /* remove all leaks which are not in the list */
-  secxor,                 /* 1st param is the name of the macro */
-  xorCompResult,
-  storeOperand,
-  loadOperand,
-  xorTransition,
-  storeTransition,
-  loadTransition
-  ;*/
-
-/* required to print maskverif */
-apply deadcodeelim
-  secxor;
-
-print 0
-  /*macro secxor*/
-  /*maskverif secxor*/
-  ;
+// example target singleton without parameters
+---
+target: secxor
+...

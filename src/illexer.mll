@@ -98,6 +98,9 @@ rule main = parse
 
   | "\"" { STRING (Buffer.contents (string (Buffer.create 0) lexbuf)) }
 
+  | "..." { SCVDOCEND }
+  | "---" { SCVDOCSTART }
+
   | (digit+) as s
       { INT (Bigint.of_string s) }
 

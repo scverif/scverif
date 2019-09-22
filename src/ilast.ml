@@ -173,6 +173,29 @@ type read_kind =
   | Il
 [@@deriving show]
 
+type scvstring = string located
+[@@deriving show]
+
+type scvmapping = {
+  key : scvstring;
+  value : scvval;
+}
+
+and scvval =
+  | SCVNull
+  | SCVBool of bool
+  | SCVInt of B.zint
+  | SCVString of scvstring
+  | SCVApplication of apply_kind
+  | SCVMap of scvmapping list
+  | SCVList of scvval list
+[@@deriving show]
+
+type scvdoc =
+  | SCVMap of scvmapping list
+  | SCVList of scvval list
+[@@deriving show]
+
 type print_kind =
   | Macro
   | State
@@ -195,8 +218,10 @@ type command =
   | Gapply of apply_info
   | Gverbose of int
   | Gprint of int * (print_info list)
+  | Gscvcmd of scvdoc
   | Gexit
 [@@deriving show]
+
 
 (* ***************************************************** *)
 let mk_var id =

@@ -249,6 +249,11 @@ let process_print menv vb pi =
   Glob_option.set_verbose ovb;
   menv
 
+let process_scv mainenv (scv:Ilast.scvdoc) =
+  match scv with
+  | Ilast.SCVMap _ -> Format.printf "@[%a]" pp_scvdoc scv; mainenv
+  | Ilast.SCVList _ -> assert false (* deliberately unsupported *)
+
 let rec process_command really_exit mainenv = function
   | Ilast.Gvar x   -> process_gvar mainenv x
   | Ilast.Gmacro m -> process_macro mainenv m
@@ -258,6 +263,7 @@ let rec process_command really_exit mainenv = function
   | Ilast.Ginclude (Il, filename) -> process_il mainenv filename
   | Ilast.Gverbose i -> process_verbose mainenv i
   | Ilast.Gprint (vb, pi) -> process_print mainenv vb pi
+  | Ilast.Gscvcmd (scvdoc) -> process_scv mainenv scvdoc
   | Ilast.Gexit    -> if really_exit then exit 0 else mainenv
 
 and process_asm mainenv filename =
