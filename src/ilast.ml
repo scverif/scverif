@@ -150,7 +150,7 @@ let contains_substring search target =
 type apply_target =
   | Ident of ident list
   | Wildcard
-  | Regex of string
+  | Regex of string located
 [@@deriving show, yojson]
 
 type apply_kind =

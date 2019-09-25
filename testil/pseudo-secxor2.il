@@ -48,51 +48,42 @@ annotate secxor
 
 ---
 target:
-  asd: false,
-  bsd: true;,
+  asd: false
+  bsd: true;
 params:
-  leakages: [xorCompResult, xorOperandA],
+  leakages: [xorCompResult, xorOperandA]
   keep: true;
 ...
 
 
 // bigger example
 ---
-addleakage:
-  targets: secxor,
+asddleakage:
+  targets: secxor
   restrict: "*transition*";
-accumulate:
+asccumulate:
   targets: [secxor, load, store]
   keepleaks: true
   leakages: [xorCompResult, xorOperandA];
-inline:
-  targets: any
-deadcodeelim:
+isnline:
+  targets: any;
+dseadcodeelim:
   targets: secxor
-  print: y
-check:
+  prsint: y;
+csheck:
   targets: secxor
-  algorithm: NI
-    order: 2
-  print: debug
+  algorithm:
+    type: NI
+    order: 2;
+  prisnt: debug;
 ...
 
-// example list (target macros, no params) -> not allowed as toplevel
+/* example list (target macros, no params) -> not allowed as toplevel
 ---
 [secxor, secand, secload]
-...
+...*/
 
-// example target list with no params
----
-target: [secxor, secand, secload];
-...
-
-// example singleton (target macro, no params) -> not allowed as toplevel
+/* example singleton (target macro, no params) -> not allowed as toplevel
 ---
 secxor
-...
-
-// example target singleton without parameters
----
-target: secxor
-...
+...*/

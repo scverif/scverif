@@ -225,7 +225,7 @@ scvmapping:
     { {key=k; value=v} }
 
 scvmap:
-  | kv=separated_list(COMMA, scvmapping) SEMICOLON
+  | kv=list(scvmapping) SEMICOLON
     { SCVMap kv }
 
 scvlist:
@@ -246,7 +246,7 @@ scvvalue:
 (* No usecase for a top-level list, instead we always start with a dictionary (i.e. map)
   | l=separated_list(COMMA, scvvalue)
     { SCVList l } *)
-  | kv=separated_list(COMMA, scvmapping)
+  | kv=list(scvmapping)
     { SCVMap kv }
 
 scvdoc:
