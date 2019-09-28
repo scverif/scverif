@@ -139,61 +139,31 @@ type eval_info = {
 }
 [@@deriving show]
 
-open BatString
-
-let contains_substring search target =
-  try
-    BatString.find search target >= 0
-  with Not_found ->
-    false
-
 type apply_target =
   | Ident of ident list
   | Wildcard
   | Regex of string located
-[@@deriving show, yojson]
+[@@deriving show]
 
 type apply_kind =
-  | Accumulate of apply_target * bool
+  | Accumulate of ((string [@key "target"]) * (bool [@key "keep"])) [@key "accumulatasdsae"]
   | AddLeakCalls
   | DeadCodeElim
-  | FilterLeakage of apply_target * bool
+  | FilterLeakage of ((string [@key "target"]) * (bool [@key "remove"])) [@key "filterleakage"]
   | InlineMacros
   | PartialEval
-[@@deriving show, yojson]
+[@@deriving show, protocol ~driver:(module Scv)]
 
 type apply_info = {
   apply_kind   : apply_kind;
   apply_target : apply_target;
+  apply_loc    : Utils.full_loc;
 }
 [@@deriving show]
 
 type read_kind =
   | Asm
   | Il
-[@@deriving show]
-
-type scvstring = string located
-[@@deriving show]
-
-type scvmapping = {
-  key : scvstring;
-  value : scvval;
-}
-
-and scvval =
-  | SCVNull
-  | SCVBool of bool
-  | SCVInt of B.zint
-  | SCVString of scvstring
-  | SCVApplication of apply_kind
-  | SCVMap of scvmapping list
-  | SCVList of scvval list
-[@@deriving show]
-
-type scvdoc =
-  | SCVMap of scvmapping list
-  | SCVList of scvval list
 [@@deriving show]
 
 type print_kind =
@@ -218,7 +188,7 @@ type command =
   | Gapply of apply_info
   | Gverbose of int
   | Gprint of int * (print_info list)
-  | Gscvcmd of scvdoc
+  | Gscvcmd of Scv.scvval
   | Gexit
 [@@deriving show]
 

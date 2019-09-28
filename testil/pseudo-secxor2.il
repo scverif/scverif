@@ -39,7 +39,27 @@ annotate secxor
   input sharing b
   input urandom rnd
   output sharing c
-  /*
+
+/*
+annotate:
+  secxor:
+    region:
+      mem:
+        a: w32[0:2]
+        b: w32[0:2]
+        c: w32[0:2]
+        rnd: w32[0:9];;
+    init:
+      r0: c[0]
+      r1: a[0]
+      r2: b[0]
+      r3: rnd[0];
+    input:
+      sharing: [a, b]
+      urandom: rnd;
+    output:
+      sharing: [c];
+  ;
     everything else assumed to be public input
     !and! public output for maskverif
     e.g. global "pub" variable
@@ -47,37 +67,34 @@ annotate secxor
   ;
 
 ---
-target:
-  asd: false
-  bsd: true;
-params:
-  leakages: [xorCompResult, xorOperandA]
+accumulate:
+  target: secxor
   keep: true;
 ...
 
 
-// bigger example
+/* bigger example
 ---
-asddleakage:
+addleakage:
   targets: secxor
   restrict: "*transition*";
-asccumulate:
+accumulate:
   targets: [secxor, load, store]
   keepleaks: true
   leakages: [xorCompResult, xorOperandA];
-isnline:
+inline:
   targets: any;
-dseadcodeelim:
+deadcodeelim:
   targets: secxor
-  prsint: y;
-csheck:
+  Print: y;
+check:
   targets: secxor
   algorithm:
     type: NI
     order: 2;
-  prisnt: debug;
+  Print: debug;
 ...
-
+*/
 /* example list (target macros, no params) -> not allowed as toplevel
 ---
 [secxor, secand, secload]

@@ -161,34 +161,28 @@ let process_trans_accumulateleaks genv ms =
 let process_apply_transformation menv api =
   let genv = menv.genv in
   let eenv = menv.eenv in
-  match unloc api.apply_kind with
+  let macros = assert false in
+  match api.apply_kind with
   | InlineMacros ->
-    let macros = Iltyping.process_apply_target genv api.apply_target in
     { menv with genv = process_trans_inline genv macros }
   | AddLeakCalls ->
-    let macros = Iltyping.process_apply_target genv api.apply_target in
     { menv with genv = process_trans_addleakage genv macros }
   | PartialEval ->
-    let macros = Iltyping.process_apply_target genv api.apply_target in
     { menv with eenv = process_trans_eval eenv macros }
   | DeadCodeElim ->
-    let macros = Iltyping.process_apply_target genv api.apply_target in
     (* FIXME: typecheck availablity of eprog for m *)
     { menv with eenv = process_trans_deadcodeelim eenv macros }
   | FilterLeakage(leaktrgts, keepLeaks) ->
-    Utils.hierror "apply_transformation" (Some (loc api.apply_kind))
+    Utils.hierror "apply_transformation" (Some (fst api.apply_loc))
       "@[<v> FilterLeakage currently broken @]"
     (*
     let m = Iltyping.process_apply_m genv api in
     let ls =  Iltyping.process_apply_target genv leaktrgts in
     { menv with eenv = Ilcodeelim.leakageelim eenv m ls keepLeaks}*)
-  | Accumulate(targets, _) ->
+(*  | Accumulate(targets, _) ->
     let macros = Iltyping.process_apply_target genv api.apply_target in
     { menv with genv = process_trans_accumulateleaks genv macros }
-  | i ->
-    Utils.hierror "apply_transformation" (Some (loc api.apply_t))
-      "@[<v> transformation %s unknown@]" i
-
+*)
 let process_annotation menv ai =
   let genv = menv.genv in
   let eenv = menv.eenv in
@@ -249,10 +243,20 @@ let process_print menv vb pi =
   Glob_option.set_verbose ovb;
   menv
 
-let process_scv mainenv (scv:Ilast.scvdoc) =
+let process_scv mainenv (scv:Scv.scvval) =
   match scv with
-  | Ilast.SCVMap _ -> Format.printf "@[%a]" pp_scvdoc scv; mainenv
-  | Ilast.SCVList _ -> assert false (* deliberately unsupported *)
+  | SCVMap _ ->
+    begin
+      let test = Ilast.Accumulate ("targetname", true) in
+      let testscv = apply_kind_to_scv test in
+      Format.printf "@[%a]" Scv.pp_scvval testscv;
+
+      Format.printf "@[%a]" Scv.pp_scvval scv;
+      let api = apply_kind_of_scv_exn scv in
+      Format.printf "@[%a]" pp_apply_kind api;
+      mainenv
+    end
+  | _ -> assert false (* deliberately unsupported *)
 
 let rec process_command really_exit mainenv = function
   | Ilast.Gvar x   -> process_gvar mainenv x
@@ -263,7 +267,7 @@ let rec process_command really_exit mainenv = function
   | Ilast.Ginclude (Il, filename) -> process_il mainenv filename
   | Ilast.Gverbose i -> process_verbose mainenv i
   | Ilast.Gprint (vb, pi) -> process_print mainenv vb pi
-  | Ilast.Gscvcmd (scvdoc) -> process_scv mainenv scvdoc
+  | Ilast.Gscvcmd (scv) -> process_scv mainenv scv
   | Ilast.Gexit    -> if really_exit then exit 0 else mainenv
 
 and process_asm mainenv filename =

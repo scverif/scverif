@@ -3,6 +3,7 @@
   open Utils
   open Common
   open Ilast
+  open Scv
 
 %}
 
@@ -195,6 +196,9 @@ initialization:
   | INPUT ty=annot_ty_kind i=ident r=range?
     { Input(ty, i, r) }
 
+eval_command:
+  | ANNOTATION m=ident i=initialization* SEMICOLON { {eval_m = m; eval_i = i } }
+
 printlist:
   | MACRO id=ident
     { { p_pk = Macro; p_id = id} }
@@ -219,10 +223,10 @@ include_:
   | INCLUDE k=include_kind s=loc(STRING) { (k,s) }
 
 scvmapping:
-  | k=loc(STRING) COLON v=scvvalue
-    { {key=k; value=v} }
-  | k=loc(IDENT) COLON v=scvvalue
-    { {key=k; value=v} }
+  | k=STRING COLON v=scvvalue (* TODO location *)
+    { (k, v) }
+  | k=IDENT COLON v=scvvalue
+    { (k, v) }
 
 scvmap:
   | kv=list(scvmapping) SEMICOLON
@@ -233,8 +237,8 @@ scvlist:
     { SCVList l }
 
 scvvalue:
-  | s=loc(STRING)  { SCVString s }
-  | s=loc(IDENT)   { SCVString s }
+  | s=STRING  { SCVString s } (* TODO locations *)
+  | s=IDENT   { SCVString s }
   | i=INT          { SCVInt i }
   | m=scvmap       { m }
   | l=scvlist      { l }
@@ -256,7 +260,7 @@ command1:
   | x=loc(var_decl) SEMICOLON { Gvar   x }
   | m=loc(macro_decl)         { Gmacro m }
   | i=include_                { Ginclude i }
-  | p=print_command           { p }
+  | e=eval_command            { Gannotation e }
   | VERBOSE i=INT             { Gverbose (B.to_int i) }
   | d=scvdoc                  { Gscvcmd d }
   | error        { parse_error (Location.make $startpos $endpos) "" }

@@ -608,25 +608,12 @@ let process_annotation genv evi =
        input_var   = List.rev !ipv;
        output_var  = List.rev !opv;}
 
-let process_apply_ms genv api =
-  match api.Ilast.apply_ms with
-  | [] -> get_macros genv
-  | ms  ->
-    List.map (find_macro genv) ms
-
-let process_apply_m genv api =
-  match api.Ilast.apply_ms with
-  | m::_ ->
-    find_macro genv m
-  | [] ->
-    Utils.hierror "process_apply_m" (Some (loc api.apply_t))
-            "@[<v> no macro identifiers given]"
-
-let process_apply_ls genv api =
-  match api.Ilast.apply_ms with
-  | []
-  | _::[] ->
-    Utils.hierror "process_apply_ls" (Some (loc api.apply_t))
-      "@[<v> no leakage identifiers given]"
-  | _::ms  ->
-    ms
+let process_apply_target genv (api:Ilast.apply_info) =
+  match api.apply_target with
+  | Ilast.Wildcard ->
+    get_macros genv
+  | Ilast.Ident is ->
+    List.map (fun i -> find_macro genv (unloc i)) is
+  | Ilast.Regex _ ->
+    Utils.hierror "process_apply_targets" (Some (fst api.apply_loc))
+      "@[<v> regex targets not yet supported]"
