@@ -16,14 +16,21 @@ let rec pp_scvval fmt v =
   | SCVInt i -> Format.fprintf fmt "%a" B.pp_print i
   | SCVString s -> Format.fprintf fmt "%s" s
   | SCVMap m ->
-    let pp_map (k,v) =
-      Format.fprintf fmt "@[<v>%a:@  %a@]@."
-        pp_scvstring k
-        pp_scvval v in
-    List.iter pp_map m
+    let pp_map fmt (k,v) =
+      match v with
+      | SCVMap _ ->
+        Format.fprintf fmt "@[<v>%a:@ @[<v>  %a@]@]"
+          pp_scvstring k
+          pp_scvval v
+      | _ ->
+        Format.fprintf fmt "@[<v>%a: %a@]"
+          pp_scvstring k
+          pp_scvval v in
+    Format.fprintf fmt "@[<v>%a@];"
+      (pp_list "@ " pp_map) m
   | SCVList l ->
-    Format.fprintf fmt "@[%a@]"
-      (pp_list ",@" (pp_scvval)) l
+    Format.fprintf fmt "list [%a]"
+      (pp_list ", " (pp_scvval)) l
 
 module Driver : Ppx_protocol_driver.Driver with type t = scvval = struct
 
@@ -67,6 +74,7 @@ module Driver : Ppx_protocol_driver.Driver with type t = scvval = struct
     | _ -> failwith "SCVMap expected but not encountered"
 
   let is_alist = function SCVMap _ -> true | _ -> false
+
 
   let of_int i = SCVInt (B.of_int i)
   let to_int = function SCVInt i -> B.to_int i | e -> raise_errorf e "SCVInt expected but not found"
