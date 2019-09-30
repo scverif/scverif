@@ -222,36 +222,45 @@ include_kind:
 include_:
   | INCLUDE k=include_kind s=loc(STRING) { (k,s) }
 
-scvmapping:
-  | k=STRING COLON v=scvvalue (* TODO location *)
-    { (k, v) }
-  | k=IDENT COLON v=scvvalue
-    { (k, v) }
+scvrecord: (* named arguments, not valid as scvvalue *)
+  | k=scvstringorident COLON v=scvvalue (* TODO location *)
+    { SCVRecord [(SCVString k, v)] }
 
-scvmap:
-  | kv=list(scvmapping) SEMICOLON
-    { SCVMap kv }
+%inline scvstringorident:
+  | s=STRING { s }
+  | i=IDENT  { i }
+
+%inline scvvalueterminal:
+  | s=scvstringorident { SCVString s } (* TODO locations *)
+  | i=INT              { SCVInt i }
+  | TRUE               { SCVBool true }
+  | FALSE              { SCVBool false }
+  | NULL               { SCVNull }
+
+scvvalue:
+  | t=scvvalueterminal { t }
+  | l=scvlist          { l }
+  | m=scvmap           { m }
 
 scvlist:
   | LBRACKET l=separated_list(COMMA, scvvalue) RBRACKET
     { SCVList l }
 
-scvvalue:
-  | s=STRING  { SCVString s } (* TODO locations *)
-  | s=IDENT   { SCVString s }
-  | i=INT          { SCVInt i }
-  | m=scvmap       { m }
-  | l=scvlist      { l }
-  | TRUE           { SCVBool true }
-  | FALSE          { SCVBool false }
-  | NULL           { SCVNull }
+scvmapentry:
+  | k=scvstringorident COLON v=scvvalueterminal
+    { SCVRecord [(k, v)] } (* associative list with single element *)
+  | k=scvstringorident COLON v=scvlist
+    { SCVRecord [(k, v)] } (* associative list with single element *)
+  | m=scvmap
+    { m }      (* nested variant (constructor call) *)
+
+scvmap: (* variants consists of constructor name and named arguments (records) *)
+  | k=scvstringorident LPAREN e=list(scvmapentry) RPAREN
+    { SCVMap(k, e) }
 
 %inline scvdoc_:
-(* No usecase for a top-level list, instead we always start with a dictionary (i.e. map)
-  | l=separated_list(COMMA, scvvalue)
-    { SCVList l } *)
-  | kv=list(scvmapping)
-    { SCVMap kv }
+  | kv=list(scvmap)
+    { kv }
 
 scvdoc:
   | SCVDOCSTART d=scvdoc_ SCVDOCEND { d }
