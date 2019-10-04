@@ -65,9 +65,9 @@ val pp_vars    : Format.formatter -> value Il.Mv.t -> unit
 val pp_state   : Format.formatter -> state -> unit
 val pp_initial : Format.formatter -> initial -> unit
 
-val find_state     : eenv -> string -> state
-val update_state   : eenv -> macro -> state -> eenv
-val find_initial   : eenv -> string -> initial
-val update_initial : eenv -> macro -> initial -> eenv
+val find_state     : eenv -> Il.macro_name -> state
+val update_state   : eenv -> Il.macro_name -> state -> eenv
+val find_initial   : eenv -> Il.macro_name -> initial
+val update_initial : eenv -> Il.macro_name -> initial -> eenv
 
-val partial_eval : eenv -> macro -> state
+val partial_eval : eenv -> Il.macro -> state

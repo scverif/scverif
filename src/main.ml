@@ -117,158 +117,177 @@ let process_macro menv m =
   let genv = Iltyping.add_macro genv m in
   { menv with genv = genv }
 
-let process_verbose menv i =
+let process_verbose (menv:mainenv) (v:Scv.scvverbosity) =
+  let i, _ = Scv.scvverbosity_to_glob v in
   Glob_option.set_verbose i;
   Glob_option.print_full "verbose = %i; full = %b@."
     !Glob_option.verbose !Glob_option.full;
   menv
 
-let process_trans_eval (eenv:Ileval.eenv) ms =
-  let open Ileval in
-  let peval eenv m =
+let process_trans_partialeval (menv:mainenv) (target:Scv.scvtarget) =
+  let ms = Iltyping.macronames_of_scvtarget menv.genv target in
+  let partialeval eenv mn =
+    let m = Iltyping.find_macro menv.genv mn in
     let estate = Ileval.partial_eval eenv m in
-    Glob_option.print_normal "@[<v>partial evaluation of %s@ %a@]@."
-      m.mc_name pp_state estate;
-    let eenv = Ileval.update_state eenv m estate in
-    eenv in
-  List.fold_left peval eenv ms
+    Ileval.update_state eenv mn estate in
+  { menv with eenv = List.fold_left partialeval menv.eenv ms }
 
-let process_trans_inline genv ms =
-  let pinline genv m =
+let process_trans_inline (menv:mainenv) (target:Scv.scvtarget) =
+  let ms = Iltyping.macronames_of_scvtarget menv.genv target in
+  let inline genv mn =
+    let m = Iltyping.find_macro menv.genv mn in
     let m = Ilinline.inline_macro genv m in
-    Glob_option.print_normal "@[<v>%a@]@." Il.pp_global_g (Gmacro m);
     Iltyping.update_macro genv m in
-  List.fold_left pinline genv ms
+  { menv with genv = List.fold_left inline menv.genv ms }
 
-let process_trans_addleakage genv ms =
-  let addleak genv m =
-    let open Illeakage in
-    Illeakage.add_leakage genv m in
-  List.fold_left addleak genv ms
+let process_trans_filterleakage (menv:mainenv) (target:Scv.scvtarget) (leaktarget:Scv.scvtarget) (reverse:bool) =
+  let ms = Iltyping.macronames_of_scvtarget menv.genv target in
+  let filterleak eenv mn =
+    Illeakage.filterleakage eenv mn leaktarget reverse in
+  { menv with eenv = List.fold_left filterleak menv.eenv ms }
 
-let process_trans_deadcodeelim eenv ms =
-  let pelim eenv m =
+let process_trans_addleakage (menv:mainenv) (target:Scv.scvtarget) =
+  let ms = Iltyping.macronames_of_scvtarget menv.genv target in
+  let addleak genv mn =
+    Illeakage.addleakage genv mn in
+  { menv with genv = List.fold_left addleak menv.genv ms }
+
+let process_trans_deadcodeelim (menv:mainenv) (target:Scv.scvtarget) =
+  let ms = Iltyping.macronames_of_scvtarget menv.genv target in
+  let codeelim eenv m =
     let open Ilcodeelim in
       Ilcodeelim.deadcodeelim eenv m in
-   List.fold_left pelim eenv ms
+  { menv with eenv = List.fold_left codeelim menv.eenv ms }
 
-let process_trans_accumulateleaks genv ms =
-  let accumulate genv m =
-    let open Illeakage in
-    Illeakage.accumulate_leakages genv m in
-  List.fold_left accumulate genv ms
+let process_trans_accumulateleaks (menv:mainenv) (target:Scv.scvtarget) (leaks:Scv.scvtarget) (keep:bool) =
+  let ms = Iltyping.macronames_of_scvtarget menv.genv target in
+  let accumulate genv mn =
+    Illeakage.accumulate_leakages genv mn leaks keep in
+  { menv with genv = List.fold_left accumulate menv.genv ms }
 
-let process_apply_transformation menv api =
-  let genv = menv.genv in
-  let eenv = menv.eenv in
-  let macros = assert false in
-  match api.apply_kind with
-  | InlineMacros ->
-    { menv with genv = process_trans_inline genv macros }
-  | AddLeakCalls ->
-    { menv with genv = process_trans_addleakage genv macros }
-  | PartialEval ->
-    { menv with eenv = process_trans_eval eenv macros }
-  | DeadCodeElim ->
-    (* FIXME: typecheck availablity of eprog for m *)
-    { menv with eenv = process_trans_deadcodeelim eenv macros }
-  | FilterLeakage(leaktrgts, keepLeaks) ->
-    Utils.hierror "apply_transformation" (Some (fst api.apply_loc))
-      "@[<v> FilterLeakage currently broken @]"
-    (*
-    let m = Iltyping.process_apply_m genv api in
-    let ls =  Iltyping.process_apply_target genv leaktrgts in
-    { menv with eenv = Ilcodeelim.leakageelim eenv m ls keepLeaks}*)
-(*  | Accumulate(targets, _) ->
-    let macros = Iltyping.process_apply_target genv api.apply_target in
-    { menv with genv = process_trans_accumulateleaks genv macros }
-*)
-let process_annotation menv ai =
+let process_annotation (menv:mainenv) ai =
   let genv = menv.genv in
   let eenv = menv.eenv in
   let m, initial = Iltyping.process_annotation genv ai in
-  let eenv = Ileval.update_initial eenv m initial in
+  let eenv = Ileval.update_initial eenv m.mc_name initial in
   { menv with eenv = eenv }
 
-let process_print menv vb pi =
-  let ovb = !Glob_option.verbose in
-  (* FIXME: typecheck pi.p_ms *)
-  let tprint menv pi =
-    let m =
-      match Iltyping.find_macro_opt menv.genv (unloc pi.p_id) with
-      | Some m -> m
-      | None ->
-        Utils.hierror "process_print" (Some (loc pi.p_id))
-          "@[<v> unknown macro %s@]" (unloc pi.p_id) in
-    match pi.p_pk with
-    | Macro ->
-(*      Format.printf
-        "@[<v>Starting debug genv.macro@]@.";
-      Utils.Ms.iter
-        (fun k m ->
-           Format.printf
-             "@[<v>Debug @[%s@ %a@]]@."
-             k
-             (pp_macro ~full:!Glob_option.full) m)
-        menv.genv.macro*)
-      Format.printf "@[<v>%a@]@."
-        (pp_macro ~full:!Glob_option.full) m
-    | State ->
-      begin
-        let st = Ileval.find_state menv.eenv (unloc pi.p_id) in
-        Format.printf "@[<v>state of %s:@ %a@]@."
-         m.mc_name (Ileval.pp_state) st
-      end
-    | InitialEnv ->
-      begin
-        let ii = Ileval.find_initial menv.eenv (unloc pi.p_id) in
-        Format.printf "@[<v>initials of %s:@ %a@]@."
-          m.mc_name (Ileval.pp_initial) ii
-      end
-    | EvalTrace ->
-      begin
-        let st = Ileval.find_state menv.eenv (unloc pi.p_id) in
-        Format.printf "@[<v>evaluated trace of %s:@  %a@]@"
-          m.mc_name
-          pp_cmd_g st.st_eprog
-      end
-    | MaskVerif ->
-      begin
-        let st = Ileval.find_state menv.eenv (unloc pi.p_id) in
-        let an = Ileval.find_initial menv.eenv (unloc pi.p_id) in
-        Ilexport.print_mv st an m
-      end in
-  Glob_option.set_verbose vb;
-  List.iter (tprint menv) pi;
-  Glob_option.set_verbose ovb;
-  menv
-
-let process_scv mainenv (scv:Scv.scvval) =
-  match scv with
-  | SCVMap _ ->
+let process_check (menv:mainenv) (c:Scv.scvcmd located) =
+  let mns, ca =
+    (* typecheck print command and requested verbosity *)
     begin
-      let test = Ilast.Accumulate ("targetname", true) in
-      let testscv = apply_kind_to_scv test in
-      Format.printf "@[%a]" Scv.pp_scvval testscv;
+      match unloc c with
+      | Check(target, ca) ->
+        (Iltyping.macronames_of_scvtarget menv.genv target, ca)
+      | e ->
+        Utils.hierror "Main.process_check:" (Some (loc c))
+          "expected Check command but got %a" Scv.pp_scvcmd e
+    end in
+  match ca with
+  | Strongnoninterference
+  | Noninterference ->
+    List.iter
+      (fun mn ->
+         (* TODO fail with location in error message *)
+         let m = Iltyping.find_macro menv.genv mn in
+         let st = Ileval.find_state menv.eenv mn in
+         let an = Ileval.find_initial menv.eenv mn in
+         (Ilexport.print_mv ca) st an m)
+      mns;
+    menv
 
-      Format.printf "@[%a]" Scv.pp_scvval scv;
-      let api = apply_kind_of_scv_exn scv in
-      Format.printf "@[%a]" pp_apply_kind api;
-      mainenv
-    end
-  | _ -> assert false (* deliberately unsupported *)
+let process_print menv (p:Scv.scvcmd located) =
+  let open Scv in
+  let o', f' = !Glob_option.verbose, !Glob_option.full in
+  let mn, pk, v, f =
+    (* typecheck print command and requested verbosity *)
+    begin
+      match unloc p with
+      | Print(target, pk, None) ->
+        (Iltyping.macronames_of_scvtarget menv.genv target, pk, !Glob_option.verbose, !Glob_option.full)
+      | Print(target, pk, Some v) ->
+        let v, f = scvverbosity_to_glob v in
+        (Iltyping.macronames_of_scvtarget menv.genv target, pk, v, f)
+      | e ->
+        Utils.hierror "Main.process_print:" (Some (loc p))
+          "expected Print command but got %a" pp_scvcmd e
+    end in
+  if v <= Glob_option.v_silent then
+    menv
+  else
+    let process_pk pk =
+      begin
+        match pk with
+        | PMacro ->
+          List.iter
+            (fun mn ->
+               let m = Iltyping.find_macro menv.genv mn in
+               Format.printf "@[<v>%a@]@."
+                 (pp_macro ~full:f) m)
+            mn
+        | PState ->
+          List.iter
+            (fun mn ->
+               (* TODO fail with location in error message *)
+               let st = Ileval.find_state menv.eenv mn in
+               Format.printf "@[<v>state of %s:@   @[<v>%a@]@]@."
+                 mn Ileval.pp_state st)
+            mn
+        | PInitialEnvironment ->
+          List.iter
+            (fun mn ->
+               (* TODO fail with location in error message *)
+               let i = Ileval.find_initial menv.eenv mn in
+               Format.printf "@[<v>initials of %s:@   @[<v>%a@]@]@."
+                 mn Ileval.pp_initial i)
+            mn
+        | PEvaluatedTrace ->
+          List.iter
+            (fun mn ->
+               (* TODO fail with location in error message *)
+               let st = Ileval.find_state menv.eenv mn in
+               Format.printf "@[<v>evaluated trace of %s:@   @[<v>%a@]@]@."
+                 mn pp_cmd_g st.st_eprog)
+            mn
+      end in
+    Glob_option.set_verbose v;
+    Glob_option.set_full f;
+    process_pk pk;
+    Glob_option.set_verbose o';
+    Glob_option.set_full f';
+    menv
 
-let rec process_command really_exit mainenv = function
-  | Ilast.Gvar x   -> process_gvar mainenv x
+let process_scvcommand mainenv (scvs:(Scv.scvval located) list) =
+  let scvcmds = List.map Scv.scvval_to_scvcmd_loc scvs in
+  let process_scvcmd menv cmd =
+    match unloc cmd with
+    | Scv.Print _ -> process_print menv cmd
+    | Scv.Check _ -> process_check menv cmd
+    | Scv.Accumulate(target, leaktarget, keep) ->
+      process_trans_accumulateleaks menv target leaktarget keep
+    | Scv.AddLeakCalls(target) ->
+      process_trans_addleakage menv target
+    | Scv.DeadCodeElim(target) ->
+      process_trans_deadcodeelim menv target
+    | Scv.PartialEval(target) ->
+      process_trans_partialeval menv target
+    | Scv.FilterLeakage(target, leaktarget, reverse) ->
+      process_trans_filterleakage menv target leaktarget reverse
+    | Scv.InlineMacros(target) ->
+      process_trans_inline menv target
+    | Scv.Verbosity(verbosity) ->
+      process_verbose menv verbosity
+  in
+  List.fold_left process_scvcmd mainenv scvcmds
+
+let rec process_ilcommand really_exit mainenv = function
+  | Ilast.Gvar x -> process_gvar mainenv x
   | Ilast.Gmacro m -> process_macro mainenv m
   | Ilast.Gannotation evi -> process_annotation mainenv evi
-  | Ilast.Gapply api -> process_apply_transformation mainenv api
-  | Ilast.Ginclude (Asm, filename) -> process_asm mainenv filename
-  | Ilast.Ginclude (Il, filename) -> process_il mainenv filename
-  | Ilast.Gverbose i -> process_verbose mainenv i
-  | Ilast.Gprint (vb, pi) -> process_print mainenv vb pi
-  | Ilast.Gscvcmd (scv) -> process_scv mainenv scv
-  | Ilast.Gexit    -> if really_exit then exit 0 else mainenv
+  | Ilast.Ginclude(Asm, filename) -> process_asm mainenv filename
+  | Ilast.Ginclude(Il, filename) -> process_il mainenv filename
+  | Ilast.Gscvcmd(scvs) -> process_scvcommand mainenv scvs
+  | Ilast.Gexit -> if really_exit then exit 0 else mainenv
 
 and process_asm mainenv filename =
   let asmast = AsmParse.process_file (Location.unloc filename) in
@@ -277,11 +296,11 @@ and process_asm mainenv filename =
   let ilast = Asmlifter.lift_section asmast in
   Glob_option.print_full "@[<v>ASM lifted to IL@ %a@]@."
     Ilast.pp_command ilast;
-  process_command false mainenv ilast
+  process_ilcommand false mainenv ilast
 
 and process_il mainenv filename =
   let ilast = ILParse.process_file (Location.unloc filename) in
-  List.fold_left (process_command false) mainenv ilast
+  List.fold_left (process_ilcommand false) mainenv ilast
 
 let main =
   let mainenv = ref empty_mainenv in
@@ -289,7 +308,7 @@ let main =
     try
     (*  Format.printf ">"; Format.print_flush (); *)
       let c = ILParse.process_command () in
-      mainenv := process_command true !mainenv c
+      mainenv := process_ilcommand true !mainenv c
     with
     | Utils.HiError (s,loc,msg) ->
       Format.eprintf "%a@." Utils.pp_hierror (s, loc, msg);

@@ -7,9 +7,6 @@ PKG menhirLib
 PKG batteries
 PKG ppx_import
 PKG ppx_deriving.show
-PKG ppx_protocol_conv
-PKG ppx_protocol_conv.runtime
-PKG ppx_protocol_conv.driver
 
 FLG -rectypes
 FLG -w Y -w Z -w -23 -w +28 -w +33 -w -40 -w 58

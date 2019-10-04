@@ -61,6 +61,7 @@ module Lbl : sig
   val clone   : t -> t
   val pp_full : full:bool -> Format.formatter -> t -> unit
   val pp      : Format.formatter -> t -> unit
+  val pp_g    : Format.formatter -> t -> unit
   val pp_dbg  : Format.formatter -> t -> unit
 
   val exit_ : t
@@ -87,6 +88,7 @@ end = struct
     else Format.fprintf fmt "%s" l.l_name
 
   let pp fmt l = pp_full ~full:false fmt l
+  let pp_g fmt l = pp_full ~full:!Glob_option.full fmt l
   let pp_dbg fmt l = pp_full ~full:true fmt l
 
   let exit_ = fresh "exit_macro"

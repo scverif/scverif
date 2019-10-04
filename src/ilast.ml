@@ -139,56 +139,17 @@ type eval_info = {
 }
 [@@deriving show]
 
-type apply_target =
-  | Ident of ident list
-  | Wildcard
-  | Regex of string located
-[@@deriving show]
-
-type apply_kind =
-  | Accumulate of ((string [@key "target"]) * (bool [@key "keep"])) [@key "accumulatasdsae"]
-  | AddLeakCalls
-  | DeadCodeElim
-  | FilterLeakage of ((string [@key "target"]) * (bool [@key "remove"])) [@key "filterleakage"]
-  | InlineMacros
-  | PartialEval
-[@@deriving show, protocol ~driver:(module Scv)]
-
-type apply_info = {
-  apply_kind   : apply_kind;
-  apply_target : apply_target;
-  apply_loc    : Utils.full_loc;
-}
-[@@deriving show]
-
 type read_kind =
   | Asm
   | Il
 [@@deriving show]
 
-type print_kind =
-  | Macro
-  | State
-  | InitialEnv
-  | EvalTrace
-  | MaskVerif
-[@@deriving show]
-
-type print_info = {
-  p_pk : print_kind;
-  p_id : ident;
-}
-[@@deriving show]
-
 type command =
-  | Gvar   of var_decl located
-  | Gmacro of macro_decl located
-  | Ginclude of (read_kind * string located)
+  | Gvar         of var_decl located
+  | Gmacro       of macro_decl located
+  | Ginclude     of (read_kind * string located)
   | Gannotation  of eval_info
-  | Gapply of apply_info
-  | Gverbose of int
-  | Gprint of int * (print_info list)
-  | Gscvcmd of Scv.scvval
+  | Gscvcmd      of Scv.scvval located list
   | Gexit
 [@@deriving show]
 

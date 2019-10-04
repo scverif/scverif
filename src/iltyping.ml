@@ -608,12 +608,30 @@ let process_annotation genv evi =
        input_var   = List.rev !ipv;
        output_var  = List.rev !opv;}
 
-let process_apply_target genv (api:Ilast.apply_info) =
-  match api.apply_target with
-  | Ilast.Wildcard ->
-    get_macros genv
-  | Ilast.Ident is ->
-    List.map (fun i -> find_macro genv (unloc i)) is
-  | Ilast.Regex _ ->
-    Utils.hierror "process_apply_targets" (Some (fst api.apply_loc))
-      "@[<v> regex targets not yet supported]"
+let macronames_of_scvtarget genv t =
+  match t with
+  | Scv.TIdent [] -> []
+  | Scv.TIdent l ->
+    let unfound = List.filter
+        (fun n ->
+           match Ms.Exceptionless.find (unloc n) genv.macro with
+           | Some _ -> false
+           | None -> true)
+        l
+    in
+    if List.length unfound == 0 then
+      List.map unloc l
+    else
+      Utils.hierror "Iltyping.macronames_of_scvtarget" (Some (loc (List.hd unfound)))
+        "environment contains no definition of @[<v>%a@]"
+        (pp_list ",@," Scv.pp_scvstring) unfound
+  | Scv.TWildcard _ ->
+    List.map fst (Ms.bindings genv.macro)
+  | Scv.TRegex r ->
+    begin
+      match Ms.Exceptionless.find (unloc r) genv.macro with
+      | Some m -> [unloc r]
+      | None ->
+        Utils.hierror "Iltyping.macronames_of_scvtarget" (Some (loc r))
+          "regex %a not yet supported" Scv.pp_scvstring r
+    end

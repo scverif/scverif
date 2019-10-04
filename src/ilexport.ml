@@ -45,7 +45,7 @@ let mv_pp_body fmt tr =
   Format.fprintf fmt "@[<v>  @[<v>%a@]@]"
     (pp_list "@ " pp_b) tr
 
-let print_mv st an m =
+let print_mv params st an m =
   Format.printf "@[<v>proc %s:@   %a@ @ %a@ end@ para noglitch NI %s@ @]"
     m.mc_name
     mv_pp_header an

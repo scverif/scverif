@@ -215,10 +215,15 @@ let liveset_of_annot aoutv =
   let lmap = Mv.empty in
   List.fold_left (fun m (_,v) -> liveset_add_v m v) lmap aoutv
 
-let deadcodeelim eenv m =
-  let st = Ileval.find_state eenv m.mc_name in
+let deadcodeelim (eenv:Ileval.eenv) (mn:Il.macro_name) =
+  let st = try(
+    Ileval.find_state eenv mn
+  ) with HiError (_,_,_) ->
+    Utils.hierror "deadcode elimination" None
+      "macro %s has not been partially evaluated yet." mn
+  in
   let eprog = st.st_eprog in
-  let annot = Ileval.find_initial eenv m.mc_name in
+  let annot = Ileval.find_initial eenv mn in
   let lmap = ref (liveset_of_annot annot.output_var) in
   let is_livestmt instr =
     begin
@@ -257,37 +262,7 @@ let deadcodeelim eenv m =
     end in
   let elimprog = List.rev (List.filter is_livestmt (List.rev eprog)) in
   let nan = {annot with input_var = infer_inputs annot.input_var !lmap } in
-  let eenv = Ileval.update_initial eenv m nan in
+  let eenv = Ileval.update_initial eenv mn nan in
   let nst = { st with st_eprog = elimprog } in
-  let eenv = Ileval.update_state eenv m nst in
-  eenv
-
-let leakageelim eenv m ls (keep:bool) =
-  let st = Ileval.find_state eenv m.mc_name in
-  let eprog = st.st_eprog in
-  let ls = List.map unloc ls in
-  let stmt_filter instr =
-    begin
-      match instr.i_desc with
-      | Ileak(Some name, _ ) ->
-        begin
-          if List.mem name ls then
-            keep
-          else
-            not keep
-         end
-      | Ileak(None, _)
-      | Iassgn(_,_)
-      | Iigoto _
-      | Igoto _
-      | Iif _
-      | Iwhile _
-      | Ilabel _ -> true
-      | Imacro _ ->
-        Utils.hierror "leakageelim" None "@[<v>cannot handle@ %a@]"
-          (pp_i ~full:false) instr
-    end in
-  let elimprog = List.rev (List.filter stmt_filter (List.rev eprog)) in
-  let nst = { st with st_eprog = elimprog } in
-  let eenv = Ileval.update_state eenv m nst in
+  let eenv = Ileval.update_state eenv mn nst in
   eenv

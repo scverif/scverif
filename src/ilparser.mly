@@ -9,11 +9,11 @@
 
 %token LPAREN RPAREN LCURLY RCURLY LBRACKET RBRACKET
 %token LEFTARROW COLON SEMICOLON QUESTIONMARK COMMA EOF
-%token MACRO LEAK IF ELSE WHILE LABEL GOTO TRACE STATE
-%token ANNOTATION INIT REGION EXIT PRINT MASKVERIF
+%token MACRO LEAK IF ELSE WHILE LABEL GOTO
+%token ANNOTATION INIT REGION EXIT
 %token SCVDOCSTART SCVDOCEND NULL
 %token INPUT OUTPUT SECRET PUBLIC URANDOM SHARING
-%token INCLUDE ASM IL VERBOSE
+%token INCLUDE ASM IL
 %token BOOL TINT UINT W8 W16 W32 W64
 %token ADD SUB MUL MULH AND XOR OR NOT EQ NEQ LSL LSR ASR ZEROEXTEND SIGNEXTEND TRUE FALSE
 %token <Common.sign> LT
@@ -199,22 +199,6 @@ initialization:
 eval_command:
   | ANNOTATION m=ident i=initialization* SEMICOLON { {eval_m = m; eval_i = i } }
 
-printlist:
-  | MACRO id=ident
-    { { p_pk = Macro; p_id = id} }
-  | STATE id=ident
-    { { p_pk = State; p_id = id} }
-  | INIT id=ident
-    { { p_pk = InitialEnv; p_id = id} }
-  | TRACE id=ident
-    { { p_pk = EvalTrace; p_id = id} }
-  | MASKVERIF id=ident
-    { { p_pk = MaskVerif; p_id = id} }
-
-print_command:
-  | PRINT vb=INT ps=printlist* SEMICOLON
-    { Gprint((B.to_int vb), ps) }
-
 include_kind:
   | ASM { Asm }
   | IL  { Il }
@@ -222,13 +206,9 @@ include_kind:
 include_:
   | INCLUDE k=include_kind s=loc(STRING) { (k,s) }
 
-scvrecord: (* named arguments, not valid as scvvalue *)
-  | k=scvstringorident COLON v=scvvalue (* TODO location *)
-    { SCVRecord [(SCVString k, v)] }
-
 %inline scvstringorident:
-  | s=STRING { s }
-  | i=IDENT  { i }
+  | s=loc(STRING) { s }
+  | i=loc(IDENT)  { i }
 
 %inline scvvalueterminal:
   | s=scvstringorident { SCVString s } (* TODO locations *)
@@ -237,13 +217,8 @@ scvrecord: (* named arguments, not valid as scvvalue *)
   | FALSE              { SCVBool false }
   | NULL               { SCVNull }
 
-scvvalue:
-  | t=scvvalueterminal { t }
-  | l=scvlist          { l }
-  | m=scvmap           { m }
-
 scvlist:
-  | LBRACKET l=separated_list(COMMA, scvvalue) RBRACKET
+  | LBRACKET l=separated_list(COMMA, scvvalueterminal) RBRACKET
     { SCVList l }
 
 scvmapentry:
@@ -255,11 +230,11 @@ scvmapentry:
     { m }      (* nested variant (constructor call) *)
 
 scvmap: (* variants consists of constructor name and named arguments (records) *)
-  | k=scvstringorident LPAREN e=list(scvmapentry) RPAREN
+  | k=scvstringorident COLON e=list(scvmapentry) SEMICOLON
     { SCVMap(k, e) }
 
 %inline scvdoc_:
-  | kv=list(scvmap)
+  | kv=list(loc(scvmap))
     { kv }
 
 scvdoc:
@@ -270,7 +245,6 @@ command1:
   | m=loc(macro_decl)         { Gmacro m }
   | i=include_                { Ginclude i }
   | e=eval_command            { Gannotation e }
-  | VERBOSE i=INT             { Gverbose (B.to_int i) }
   | d=scvdoc                  { Gscvcmd d }
   | error        { parse_error (Location.make $startpos $endpos) "" }
 

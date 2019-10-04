@@ -26,7 +26,6 @@
     "il"    , IL     ;
     "init"  , INIT   ;
     "input" , INPUT  ;
-    "print" , PRINT  ;
     "label" , LABEL  ;
     "leak"  , LEAK   ;
     "macro" , MACRO  ;
@@ -35,12 +34,9 @@
     "sharing", SHARING;
     "secret", SECRET ;
     "signextend", SIGNEXTEND;
-    "state" , STATE  ;
     "urandom", URANDOM ;
     "region", REGION ;
-    "trace" , TRACE  ;
     "true"  , TRUE   ;
-    "verbose", VERBOSE;
     "while" , WHILE  ;
     "zeroextend", ZEROEXTEND;
   ]

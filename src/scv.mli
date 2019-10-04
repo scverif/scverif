@@ -1,6 +1,7 @@
 open Common
+open Location
 
-type scvstring = string
+type scvstring = string located
 
 type scvval =
   | SCVNull
@@ -11,21 +12,41 @@ type scvval =
   | SCVRecord of (scvstring * scvval) list (* Association list (named arguments) *)
   | SCVMap    of scvstring * scvval list   (* Variant: constructor, arguments *)
 
-type t = scvval
+type scvtarget =
+  | TIdent    of (string located) list
+  | TRegex    of string located
+  | TWildcard of Location.t
 
-val pp_scvstring  : Format.formatter -> scvstring -> unit
-(*val pp_scvrecord  : Format.formatter -> scvrecord -> unit*)
-val pp_scvval     : Format.formatter -> scvval -> unit
+type scvverbosity = int located
 
-include Protocol_conv.Runtime.Driver with type t := scvval
+type scvprintkind =
+  | PMacro
+  | PState
+  | PInitialEnvironment
+  | PEvaluatedTrace
 
-module Make(P: Ppx_protocol_driver.Parameters) : (Protocol_conv.Runtime.Driver with type t = scvval)
+type scvcheckkind =
+  | Noninterference
+  | Strongnoninterference
 
-(*module Make : sig
-  module P : Ppx_protocol_driver.Parameters
-  include Protocol_conv.Runtime.Driver with type t = scvval
-  end*)
+type scvcmd =
+  | Accumulate    of scvtarget * scvtarget * bool
+  | AddLeakCalls  of scvtarget
+  | DeadCodeElim  of scvtarget
+  | FilterLeakage of scvtarget * scvtarget * bool
+  | InlineMacros  of scvtarget
+  | PartialEval   of scvtarget
+  | Print         of scvtarget * scvprintkind * scvverbosity option
+  | Check         of scvtarget * scvcheckkind
+  | Verbosity     of scvverbosity
 
-val of_scvval_exn : scvval -> scvval
-val of_scvval     : scvval -> (scvval, error) Protocol_conv.Runtime.result
-val to_scvval     : scvval -> scvval
+val pp_scvstring    : Format.formatter -> scvstring -> unit
+val pp_scvval       : Format.formatter -> scvval -> unit
+val pp_scvtarget    : Format.formatter -> scvtarget -> unit
+val pp_scvcheckkind : Format.formatter -> scvcheckkind -> unit
+val pp_scvprintkind : Format.formatter -> scvprintkind -> unit
+val pp_scvverbosity : Format.formatter -> scvverbosity -> unit
+val pp_scvcmd       : Format.formatter -> scvcmd -> unit
+
+val scvval_to_scvcmd_loc : scvval located -> scvcmd located
+val scvverbosity_to_glob : scvverbosity -> int * bool

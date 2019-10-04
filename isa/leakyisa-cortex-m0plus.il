@@ -15,7 +15,7 @@ macro eors2_leak (w32 op1, w32 op2)
 
 macro ands2_leak (w32 op1, w32 op2)
 {
-  leak andsCompResult (op1, op2);
+  leak andsCompResult (op1 &w32 op2);
   leak andsOperand (opA, op1, opB, op2);
   leak andsOperandA (opA, op1);
   leak andsOperandB (opB, op2);

@@ -193,7 +193,7 @@ and inline_macro_app genv env locs mcname args =
   env.elocals <- envm.elocals;
   env.econt  <- envm.econt
 
-let inline_macro genv m =
+let inline_macro (genv:Iltyping.genv) (m:Il.macro) =
   let env = empty_env [] [] in
   let mc_params = add_dparams env m.mc_params in
   add_locals env m.mc_locals;

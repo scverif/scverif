@@ -25,15 +25,15 @@ module Ptr = struct
 
   let pp fmt p =
     Format.fprintf fmt "[%a @@ %a %a]"
-      V.pp_dbg p.p_mem
-      V.pp_dbg p.p_dest
+      V.pp_g p.p_mem
+      V.pp_g p.p_dest
       B.pp_print p.p_ofs
 end
 
 (* Pretty printer *)
 
 let pp_bvalue fmt = function
-  | Vcptr lbl -> Format.fprintf fmt "lbl %a" Lbl.pp_dbg lbl
+  | Vcptr lbl -> Format.fprintf fmt "lbl %a" Lbl.pp_g lbl
   | Vptr p    -> Ptr.pp fmt p
   | Vint i    -> B.pp_print fmt i
   | Vbool b   -> Format.fprintf fmt "%b" b
@@ -49,7 +49,7 @@ let pp_regions fmt mr =
   Format.fprintf fmt "  @[<v>";
   Mv.iter (fun x t ->
       Format.fprintf fmt "%a -> @[%a@]@ "
-           V.pp_dbg x
+           V.pp_g x
            (pp_list ",@ " pp_bvalue) (Array.to_list t)) mr;
   Format.fprintf fmt "@]"
 
@@ -57,15 +57,15 @@ let pp_vars fmt mv =
   Format.fprintf fmt "  @[<v>";
   Mv.iter (fun x v ->
       Format.fprintf fmt "%a -> %a@ "
-           V.pp_dbg x pp_value v) mv;
+        V.pp_g x pp_value v) mv;
   Format.fprintf fmt "@]"
 
 let pp_state fmt st =
   Format.fprintf fmt "@[<v>regions:@ %a@ vars:@ %a@ pc:@ %a@ eprog:@ %a@]"
     pp_regions st.st_mregion
     pp_vars    st.st_mvar
-    (pp_cmd ~full:true) st.st_pc
-    (pp_cmd ~full:true) (List.rev st.st_eprog)
+    (pp_cmd ~full:!Glob_option.full) st.st_pc
+    (pp_cmd ~full:!Glob_option.full) (List.rev st.st_eprog)
 
 let pp_iregions fmt ir =
   Format.fprintf fmt "  @[<v>";
@@ -453,7 +453,7 @@ let find_label lbl st =
     aux c' in
   try aux st.st_prog
   with Not_found ->
-    ev_hierror () "unknown label %a" Lbl.pp_dbg lbl
+    ev_hierror () "unknown label %a" Lbl.pp_g lbl
 
 let unknown_arr i1 i2 =
   assert (B.le i1 i2);
@@ -550,29 +550,29 @@ let empty_eenv = {
   initial   = Ms.empty;
 }
 
-let find_initial eenv m =
+let find_initial eenv mn =
   try
-    Ms.find m eenv.initial
+    Ms.find mn eenv.initial
   with Not_found ->
-    ev_hierror () "no initials given for macro %s" m
+    ev_hierror () "no initial state annotation available for macro %s" mn
 
-let find_state eenv m =
+let find_state eenv mn =
   try
-    Ms.find m eenv.state
+    Ms.find mn eenv.state
   with Not_found ->
-    ev_hierror () "no state given for macro %s" m
+    ev_hierror () "no program state available for macro %s" mn
 
-let update_initial eenv m initial =
+let update_initial eenv mn initial =
   try
-    { eenv with initial = Ms.update m.mc_name m.mc_name initial eenv.initial }
+    { eenv with initial = Ms.update mn mn initial eenv.initial }
   with Not_found ->
-    { eenv with initial = Ms.add m.mc_name initial eenv.initial }
+    { eenv with initial = Ms.add mn initial eenv.initial }
 
-let update_state eenv m state =
+let update_state eenv mn state =
   try
-    { eenv with state = Ms.update m.mc_name m.mc_name state eenv.state }
+    { eenv with state = Ms.update mn mn state eenv.state }
   with Not_found ->
-    { eenv with state = Ms.add m.mc_name state eenv.state }
+    { eenv with state = Ms.add mn state eenv.state }
 
 let partial_eval eenv m =
   let mdest = ref Mv.empty in
@@ -601,6 +601,7 @@ let partial_eval eenv m =
     Mv.add x (Vbase v) mv in
   let st_mvar = List.fold_left init_var Mv.empty init.init_var in
 
+  Glob_option.print_full "DEBUG mc@ @[<v>%a@]@." (pp_cmd ~full:true) m.mc_body;
   let st = {
     st_mregion;
     st_mvar;
@@ -610,6 +611,7 @@ let partial_eval eenv m =
     st_pc    = m.mc_body;
     st_eprog = []
     } in
+  Glob_option.print_full "DEBUG st@ @[<v>%a@]@." (pp_cmd ~full:true) st.st_prog;
 
   eval_i st;
   { st with st_eprog = List.rev st.st_eprog }
