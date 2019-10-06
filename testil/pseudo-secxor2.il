@@ -39,68 +39,57 @@ annotate secxor
   input sharing b
   input urandom rnd
   output sharing c
-
-/*
-annotate:
-  secxor:
-    region:
-      mem:
-        a: w32[0:2]
-        b: w32[0:2]
-        c: w32[0:2]
-        rnd: w32[0:9];;
-    init:
-      r0: c[0]
-      r1: a[0]
-      r2: b[0]
-      r3: rnd[0];
-    input:
-      sharing: [a, b]
-      urandom: rnd;
-    output:
-      sharing: [c];
-  ;
-    everything else assumed to be public input
-    !and! public output for maskverif
-    e.g. global "pub" variable
-  */
   ;
 
 ---
-accumulate:
-  target: secxor
-  keep: true;
-...
+verbosity:
+  verbosity: 1;
 
+print:
+  kind: macrodef
+  target: load
+  verbosity: 0;
 
-/* bigger example
----
-addleakage:
-  targets: secxor
-  restrict: "*transition*";
+/* put all leakages of a macro in a single leak statement at the beginning.
 accumulate:
-  targets: [secxor, load, store]
-  keepleaks: true
-  leakages: [xorCompResult, xorOperandA];
-inline:
-  targets: any;
-deadcodeelim:
-  targets: secxor
-  Print: y;
-check:
-  targets: secxor
-  algorithm:
-    type: NI
-    order: 2;
-  Print: debug;
-...
+  target: [load,store,xor,and]
+  leaks: any
+  keep: false; // remove the old leakages
 */
-/* example list (target macros, no params) -> not allowed as toplevel
----
-[secxor, secand, secload]
-...*/
 
-/* example singleton (target macro, no params) -> not allowed as toplevel
----
-secxor
-...*/
+print:
+  kind: macrodef
+  target: load
+  verbosity: 0;
+
+addleakage:
+  target: secxor;
+
+inlinecall:
+  target: secxor;
+
+print:
+  kind: macrodef
+  target: secxor
+  verbosity: 0;
+
+partialeval:
+  target: secxor;
+
+deadcodeelim:
+  target: secxor;
+
+filterleak:
+  target: secxor
+  inverse: true
+  leaks: any;
+
+print:
+  kind: evaltrace
+  target: secxor
+  verbosity: 0;
+
+check:
+  target: secxor
+  kind: NI;
+...

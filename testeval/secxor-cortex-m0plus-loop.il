@@ -2,13 +2,6 @@ include il "isa/isa-cortex-m0plus.il"
 include il "isa/leakyisa-cortex-m0plus.il"
 include asm "testasm/secxor-cortex-m0plus-Os.objdump"
 
-verbose 0
-
-apply addleakage
-  secxor;
-
-apply inline;
-
 annotate secxor
   region mem w32 a[0:2]
   region mem w32 b[0:2]
@@ -23,11 +16,30 @@ annotate secxor
   input sharing b
   output sharing c;
 
-apply partialeval
-  secxor;
+---
+addleakage:
+  target: [ldr3, secxor];
 
-apply deadcodeelim
-  secxor;
+print:
+  kind: macrodef
+  target: secxor
+  verbosity: 0;
 
-print 0
-  maskverif secxor;
+inlinecall:
+  target: secxor;
+
+partialeval:
+  target: secxor;
+
+deadcodeelim:
+  target: secxor;
+
+print:
+  kind: evaltrace
+  target: secxor
+  verbosity: 0;
+
+check:
+  kind: NI
+  target: secxor;
+...

@@ -92,7 +92,7 @@ lbl1: ldr   (r4, r1, r3);
       goto pc;
 }
 
-eval secxor
+annotate secxor
   region mem w32 a[0:2]
   region mem w32 b[0:2]
   region mem w32 c[0:2]
@@ -102,3 +102,10 @@ eval secxor
   init r0 [c 0]
   init sp [isp 12]
   init lr exit;
+
+---
+print:
+  target: secxor
+  kind: macrodef
+  verbosity: 1;
+...
