@@ -38,9 +38,10 @@ let mv_pp_body fmt tr =
   let pp_b fmt (i:Il.instr) =
     match i.i_desc with
     | Il.Ileak(li, es) ->
-      Format.fprintf fmt "@[leak %a (%a) \"%a\";@]"
-        pp_leak_info li (pp_list ",@ " (pp_e ~full:!Glob_option.full)) es
-        pp_full_loc i.i_loc
+      Format.fprintf fmt "@[leak %a (%a) @[<v>\"%a(%a)@,in %a\"@];@]"
+        pp_leak_info li (pp_list ", " (pp_e ~full:!Glob_option.full)) es
+        pp_leak_info li (pp_list ", " (pp_e ~full:!Glob_option.full)) es
+        pp_full_loc_first i.i_loc
     | _ -> Format.fprintf fmt "%a" (pp_i ~full:!Glob_option.full) i in
   Format.fprintf fmt "@[<v>  @[<v>%a@]@]"
     (pp_list "@ " pp_b) tr

@@ -4,8 +4,8 @@ module Set  : sig include module type of BatSet end
 module Map  : sig include module type of BatMap end
 module Hash : sig include module type of BatHashtbl end
 
-module Sint : Set.S with type elt = int 
-module Mint : Map.S with type key = int 
+module Sint : Set.S with type elt = int
+module Mint : Map.S with type key = int
 
 module Ss   : Set.S with type elt = string
 
@@ -319,22 +319,23 @@ end
 type full_loc = Location.t * Location.t list
 val dummy_full_loc : full_loc
 
-val append_locs : full_loc -> Location.t list -> full_loc 
+val append_locs : full_loc -> Location.t list -> full_loc
 
 val pp_full_loc : Format.formatter -> full_loc -> unit
+val pp_full_loc_first : Format.formatter -> full_loc -> unit
 
 exception HiError of string * Location.t option * string
 exception Error of string * full_loc * string
 
-val hierror : 
+val hierror :
   string -> Location.t option -> ('a, Format.formatter, unit, 'b) format4 -> 'a
-val error : 
+val error :
   string -> full_loc -> ('a, Format.formatter, unit, 'b) format4 -> 'a
 
 val parse_error : Location.t -> ('a, Format.formatter, unit, 'b) format4 -> 'a
 val unterminated_comment : Location.t -> 'a
 val unterminated_string  : Location.t -> 'a
-val invalid_char : Location.t -> char -> 'a 
+val invalid_char : Location.t -> char -> 'a
 
 val pp_hierror : Format.formatter -> string * Location.t option * string -> unit
 val pp_error : Format.formatter -> string * full_loc * string -> unit
@@ -343,29 +344,29 @@ type 'a pp = Format.formatter -> 'a -> unit
 
 val pp_list : ('a, 'b, 'c, 'd, 'd, 'a) format6 -> 'a pp -> 'a list pp
 
-val pp_if : bool -> 'a pp -> 'a pp -> 'a pp 
+val pp_if : bool -> 'a pp -> 'a pp -> 'a pp
 val pp_maybe :  bool -> ('a pp -> 'a pp) -> 'a pp -> 'a pp
 
 (* -------------------------------------------------------------------- *)
-val pp_enclose : 
+val pp_enclose :
       pre:('a, 'b, 'c, 'd, 'd, 'a) format6
    -> post:('a, 'b, 'c, 'd, 'd, 'a) format6
-   -> 'a pp -> 'a pp 
+   -> 'a pp -> 'a pp
 
 (* -------------------------------------------------------------------- *)
-val pp_paren : 'a pp -> 'a pp 
+val pp_paren : 'a pp -> 'a pp
 
 (* -------------------------------------------------------------------- *)
 val pp_maybe_paren : bool -> 'a pp -> 'a pp
 
 (* -------------------------------------------------------------------- *)
 val pp_string : string pp
- 
+
 (* -------------------------------------------------------------------- *)
-type model = 
+type model =
   | ConstantTime
   | Safety
   | Normal
-  
+
 (* --------------------------------------------------------------------- *)
 module Ms : Map.S with type key = string

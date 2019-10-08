@@ -732,6 +732,12 @@ let pp_full_loc fmt (l,ls) =
   let pp_locs fmt = List.iter (pp_loc fmt) in
   Format.fprintf fmt "%s%a" (Location.tostring l) pp_locs ls
 
+let pp_full_loc_first fmt (l,ls) =
+  let pp_loc fmt loc =
+    Format.fprintf fmt "@ from %s"
+      (Location.tostring loc) in
+  Format.fprintf fmt "%s%a" (Location.tostring l) pp_loc (List.hd ls)
+
 exception HiError of string * Location.t option * string
 exception Error of string * full_loc * string
 
