@@ -628,10 +628,5 @@ let macronames_of_scvtarget genv t =
   | Scv.TWildcard _ ->
     List.map fst (Ms.bindings genv.macro)
   | Scv.TRegex r ->
-    begin
-      match Ms.Exceptionless.find (unloc r) genv.macro with
-      | Some m -> [unloc r]
-      | None ->
-        Utils.hierror "Iltyping.macronames_of_scvtarget" (Some (loc r))
-          "regex %a not yet supported" Scv.pp_scvstring r
-    end
+    let regex = Re.execp (Re.compile (Re.Glob.glob (unloc r))) in
+    Ms.fold (fun k _ ms -> if regex k then k::ms else ms) genv.macro []

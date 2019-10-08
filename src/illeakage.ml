@@ -121,18 +121,11 @@ let leaknames_of_scvtarget (is:Il.instr list) (t:Scv.scvtarget) =
       is []
   | Scv.TRegex r ->
     begin
-      let re = unloc r in
-      let inames =
-        List.fold_right
-          (fun i is -> match i.i_desc with
-             | Il.Ileak(Some i,_) -> i::is
-             | _ ->  is)
-          is [] in
-      if List.mem re inames then
-        [re]
-      else
-        Utils.hierror "Illeakage.leaknames_of_scvtarget" (Some (loc r))
-          "regex %a not yet supported" Scv.pp_scvstring r
+      let regex = Re.execp (Re.compile (Re.Glob.glob (unloc r))) in
+      let filter i names = match i.i_desc with
+        | Il.Ileak (Some name, _) -> if regex name then name::names else names
+        | _ -> names in
+      List.fold_right filter is []
     end
 
 (* collect all leakage expressions in a single preceding leak statement *)

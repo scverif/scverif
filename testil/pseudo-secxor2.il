@@ -79,10 +79,11 @@ partialeval:
 deadcodeelim:
   target: secxor;
 
+/* remove all ...OperandA and ...OperandB leakages */
 filterleak:
   target: secxor
-  inverse: true
-  leaks: any;
+  inverse: false
+  leaks: "*Operand?";
 
 print:
   kind: evaltrace
