@@ -1,3 +1,4 @@
+(* Copyright 2019 NXP *)
 
 let v_silent = 0
 let v_normal = 1         (* normal printing *)

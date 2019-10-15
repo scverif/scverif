@@ -1,3 +1,5 @@
+// Copyright 2019 NXP
+
 w32 opA;
 w32 opB;
 w32 opR;

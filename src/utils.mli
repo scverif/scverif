@@ -1,3 +1,4 @@
+(* Copyright 2019 NXP *)
 
 (* -------------------------------------------------------------------- *)
 module Set  : sig include module type of BatSet end

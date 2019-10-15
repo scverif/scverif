@@ -1,3 +1,5 @@
+# Copyright 2019 NXP
+
 .PHONY: all clean logdir
 MAKEFLAGS += --silent
 

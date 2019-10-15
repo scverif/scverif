@@ -18,7 +18,7 @@ annotate secxor
 
 ---
 addleakage:
-  target: [ldr3, secxor];
+  target: secxor;
 
 print:
   kind: macrodef

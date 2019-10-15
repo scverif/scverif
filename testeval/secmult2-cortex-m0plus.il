@@ -2,13 +2,6 @@ include il "isa/isa-cortex-m0plus.il"
 include il "isa/leakyisa-cortex-m0plus.il"
 include asm "testasm/secmult_direct-cortex-m0plus-O3.objdump"
 
-verbose 0
-
-apply addleakage
-  secmult_direct;
-
-apply inline;
-
 annotate secmult_direct
   region mem w32 a[0:2]
   region mem w32 b[0:2]
@@ -26,11 +19,30 @@ annotate secmult_direct
   input urandom rnd
   output sharing c;
 
-apply partialeval
-  secmult_direct;
+---
+addleakage:
+  target: secmult_direct;
 
-apply deadcodeelim
-  secmult_direct;
+print:
+  kind: macrodef
+  target: secmult_direct
+  verbosity: 0;
 
-print 0
-  maskverif secmult_direct;
+inlinecall:
+  target: secmult_direct;
+
+partialeval:
+  target: secmult_direct;
+
+deadcodeelim:
+  target: secmult_direct;
+
+print:
+  kind: evaltrace
+  target: secmult_direct
+  verbosity: 0;
+
+check:
+  kind: SNI
+  target: secmult_direct;
+...

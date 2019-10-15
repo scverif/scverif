@@ -2,13 +2,6 @@ include il "isa/isa-cortex-m0plus.il"
 include il "isa/leakyisa-cortex-m0plus.il"
 include asm "testasm/secref-cortex-m0plus-O3.objdump"
 
-verbose 0
-
-apply addleakage
-  secrefresh;
-
-apply inline;
-
 annotate secrefresh
   region mem w32 a[0:2]
   region mem w32 rnd[0:4]
@@ -21,11 +14,30 @@ annotate secrefresh
   input urandom rnd
   output sharing a;
 
-apply partialeval
-  secrefresh;
+---
+addleakage:
+  target: secrefresh;
 
-apply deadcodeelim
-  secrefresh;
+print:
+  kind: macrodef
+  target: secrefresh
+  verbosity: 0;
 
-print 0
-  maskverif secrefresh;
+inlinecall:
+  target: secrefresh;
+
+partialeval:
+  target: secrefresh;
+
+deadcodeelim:
+  target: secrefresh;
+
+print:
+  kind: evaltrace
+  target: secrefresh
+  verbosity: 0;
+
+check:
+  kind: SNI
+  target: secrefresh;
+...
