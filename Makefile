@@ -42,6 +42,7 @@ all: native
 
 native:
 	$(OCB) -tag debug $(MAIN).native
+	ln -fs $(MAIN).native scverif
 
 clean:
 	$(OCB) -clean

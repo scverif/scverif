@@ -110,6 +110,7 @@ setup.log
 _opam/
 
 logs/
+scverif
 
 #!! ERROR: ocamlbuild is undefined. Use list command to see defined gitignore types !!#
 
