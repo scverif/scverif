@@ -8,15 +8,17 @@ open Iltyping
 open Ileval
 open Maskverif
 
-let mv_pp_var fmt v =
+let mv_pphdr_var fmt v =
   match v.v_ty with
-  | Tarr(_,i1,i2) ->
-    Format.fprintf fmt "%a[%a:%a]"
+  | Tarr(bty,i1,i2) ->
+    Format.fprintf fmt "%a %a[%a:%a]"
+      pp_bty bty
       V.pp_g v
       B.pp_print i1
       B.pp_print i2
-  | Tbase _ ->
-    Format.fprintf fmt "%a"
+  | Tbase bty ->
+    Format.fprintf fmt "%a %a"
+      pp_bty bty
       V.pp_g v
   | Tmem -> assert false
 
@@ -34,10 +36,10 @@ let mv_pp_header fmt an =
     let rnd_of l = List.fold_right (filter Ileval.URandom) l [] in
     (* FIXME/TODO secrets need to be understood by maskverif or used for CT-type-checking *)
     Format.fprintf fmt "@[<v>public inputs: %a@ input shares: %a@ output shares: %a@ randoms: %a;@]"
-      (pp_list ", " mv_pp_var) (pub_of an.input_var)
-      (pp_list ", " mv_pp_var) (sha_of an.input_var)
-      (pp_list ", " mv_pp_var) (sha_of an.output_var)
-      (pp_list ", " mv_pp_var) (rnd_of an.input_var)
+      (pp_list ", " mv_pphdr_var) (pub_of an.input_var)
+      (pp_list ", " mv_pphdr_var) (sha_of an.input_var)
+      (pp_list ", " mv_pphdr_var) (sha_of an.output_var)
+      (pp_list ", " mv_pphdr_var) (rnd_of an.input_var)
   end
 
 let mv_pp_body fmt tr =
