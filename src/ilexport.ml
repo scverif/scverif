@@ -1,4 +1,4 @@
-(* Copyright 2019 NXP *)
+(* Copyright 2019 - NXP *)
 
 open Utils
 open Common
@@ -6,6 +6,7 @@ open Location
 open Il
 open Iltyping
 open Ileval
+open Maskverif
 
 let mv_pp_var fmt v =
   match v.v_ty with
@@ -52,9 +53,12 @@ let mv_pp_body fmt tr =
     (pp_list "@ " pp_b) tr
 
 let print_mv params st an m =
-  Format.printf "@[<v>proc %s:@   %a@ @ %a@ end@ para noglitch %a %s@ @]"
+  Format.printf "@[<v>proc %s:@   %a@ @ %a@ end@ para noglitch %a %s@ @]@."
     m.mc_name
     mv_pp_header an
     mv_pp_body st.st_eprog
     Scv.pp_scvcheckkind params
     m.mc_name
+
+let check_maskverif params st an m =
+  false

@@ -1,11 +1,11 @@
-# Copyright 2019 NXP
+# Copyright 2019 - Inria, NXP
 
 .PHONY: all clean logdir
 MAKEFLAGS += --silent
 
 MENHIR       := menhir
 MENHIRFLAGS  := --infer --explain
-OCB_FLAGS    := -tag bin_annot -I src -r -package re -package batteries -package zarith -package menhirLib -package ppx_deriving.show -package ppx_import
+OCB_FLAGS    := -cflag -rectypes -r
 OCB          := ocamlbuild -use-ocamlfind -use-menhir -menhir "$(MENHIR) $(MENHIRFLAGS)" $(OCB_FLAGS)
 
 MAIN         := main
@@ -34,15 +34,23 @@ EVALSRCDIR := testeval
 EVALSRC    := $(wildcard $(EVALSRCDIR)/*.il)
 EVALTESTS  := $(patsubst $(EVALSRCDIR)/%.il, %.evaltest, $(EVALSRC))
 
-MVEXE      := ../maskverif/tool2/main_input.native
+MVEXE      ?= ../maskverif/maskverif
 MVTESTS    := $(patsubst $(EVALSRCDIR)/%.il, %.mvtest, $(EVALSRC))
 
 
 all: native
 
 native:
-	$(OCB) -tag debug $(MAIN).native
+	$(OCB) $(MAIN).native
 	ln -fs $(MAIN).native scverif
+
+byte:
+	$(OCB) $(MAIN).byte
+	ln -fs $(MAIN).byte scverif
+
+debug:
+	$(OCB) -tag debug $(MAIN).byte
+	ln -fs $(MAIN).byte scverif
 
 clean:
 	$(OCB) -clean
@@ -92,6 +100,3 @@ test-il: secxor-while.iltest
 tests: test-m0pisa test-sxor test-sxors test-sand test-sref test-srefs test-il
 
 test-all: $(ILTESTS) $(ISATESTS) $(ASMTESTS) $(EVALTESTS)
-
-%.inferred.mli:
-	@$(OCB) src/$@ && cat _build/src/$@c
