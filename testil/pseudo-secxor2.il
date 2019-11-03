@@ -1,4 +1,4 @@
-// Copyright 2019 NXP
+// Copyright 2019 - NXP
 
 /*
 printf "include il \"testil/pseudo-secxor2.il\"\n" | ./main.native | ../maskverif/tool2/main_input.native

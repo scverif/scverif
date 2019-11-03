@@ -1,3 +1,5 @@
+; Copyright 2019 - NXP
+
 00000000 <secmult_direct>:
    0:	b5f0      	push	{r4, r5, r6, r7, lr}
    2:	4657      	mov	r7, sl

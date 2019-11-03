@@ -1,6 +1,5 @@
-
-# Created by https://www.gitignore.io/api/coq,emacs,opam,ocaml,merlin,tuareg,ocamlbuild
-# Edit at https://www.gitignore.io/?templates=coq,emacs,opam,ocaml,merlin,tuareg,ocamlbuild
+# Copyright 2019 - Gitignore.io, NXP
+# Initially, created by https://www.gitignore.io/api/coq,emacs,ocaml,merlin
 
 ### Coq ###
 .*.aux
@@ -112,11 +111,5 @@ _opam/
 logs/
 scverif
 
-#!! ERROR: ocamlbuild is undefined. Use list command to see defined gitignore types !!#
-
-#!! ERROR: opam is undefined. Use list command to see defined gitignore types !!#
-
-#!! ERROR: tuareg is undefined. Use list command to see defined gitignore types !!#
-
-# End of https://www.gitignore.io/api/coq,emacs,opam,ocaml,merlin,tuareg,ocamlbuild
+# End of https://www.gitignore.io/api/coq,emacs,ocaml,merlin
 

@@ -1,4 +1,4 @@
-(* Copyright 2019 NXP *)
+(* Copyright 2019 - Inria, NXP *)
 
 let v_silent = 0
 let v_normal = 1         (* normal printing *)

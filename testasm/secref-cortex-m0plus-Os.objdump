@@ -1,3 +1,5 @@
+; Copyright 2019 - NXP
+
 00000000 <secrefresh>:
    0:	b5f7      	push	{r0, r1, r2, r4, r5, r6, r7, lr}
    2:	000d      	movs	r5, r1

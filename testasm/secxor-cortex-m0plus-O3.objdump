@@ -1,3 +1,5 @@
+; Copyright 2019 - NXP
+
 00000000 <secxor>:
    0:	680b      	ldr	r3, [r1, #0]
    2:	b510      	push	{r4, lr}

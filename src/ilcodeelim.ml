@@ -1,4 +1,4 @@
-(* Copyright 2019 NXP *)
+(* Copyright 2019 - NXP *)
 
 open Utils
 open Common

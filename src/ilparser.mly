@@ -1,4 +1,4 @@
-(* Copyright 2019 NXP *)
+(* Copyright 2019 - Inria, NXP *)
 
 %{
   open Location

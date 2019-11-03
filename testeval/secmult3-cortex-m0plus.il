@@ -1,3 +1,5 @@
+// Copyright 2019 - Inria, NXP
+
 include il "isa/isa-cortex-m0plus.il"
 include il "isa/leakyisa-cortex-m0plus.il"
 include asm "testasm/secmult_flaw-cortex-m0plus-O3.objdump"

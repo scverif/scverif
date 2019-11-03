@@ -1,3 +1,5 @@
+(* Copyright 2019 - Inria, NXP *)
+
 type t 
 val fresh : unit -> t
 val compare : t -> t -> int

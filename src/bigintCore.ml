@@ -1,4 +1,5 @@
 (* --------------------------------------------------------------------
+ * Copyright 2019 - Inria, NXP
  * Copyright (c) - 2012--2016 - IMDEA Software Institute
  * Copyright (c) - 2012--2017 - Inria
  *

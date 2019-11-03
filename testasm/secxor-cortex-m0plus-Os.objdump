@@ -1,3 +1,5 @@
+; Copyright 2019 - NXP
+
 00000000 <secxor>:
    0:	2300      	movs	r3, #0
    2:	b530      	push	{r4, r5, lr}

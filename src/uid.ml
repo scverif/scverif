@@ -1,3 +1,5 @@
+(* Copyright 2019 - Inria, NXP *)
+
 type t = int
 
 let count = ref (-1)
