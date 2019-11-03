@@ -20,21 +20,24 @@ let mv_pp_var fmt v =
   | Tmem -> assert false
 
 let mv_pp_header fmt an =
-  let filter ty (t,v) ls =
-    if ty == t then
-      v::ls
-    else
-      ls in
-  let pub_of l = List.fold_right (filter Ileval.Public) l [] in
-  let sec_of l = List.fold_right (filter Ileval.Secret) l []in
-  let sha_of l = List.fold_right (filter Ileval.Sharing) l [] in
-  let rnd_of l = List.fold_right (filter Ileval.URandom) l [] in
-  (* FIXME/TODO secrets need to be understood by maskverif or used for CT-type-checking *)
-  Format.fprintf fmt "@[<v>public inputs: %a@ input shares: %a@ output shares: %a@ randoms: %a;@]"
-    (pp_list ", " mv_pp_var) (pub_of an.input_var)
-    (pp_list ", " mv_pp_var) (sha_of an.input_var)
-    (pp_list ", " mv_pp_var) (sha_of an.output_var)
-    (pp_list ", " mv_pp_var) (rnd_of an.input_var)
+  begin
+    [@warning "-26"]
+    let filter ty (t,v) ls =
+      if ty == t then
+        v::ls
+      else
+        ls in
+    let pub_of l = List.fold_right (filter Ileval.Public) l [] in
+    let sec_of l = List.fold_right (filter Ileval.Secret) l [] in
+    let sha_of l = List.fold_right (filter Ileval.Sharing) l [] in
+    let rnd_of l = List.fold_right (filter Ileval.URandom) l [] in
+    (* FIXME/TODO secrets need to be understood by maskverif or used for CT-type-checking *)
+    Format.fprintf fmt "@[<v>public inputs: %a@ input shares: %a@ output shares: %a@ randoms: %a;@]"
+      (pp_list ", " mv_pp_var) (pub_of an.input_var)
+      (pp_list ", " mv_pp_var) (sha_of an.input_var)
+      (pp_list ", " mv_pp_var) (sha_of an.output_var)
+      (pp_list ", " mv_pp_var) (rnd_of an.input_var)
+  end
 
 let mv_pp_body fmt tr =
   let pp_b fmt (i:Il.instr) =
