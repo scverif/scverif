@@ -30,6 +30,9 @@ module ILParse = struct
   let parse_file = fun () ->
     MenhirLib.Convert.Simplified.traditional2revised Ilparser.file
 
+  let parse_scvfile = fun () ->
+    MenhirLib.Convert.Simplified.traditional2revised Ilparser.scvfile
+
   let lexer lexbuf = fun () ->
     let token = Illexer.main lexbuf in
     (token, L.lexeme_start_p lexbuf, L.lexeme_end_p lexbuf)
@@ -46,6 +49,10 @@ module ILParse = struct
 
   let process_file filename =
     let decl = from_file parse_file filename in
+    decl
+
+  let process_scvfile filename =
+    let decl = from_file parse_scvfile filename in
     decl
 
   let parse_command = fun () ->
@@ -304,17 +311,45 @@ and process_il mainenv filename =
   let ilast = ILParse.process_file (Location.unloc filename) in
   List.fold_left (process_ilcommand false) mainenv ilast
 
+and process_scv mainenv filename =
+  let scv = ILParse.process_scvfile (Location.unloc filename) in
+  process_scvcommand mainenv scv
+
 let main =
   let mainenv = ref empty_mainenv in
-  while true do
-    try
-    (*  Format.printf ">"; Format.print_flush (); *)
-      let c = ILParse.process_command () in
-      mainenv := process_ilcommand true !mainenv c
-    with
-    | Utils.HiError (s,loc,msg) ->
-      Format.eprintf "%a@." Utils.pp_hierror (s, loc, msg);
-      exit 2
-    | Utils.Error (s,loc,msg) ->
-      Format.eprintf "%a@." Utils.pp_error (s, loc, msg);
-  done
+  let interactive = fun () ->
+    while true do
+      try
+        Format.print_flush ();
+        let c = ILParse.process_command () in
+        mainenv := process_ilcommand true !mainenv c
+      with
+      | Utils.HiError (s,loc,msg) ->
+        Format.eprintf "%a@." Utils.pp_hierror (s, loc, msg);
+        exit 2
+      | Utils.Error (s,loc,msg) ->
+        Format.eprintf "%a@." Utils.pp_error (s, loc, msg);
+    done in
+  let cmdloc fname = Location.mk_loc
+      { Location._dummy with
+        loc_fname = "Command-line argument";
+        loc_start = (!Arg.current, 0) }
+      fname in
+  let process_asm' fname =
+    (mainenv := process_asm !mainenv (cmdloc fname); Format.print_flush ()) in
+  let process_il' fname =
+    (mainenv := process_il !mainenv (cmdloc fname); Format.print_flush ()) in
+  let process_scv' fname =
+    (mainenv := process_scv !mainenv (cmdloc fname); Format.print_flush ()) in
+  let argspec =
+    [("--asm", Arg.String process_asm', ": process code in an assembly file");
+     ("--il", Arg.String process_il', ": process declarations in an il file");
+     ("--scv", Arg.String process_scv', ": process commands in a scv file");
+     ("-i", Arg.Unit interactive, ": interactive mode");] in
+  let cmdlineusage =
+    "usage: " ^ Sys.argv.(0) ^
+    " [--asm filename] [--il filename] [--scv filename] [-i]" in
+
+  (* process command line arguments in order *)
+  Arg.parse argspec (fun a -> raise (Arg.Bad ("Parameter unknown " ^ a))) cmdlineusage;
+  interactive

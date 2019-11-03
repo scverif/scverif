@@ -60,20 +60,20 @@ logdir:
 	mkdir -p $(LOGDIR)
 
 # rule to test ilfiles
-%.iltest: $(ILSRCDIR)/%.il native logdir
-	printf "include il \"$<\"\n" | ./$(MAIN).native | tee $(LOGDIR)/$@
+$(ILSRCDIR)/%.iltest %.iltest: $(ILSRCDIR)/%.il native logdir
+	./scverif --il $< | tee $(LOGDIR)/$(notdir $@)
 
 # rule to test instruction set architectures
-%.isatest: $(ISASRCDIR)/%.il native logdir
-	printf "include il \"$<\"\n" | ./$(MAIN).native | tee $(LOGDIR)/$@
+$(ISASRCDIR)/%.isatest %.isatest: $(ISASRCDIR)/%.il native logdir
+	./scverif --il $< | tee $(LOGDIR)/$(notdir $@)
 
 # rule to test parsing of assembly files
-%.asmtest: $(ASMSRCDIR)/%.il native logdir
-	printf "include il \"$<\"\n" | ./$(MAIN).native | tee $(LOGDIR)/$@
+$(ASMSRCDIR)/%.asmtest %.asmtest: $(ASMSRCDIR)/%.il native logdir
+	./scverif --il $< | tee $(LOGDIR)/$(notdir $@)
 
 # rule to test ilfiles
-%.evaltest: $(EVALSRCDIR)/%.il native logdir
-	printf "include il \"$<\"\n" | ./$(MAIN).native | tee $(LOGDIR)/$@
+$(EVALSRCDIR)/%.evaltest %.evaltest: $(EVALSRCDIR)/%.il native logdir
+	./scverif --il $< | tee $(LOGDIR)/$(notdir $@)
 
 # rule to send evaltest output to maskverif
 %.mvtest: %.evaltest native logdir

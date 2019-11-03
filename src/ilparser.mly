@@ -33,9 +33,11 @@
 
 %start command
 %start file
+%start scvfile
 
 %type <Ilast.command> command
 %type <Ilast.command list> file
+%type <Scv.scvval Location.located list> scvfile
 
 %%
 
@@ -256,3 +258,6 @@ command:
 
 file:
   | c=command1* EOF { c }
+
+scvfile:
+  | d=scvdoc_ EOF { d }
