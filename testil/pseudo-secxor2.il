@@ -1,8 +1,6 @@
 // Copyright 2019 - NXP
 
-/*
-printf "include il \"testil/pseudo-secxor2.il\"\n" | ./main.native | ../maskverif/tool2/main_input.native
-*/
+// ./scverif --il testil/pseudo-secxor2.il | ../maskverif/maskverif
 
 include il "isa/pseudoisa.il"
 
