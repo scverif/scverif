@@ -6,6 +6,6 @@ true:   package(ppx_import, ppx_deriving.show, menhirLib, batteries, zarith)
 <src>:  include
 
 <main.{byte,native}>:                   package(maskverif)
-<src/{main,ilexport}.*>:                package(maskverif)
+<src/{main,ilmaskverif}.*>:                package(maskverif)
 
 <src/{iltyping,scv,illeakage,main}.*>:  package(re)
