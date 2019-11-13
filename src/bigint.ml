@@ -65,6 +65,9 @@ module ZImpl : BigintCore.TheInterface = struct
   let to_int (x : zint) =
     try Z.to_int x with Z.Overflow -> raise Overflow
 
+  let to_zint (x : zint) : Z.t = x
+  let of_zint (x : Z.t) : zint = x
+
   let to_string = (Z.to_string : zint -> string)
 
   let to_string_X = Z.format "x" 

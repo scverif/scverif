@@ -49,8 +49,8 @@ module type TheInterface = sig
   val lgand : zint -> zint -> zint
   val lgor  : zint -> zint -> zint
   val lgxor : zint -> zint -> zint
-  val lgnot : zint -> zint 
- 
+  val lgnot : zint -> zint
+
 
   module Notations : sig
     val ( =^ ) : zint -> zint -> bool
@@ -68,6 +68,8 @@ module type TheInterface = sig
 
   val of_int : int -> zint
   val to_int : zint -> int
+  val to_zint : zint -> Z.t
+  val of_zint : Z.t -> zint
 
   val of_string : string -> zint
   val to_string : zint -> string
