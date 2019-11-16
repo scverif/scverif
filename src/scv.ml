@@ -100,6 +100,8 @@ let pp_scvprintkind fmt p =
     Format.fprintf fmt "env"
   | PEvaluatedTrace ->
     Format.fprintf fmt "trace"
+  | PMaskverifProg ->
+    Format.fprintf fmt "maskverif"
 
 let pp_scvverbosity fmt v =
   Format.fprintf fmt "%d" (unloc v)
@@ -279,6 +281,7 @@ let scvprintkind_of_scvval pk =
      | "state" -> PState
      | "initials" -> PInitialEnvironment
      | "evaltrace" -> PEvaluatedTrace
+     | "maskverif" -> PMaskverifProg
      | _ -> scverror (Some (loc s))
               "unknown print kind: %a"
               pp_scvval a

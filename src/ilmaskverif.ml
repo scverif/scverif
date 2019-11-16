@@ -704,7 +704,7 @@ end = struct
     let f_out, lenv = init_header_sharedoutvars Ileval.Sharing lenv an.output_var in
     (* body *)
     let f_cmd, lenv = lift_instr lenv st.st_eprog in
-    let f_other = MVE.Sv.elements lenv.localdefs @ MVE.Sv.elements lenv.leakdefs in
+    let f_other = MVE.Sv.elements lenv.localdefs in
     let (func:MV.Prog.func) = {
       f_name; (* function name *)
       f_pin;  (* public input *)

@@ -86,7 +86,7 @@ let undecl_of_eprog an st =
   in
   List.fold_left var_of_assgn_not_in_env [] st.st_eprog
 
-let print_mv params st an m =
+let serialize_mvcheck params st an m =
   let undefvars = undecl_of_eprog an st in
   Format.printf "@[<v>proc %s:@   %a@ @ %a@ end@ para noglitch %a %s@ @]@."
     m.mc_name
@@ -94,3 +94,10 @@ let print_mv params st an m =
     mv_pp_body st.st_eprog
     Scv.pp_scvcheckkind params
     m.mc_name
+
+let serialize_mvprog st an m =
+  let undefvars = undecl_of_eprog an st in
+  Format.printf "@[<v>proc %s:@   %a@ @ %a@ end@]@."
+    m.mc_name
+    mv_pp_header (an, undefvars)
+    mv_pp_body st.st_eprog

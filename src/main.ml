@@ -201,7 +201,7 @@ let process_check (menv:mainenv) (c:Scv.scvcmd located) =
          let m = Iltyping.find_macro menv.genv mn in
          let st = Ileval.find_state menv.eenv mn in
          let an = Ileval.find_initial menv.eenv mn in
-         (Ilexport.print_mv ca) st an m)
+         Ilmaskverif.to_maskverif_test m an st)
       mns;
     menv
 
@@ -257,6 +257,15 @@ let process_print menv (p:Scv.scvcmd located) =
                let st = Ileval.find_state menv.eenv mn in
                Format.printf "@[<v>evaluated trace of %s:@   @[<v>%a@]@]@."
                  mn pp_cmd_g st.st_eprog)
+            mn
+        | PMaskverifProg ->
+          List.iter
+            (fun mn ->
+               (* TODO fail with location in error message *)
+               let m = Iltyping.find_macro menv.genv mn in
+               let st = Ileval.find_state menv.eenv mn in
+               let an = Ileval.find_initial menv.eenv mn in
+               Ilexport.serialize_mvprog st an m)
             mn
       end in
     Glob_option.set_verbose v;
