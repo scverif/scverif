@@ -7,37 +7,55 @@ module MVU = Maskverif.Util
 
 let mvglob = Hashtbl.create 107
 
-module IlToMv = struct
+module IlToMv : sig
+  val to_maskverif: Il.macro -> Ileval.initial -> Ileval.state -> MV.Prog.func
+
+end = struct
   module MTP = Maskverif.Prog.ToProg
   module P = Maskverif.Parsetree
 
-  let il2mv : MVE.var Il.Mv.t ref = ref Il.Mv.empty
-  let mv2il : Il.var MVE.Mv.t ref = ref MVE.Mv.empty
+(* global lookups, not during lifting
+  let globil2mv : MVE.var Il.Mv.t ref = ref Il.Mv.empty
+  let globmv2il : Il.var MVE.Mv.t ref = ref MVE.Mv.empty
+*)
   let mvglobenv = Hashtbl.create 107
+
+  type ilvmapping =
+    | MScalar of MVE.var
+    | MArray of MVE.var list
+    | MBaseArray of MVE.var * (MVE.var list)
+    (*
+    * aliases have the same name but different uids
+    * how to cope with that??
+    * -> prevent aliases during lifting, reuse as much as possible!
+    *)
 
   type liftstate =
     {
       globals    : MV.Prog.global_env;
       headerdefs : MVE.Sv.t;
       localdefs  : MVE.Sv.t;
-      il2mv      : MVE.var list Il.Mv.t;
-      mv2il      : Il.var MVE.Mv.t;
+      leakdefs  : MVE.Sv.t;
+      il2mv      : ilvmapping Il.Mv.t;
+      mv2il      : (Il.var * int option) MVE.Mv.t;
     }
 
   let empty_liftstate : liftstate =
     {
-      globals = mvglobenv; (* local copy, has to be merged explicitly *)
+      globals = mvglobenv; (* local copy during lifting *)
       headerdefs = MVE.Sv.empty;
       localdefs = MVE.Sv.empty;
+      leakdefs = MVE.Sv.empty;
       il2mv = Il.Mv.empty;
       mv2il = MVE.Mv.empty;
     }
-
+(*
   let map_ilvar (v:Il.var) : MVE.var =
-    Il.Mv.find v !il2mv
+    Il.Mv.find v !globil2mv
 
   let map_mvvar (v:MVE.var) : Il.var =
-    MVE.Mv.find v !mv2il
+    MVE.Mv.find v !globmv2il
+*)
 
   let error details = Utils.hierror "Lift from Il to Maskverif" details
 
@@ -73,9 +91,9 @@ module IlToMv = struct
         "@[Maskverif does not support memory, eliminate %a prior analysis.@]@."
         Il.V.pp_g v
 
-  (* translate il variable to maskverif var
+  (* translate il scalar variable to maskverif scalar variable
    * keep the mapping in il2mv and mv2il *)
-  let lift_ilvbase (env:liftstate) (v:Il.var) : MVE.var * liftstate =
+  let lift_ilvbase (localdef:bool) (env:liftstate) (v:Il.var) : MVE.var * liftstate =
     match v.v_ty with
     | Common.Tbase(bty) ->
       begin
@@ -93,13 +111,21 @@ module IlToMv = struct
 
         (* create the variable with unique id *)
         let mvvar = MVE.V.mk_var v.v_name (lift_ilty v) in
-        (* add the variable to the set of defined variables *)
-        let headerdefs = MVE.Sv.add mvvar env.headerdefs in
+        let headerdefs =
+          match not localdef with
+          (* add the variable to the set of defined variables *)
+          | true -> MVE.Sv.add mvvar env.headerdefs
+          | false -> env.headerdefs in
+        let localdefs =
+          match localdef with
+          (* add the variable to the set of defined variables *)
+          | true -> MVE.Sv.add mvvar env.localdefs
+          | false -> env.localdefs in
         (* update the bindings in our mapping *)
-        let il2mv = Il.Mv.add v [mvvar] env.il2mv in
-        let mv2il = MVE.Mv.add mvvar v env.mv2il in
+        let il2mv = Il.Mv.add v (MScalar mvvar) env.il2mv in
+        let mv2il = MVE.Mv.add mvvar (v,None) env.mv2il in
         (* return the variable and the new env *)
-        mvvar, {env with headerdefs; il2mv; mv2il}
+        mvvar, {env with headerdefs; localdefs; il2mv; mv2il}
       end
     | Common.Tarr(_,_,_) ->
       error (Some v.v_loc)
@@ -140,7 +166,7 @@ module IlToMv = struct
           (* add the variable to the set of defined variables *)
           let headerdefs = MVE.Sv.add mvvar env.headerdefs in
           (* update the bindings in our mapping *)
-          let mv2il = MVE.Mv.add mvvar v env.mv2il in
+          let mv2il = MVE.Mv.add mvvar (v,Some i) env.mv2il in
           (* return the variable and the new env *)
           mvvar::vs, {env with headerdefs; mv2il}
         in
@@ -149,7 +175,7 @@ module IlToMv = struct
         (* check wether we need to lift the base var as well *)
         if not liftbasevar then
           (* update the binding from il -> mv variable *)
-          let il2mv = Il.Mv.add v mvvars env.il2mv in
+          let il2mv = Il.Mv.add v (MArray mvvars) env.il2mv in
           mvvars, {env with il2mv}
         else
           (* lift the base variable and return it at the front of the list *)
@@ -165,12 +191,11 @@ module IlToMv = struct
             (* add the variable to the set of defined variables *)
             let headerdefs = MVE.Sv.add mvbvar env.headerdefs in
             (* update the bindings in our mapping *)
-            let mv2il = MVE.Mv.add mvbvar v env.mv2il in
-            (* return the variable and the new env *)
-            let mvvars = mvbvar :: mvvars in
+            let mv2il = MVE.Mv.add mvbvar (v, None) env.mv2il in
             (* update the binding from il -> mv variable *)
-            let il2mv = Il.Mv.add v mvvars env.il2mv in
-            mvvars, {env with il2mv; headerdefs; mv2il}
+            let il2mv = Il.Mv.add v (MBaseArray(mvbvar, mvvars)) env.il2mv in
+            (* return the variable and the new env *)
+            mvbvar::mvvars, {env with il2mv; headerdefs; mv2il}
           end
       end
     | Common.Tbase(_) ->
@@ -198,7 +223,7 @@ module IlToMv = struct
       : MVE.var list * liftstate =
       match v.v_ty with
       | Common.Tbase(_) ->
-        let v', env = lift_ilvbase env v in
+        let v', env = lift_ilvbase false env v in
         v'::vs, env
       | Common.Tarr(bty,rs,re) ->
         (* need to lift every index as variable *)
@@ -276,16 +301,401 @@ module IlToMv = struct
     (* initialize/define each random input variable, return the new leakage state*)
     List.fold_right init_var vars ([], env)
 
-  let to_instr (env:liftstate) (cmd:Il.cmd) : MVP.cmd * liftstate = [], env
+  let check_tbase_exn (l:Location.t) (v:Il.var) : unit =
+    match v.v_ty with
+    | Common.Tbase(_) -> ()
+    | Common.Tarr(_,_,_)
+    | Common.Tmem ->
+      error (Some l)
+        "@[expecting variable %a to have type Tbase.@]@."
+        Il.V.pp_g v
+
+  let mk_op2ttt t s = MVE.Op.make s (Some ([t;t], t)) MVE.NotBij MVE.Other
+  let mk_op2tttbij t s = MVE.Op.make s (Some ([t;t], t)) MVE.Bij MVE.Other
+
+  let o_orb   = mk_op2ttt MVE.w1  "|"
+  let o_orw8  = mk_op2ttt MVE.w8  "|w8"
+  let o_orw16 = mk_op2ttt MVE.w16 "|w16"
+  let o_orw32 = mk_op2ttt MVE.w32 "|w32"
+  let o_orw64 = mk_op2ttt MVE.w64 "|w64"
+
+  let o_amulb   = mk_op2ttt MVE.w1  "*"
+  let o_amulw8  = mk_op2ttt MVE.w8  "*w8"
+  let o_amulw16 = mk_op2ttt MVE.w16 "*w16"
+  let o_amulw32 = mk_op2ttt MVE.w32 "*w32"
+  let o_amulw64 = mk_op2ttt MVE.w64 "*w64"
+
+  let o_aaddb   = mk_op2tttbij MVE.w1  "+"
+  let o_aaddw8  = mk_op2tttbij MVE.w8  "+w8"
+  let o_aaddw16 = mk_op2tttbij MVE.w16 "+w16"
+  let o_aaddw32 = mk_op2tttbij MVE.w32 "+w32"
+  let o_aaddw64 = mk_op2tttbij MVE.w64 "+w64"
+
+  let o_asubb   = mk_op2tttbij MVE.w1  "-"
+  let o_asubw8  = mk_op2tttbij MVE.w8  "-w8"
+  let o_asubw16 = mk_op2tttbij MVE.w16 "-w16"
+  let o_asubw32 = mk_op2tttbij MVE.w32 "-w32"
+  let o_asubw64 = mk_op2tttbij MVE.w64 "-w64"
+
+  let rec lift_expr (i:Il.instr) (exty:MVE.ty) (env:liftstate) (expr:Il.expr)
+    : MVP.expr * liftstate =
+    match expr with
+    | Il.Ebool true ->
+      MVP.Econst MV.Expr.C._true, env
+    | Il.Ebool false ->
+      MVP.Econst MV.Expr.C._false, env
+    | Il.Eint int ->
+      let maxval = Maskverif.Expr.ty_size exty in
+      let maxval = Common.B.pow (Common.B.of_int 2) maxval in
+      if Common.B.le int maxval then
+        let const = MVE.C.make exty (Common.B.to_zint int) in
+        MVP.Econst const, env
+      else
+        error (Some (fst i.i_loc))
+          "@[overflow detected. expected type %s does not match given integer %a.@]@."
+          (MVE.ty2string exty)
+          Common.B.pp_zint int
+    | Il.Evar v ->
+      begin
+        (* must be lifted, (no use-before-definition) *)
+        match Il.Mv.find v env.il2mv with
+        | MScalar mv ->
+          MVP.Evar mv, env
+        | _ ->
+          error (Some v.v_loc)
+            "@[unexpected error during lookup of variable which should be defined.@]@."
+      end
+    | Il.Eget(v, iexpr) ->
+      begin
+        let index =
+          match iexpr with
+          | Il.Eint i -> i
+          | Il.Ebool true -> Common.B.one
+          | Il.Ebool false -> Common.B.zero
+          | Il.Evar(_)
+          | Il.Eop(_,_)
+          | Il.Eget(_,_)
+          | Il.Eload(_,_,_) ->
+            error (Some (fst i.i_loc))
+              "@[Expecting evaluated program, cannot handle variable index %a@]@."
+              Il.pp_e_g iexpr
+        in
+        match v.v_ty, Il.Mv.find v env.il2mv with
+        | Common.Tarr(bty,rs,re), MArray vs
+        | Common.Tarr(bty,rs,re), MBaseArray (_,vs) ->
+          begin
+            if (not (rs <= index || index <= re)) || not (exty == (lift_ilty v)) then
+              error (Some (fst i.i_loc))
+                "@[typing errors should never occur here!@]@.";
+            let var = List.nth vs (Common.B.to_int (Common.B.sub index rs)) in
+            MVP.Evar var, env
+          end
+        | _, _ ->
+          error (Some v.v_loc)
+            "@[unexpected error during lookup of lifted indexed-variable.@]@."
+      end
+    | Il.Eop(op, es) -> lift_op i exty env op es
+    | Il.Eload(_,_,_) ->
+      error (Some (fst i.i_loc))
+        "@[cannot lift memory %a. perform partial evaluation first.@]@."
+        Il.pp_e_g expr
+
+  and lift_op (i:Il.instr) (exty:MVE.ty) (env:liftstate) (op:Il.op) (es:Il.expr list)
+    : MVP.expr * liftstate =
+    let err_unsupported () =
+      error (Some (fst i.i_loc))
+        "@[op %a not supported.@]@."
+        Il.pp_e_g (Il.Eop(op,es)) in
+    let err_invalid () =
+      error (Some (fst i.i_loc))
+        "@[op %a invalid, perform partial evaluation.@]@."
+        Il.pp_e_g (Il.Eop(op,es)) in
+    let fold_lift_expr ety e (es,env) =
+      let e, env = lift_expr i ety env e in
+      e::es, env in
+    let check_ty (ety:MVE.ty) : unit =
+      if ety != exty then
+        error (Some (fst i.i_loc))
+          "@[typing error, operator does not match expected type@]@." in
+    let lift_existing (op:MVE.operator) (ety:MVE.ty) =
+      (* TODO      check_ty ety; *)
+      let mves, env = List.fold_right (fold_lift_expr ety) es ([],env) in
+      MVP.Eop(op, mves), env
+    in
+    match op.od with
+    | Il.Oxor(None) ->
+      lift_existing MVE.o_addb MVE.W1
+    | Il.Oxor(Some Common.U8) ->
+      lift_existing MVE.o_addw8 MVE.W8
+    | Il.Oxor(Some Common.U16) ->
+      lift_existing MVE.o_addw16 MVE.W16
+    | Il.Oxor(Some Common.U32) ->
+      lift_existing MVE.o_addw32 MVE.W32
+    | Il.Oxor(Some Common.U64) ->
+      lift_existing MVE.o_addw64 MVE.W64
+    | Il.Oand(None) ->
+      lift_existing MVE.o_mulb MVE.W1
+    | Il.Oand(Some Common.U8) ->
+      lift_existing MVE.o_mulw8 MVE.W8
+    | Il.Oand(Some Common.U16) ->
+      lift_existing MVE.o_mulw16 MVE.W16
+    | Il.Oand(Some Common.U32) ->
+      lift_existing MVE.o_mulw32 MVE.W32
+    | Il.Oand(Some Common.U64) ->
+      lift_existing MVE.o_mulw64 MVE.W64
+    | Il.Onot(None) ->
+      lift_existing MVE.o_negb MVE.W1
+    | Il.Onot(Some Common.U8) ->
+      lift_existing MVE.o_negw8 MVE.W8
+    | Il.Onot(Some Common.U16) ->
+      lift_existing MVE.o_negw16 MVE.W16
+    | Il.Onot(Some Common.U32) ->
+      lift_existing MVE.o_negw32 MVE.W32
+    | Il.Onot(Some Common.U64) ->
+      lift_existing MVE.o_negw64 MVE.W64
+    | Il.Oor(None) ->
+      lift_existing o_orb MVE.W1
+    | Il.Oor(Some Common.U8) ->
+      lift_existing o_orw8 MVE.W8
+    | Il.Oor(Some Common.U16) ->
+      lift_existing o_orw16 MVE.W16
+    | Il.Oor(Some Common.U32) ->
+      lift_existing o_orw32 MVE.W32
+    | Il.Oor(Some Common.U64) ->
+      lift_existing o_orw64 MVE.W64
+    | Il.Oadd(None) ->
+      lift_existing o_aaddb MVE.W1
+    | Il.Oadd(Some Common.U8) ->
+      lift_existing o_aaddw8 MVE.W8
+    | Il.Oadd(Some Common.U16) ->
+      lift_existing o_aaddw16 MVE.W16
+    | Il.Oadd(Some Common.U32) ->
+      lift_existing o_aaddw32 MVE.W32
+    | Il.Oadd(Some Common.U64) ->
+      lift_existing o_aaddw64 MVE.W64
+    | Il.Osub(None) ->
+      lift_existing o_asubb MVE.W1
+    | Il.Osub(Some Common.U8) ->
+      lift_existing o_asubw8 MVE.W8
+    | Il.Osub(Some Common.U16) ->
+      lift_existing o_asubw16 MVE.W16
+    | Il.Osub(Some Common.U32) ->
+      lift_existing o_asubw32 MVE.W32
+    | Il.Osub(Some Common.U64) ->
+      lift_existing o_asubw64 MVE.W64
+    | Il.Omul(None) ->
+      lift_existing o_amulb MVE.W1
+    | Il.Omul(Some Common.U8) ->
+      lift_existing o_amulw8 MVE.W8
+    | Il.Omul(Some Common.U16) ->
+      lift_existing o_amulw16 MVE.W16
+    | Il.Omul(Some Common.U32) ->
+      lift_existing o_amulw32 MVE.W32
+    | Il.Omul(Some Common.U64) ->
+      lift_existing o_amulw64 MVE.W64
+    | Il.Omulh(_) (* pow *)
+    | Il.Oopp(_) (* arithmetic negation *)
+    | Il.Olsl(_)
+    | Il.Olsr(_)
+    | Il.Oasr(_)
+    | Il.Oeq(_)
+    | Il.Olt(_,_)
+    | Il.Ole(_,_)
+    | Il.Osignextend(_,_)
+    | Il.Ozeroextend(_,_) -> err_unsupported ()
+    | Il.Oif(_)
+    | Il.Ocast_int(_,_)
+    | Il.Ocast_w(_) -> err_invalid ()
+
+  let lift_Iassgn (i:Il.instr) (is,env: MVP.cmd * liftstate) (lvar:Il.lval) (rhs:Il.expr)
+    : MVP.cmd * liftstate =
+    let (i_var, env : MVE.var * liftstate) =
+      let filterbyname (nm:string) (mvv:MVE.var) : bool = String.equal nm mvv.MVE.v_name in
+      match lvar with
+      (* assignment to variable *)
+      | Il.Lvar(v) ->
+        let vn = v.v_name in
+        (* check if it is already lifted *)
+        if Il.Mv.mem v env.il2mv then
+          begin
+            match Il.Mv.find v env.il2mv with
+            | MScalar v ->
+              if MVE.Sv.mem v env.headerdefs then
+                v, env
+              else if MVE.Sv.mem v env.localdefs then
+                v, env
+              else
+                error (Some (fst i.i_loc))
+                  "@[unexpected error during lookup, \
+                   lifted variable %a was not defined in header@]@."
+                  MVE.pp_var v
+            | MArray(vs)
+            | MBaseArray(_,vs) ->
+              error (Some v.v_loc)
+                "@[unexpected error during lookup, \
+                 lifted variable %a is a set of variables %a.@]@."
+                Il.V.pp_g v
+                (MV.Util.pp_list ",@ " (MVE.pp_var)) vs
+          end
+        else if MVE.Sv.exists (filterbyname vn) env.headerdefs then
+          (* this variable has been defined in the header but v.v_uid is fresh *)
+          let (mvvar:MVE.var) = MVE.Sv.find_first (filterbyname vn) env.headerdefs in
+          let il2mv = Il.Mv.add v (MScalar mvvar) env.il2mv in
+          let env:liftstate = {env with il2mv} in
+          mvvar, env
+        else if MVE.Sv.exists (filterbyname vn) env.localdefs then
+          (* this variable has been defined in the header but v.v_uid is fresh *)
+          let mvvar:MVE.var = MVE.Sv.find_first (filterbyname vn) env.localdefs in
+          let il2mv = Il.Mv.add v (MScalar mvvar) env.il2mv in
+          mvvar, {env with il2mv}
+        else
+          begin
+            (* need to lift the variable, add it to the local definitions *)
+            lift_ilvbase true env v
+          end
+      (* assignment to array with given index *)
+      | Il.Lset(v,iexpr) ->
+        begin
+          let index =
+            match iexpr with
+            | Il.Eint i -> i
+            | Il.Ebool true -> Common.B.one
+            | Il.Ebool false -> Common.B.zero
+            | Il.Evar(_)
+            | Il.Eop(_,_)
+            | Il.Eget(_,_)
+            | Il.Eload(_,_,_) ->
+              error (Some (fst i.i_loc))
+                "@[Expecting evaluated program, cannot handle variable index %a@]@."
+                Il.pp_e_g iexpr
+          in
+          let mvname = v.v_name ^ Common.B.to_string index in
+          match v.v_ty with
+          | Common.Tarr(_,rs,re) ->
+            (* check bounds *)
+            if not (rs <= index || index <= re) then
+              error (Some (fst i.i_loc))
+                "@[index out of range, typing errors should never occur here!@]@.";
+            (* check if it is already lifted *)
+            if Il.Mv.mem v env.il2mv then
+              begin
+                match Il.Mv.find v env.il2mv with
+                | MScalar v' ->
+                  error (Some v.v_loc)
+                    "@[unexpected error during lookup of lifted indexed-variable.@]@."
+                | MArray vs
+                | MBaseArray(_,vs) ->
+                  List.nth vs (Common.B.to_int (Common.B.sub index rs)), env
+              end
+            else if MVE.Sv.exists (filterbyname mvname) env.headerdefs then
+              (* this variable has been defined in the header but uid of il var is fresh *)
+              let mvvar = MVE.Sv.find_first (filterbyname mvname) env.headerdefs in
+              (* copy the entry *)
+              let v',_ = MVE.Mv.find mvvar env.mv2il in
+              let mvvars_full = Il.Mv.find v' env.il2mv in
+              (* add the alias *)
+              let il2mv = Il.Mv.add v mvvars_full env.il2mv in
+              mvvar, {env with il2mv}
+            else if MVE.Sv.exists (filterbyname v.v_name) env.localdefs then
+              (* this variable has been defined in the header but v.v_uid is fresh *)
+              let mvvar = MVE.Sv.find_first (filterbyname v.v_name) env.localdefs in
+              (* copy the entry *)
+              let v',_ = MVE.Mv.find mvvar env.mv2il in
+              let mvvars_full = Il.Mv.find v' env.il2mv in
+              (* add the alias *)
+              let il2mv = Il.Mv.add v mvvars_full env.il2mv in
+              mvvar, {env with il2mv}
+            else
+              begin
+                (* need to lift the variable, add it to the local definitions *)
+                let mvvars, env = lift_ilvarr true env v in
+                List.nth mvvars (Common.B.to_int (Common.B.sub index rs)), env
+              end
+          | Common.Tbase(_) ->
+            assert false (* typing error *)
+          | Common.Tmem ->
+            error (Some (fst i.i_loc))
+              "@[Expecting evaluated program, cannot handle %a@]@."
+              Il.pp_i_g i
+        end
+      (* assignment to memory *)
+      | Il.Lstore(_,_,_) ->
+        error (Some (fst i.i_loc))
+          "@[Expecting evaluated program, cannot handle %a@]@."
+          Il.pp_i_g i
+    in
+    let i_kind = MV.Parsetree.IK_noleak in
+    let i_expr, env = lift_expr i (i_var.v_ty) env rhs in
+    let instr_d = MVP.Iassgn({i_var; i_kind; i_expr}) in
+    (* TODO improve location *)
+    let instr_info = MVP.ToProg.pp_loc_info (lift_illoc (fst i.i_loc)) "" in
+    { instr_d; instr_info }::is, env
+
+  let lift_Ileak (i:Il.instr) (is,env: MVP.cmd * liftstate) (li:Il.leak_info) (es:Il.expr list)
+    : MVP.cmd * liftstate =
+    let fold_lift_expr e (es,env) =
+      let e, env = lift_expr i MVE.w1 env e in
+      e::es, env in
+    let filterbyname (nm:string) (mvv:MVE.var) : bool = String.equal nm mvv.MVE.v_name in
+    let l_name, env =
+      match li with
+      | Some lname ->
+        begin
+          (* by convention: leakage-names must be
+             locally defined maskverif variables and single assignment *)
+          (* need to create the variable, add it to the leak definitions *)
+          let lv = MVE.V.mk_var lname MVE.w1 in
+          let leakdefs = MVE.Sv.add lv env.leakdefs in
+          lv, { env with leakdefs }
+        end
+      | None ->
+        begin
+          try MVE.Sv.find_first (filterbyname "unnamedleak") env.leakdefs, env
+          with _ ->
+            (* create a fresh unnamed variable *)
+            let lv = MVE.V.mk_var "unnamedleak" MVE.w1 in
+            let leakdefs = MVE.Sv.add lv env.leakdefs in
+            lv, { env with leakdefs }
+        end
+    in
+    let es', env = List.fold_right fold_lift_expr es ([],env) in
+    let l_exprs = MVP.Eop(MVE.o_tuple, es') in
+    let instr_d = MVP.Ileak({l_name; l_exprs}) in
+    (* TODO improve location *)
+    let instr_info = MVP.ToProg.pp_loc_info (lift_illoc (fst i.i_loc)) "" in
+    { instr_d; instr_info }::is, env
+
+  let lift_instr (env:liftstate) (is:Il.cmd) : MVP.cmd * liftstate =
+    let lift_i (i:Il.instr) (is,env: MVP.cmd * liftstate)
+      : MVP.cmd * liftstate =
+      match i.i_desc with
+      | Il.Iassgn (lvar, expr) ->
+        lift_Iassgn i (is,env) lvar expr
+      | Il.Ileak (li, es) ->
+        lift_Ileak i (is,env) li es
+      | Il.Imacro (_, _) ->
+        error (Some (fst i.i_loc))
+          "@[macro calls not yet supported: cannot handle %a@]@."
+          Il.pp_i_g i
+      | Il.Ilabel _
+      | Il.Igoto _
+      | Il.Iigoto _
+      | Il.Iif (_, _, _)
+      | Il.Iwhile (_, _, _) ->
+        error (Some (fst i.i_loc))
+          "@[Expecting evaluated program, cannot handle %a@]@."
+          Il.pp_i_g i
+
+    in
+    let is, env = List.fold_right lift_i (List.rev is) ([],env) in
+    List.rev is, env
 
   let to_maskverif (m:Il.macro) (an:Ileval.initial) (st:Ileval.state)
     : MV.Prog.func =
+    let (lenv:liftstate) = empty_liftstate in
     let f_name = MV.Util.HS.make m.mc_name in
     (* FIXME: not supported in scverif for now *)
     let f_kind = MV.Util.NONE in
-
-    let (lenv:liftstate) = empty_liftstate in
-
     let f_pin, lenv = init_header_vars Ileval.Public lenv an.input_var in
     let f_rand, lenv = init_header_vars Ileval.URandom lenv an.input_var in
     (* FIXME: shared inputs, not supported in scverif for now *)
@@ -293,8 +703,8 @@ module IlToMv = struct
     let f_in, lenv = init_header_sharedinvars Ileval.Sharing lenv an.input_var in
     let f_out, lenv = init_header_sharedoutvars Ileval.Sharing lenv an.output_var in
     (* body *)
-    let f_cmd, lenv = to_instr lenv st.st_eprog in
-    let f_other = MVE.Sv.elements lenv.localdefs in
+    let f_cmd, lenv = lift_instr lenv st.st_eprog in
+    let f_other = MVE.Sv.elements lenv.localdefs @ MVE.Sv.elements lenv.leakdefs in
     let (func:MV.Prog.func) = {
       f_name; (* function name *)
       f_pin;  (* public input *)
