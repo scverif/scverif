@@ -5,50 +5,45 @@ module MVP = Maskverif.Prog
 module MVE = Maskverif.Expr
 module MVU = Maskverif.Util
 
-let mvglob = Hashtbl.create 107
-
 module IlToMv : sig
   val to_maskverif: Il.macro -> Ileval.initial -> Ileval.state -> MV.Prog.func
+  val get_or_lift: Il.macro -> Ileval.initial -> Ileval.state -> MV.Prog.func
+  val get_mvprog: Il.macro -> MV.Prog.func
+
+  val lift_illoc: Location.t -> MVU.location
 
 end = struct
   module MTP = Maskverif.Prog.ToProg
   module P = Maskverif.Parsetree
 
-(* global lookups, not during lifting
-  let globil2mv : MVE.var Il.Mv.t ref = ref Il.Mv.empty
-  let globmv2il : Il.var MVE.Mv.t ref = ref MVE.Mv.empty
-*)
-  let mvglobenv = Hashtbl.create 107
+  module Mf = Map.Make(Il.M)
 
   type ilvmapping =
     | MScalar of MVE.var
     | MArray of MVE.var list
     | MBaseArray of MVE.var * (MVE.var list)
-    (*
-    * aliases have the same name but different uids
-    * how to cope with that??
-    * -> prevent aliases during lifting, reuse as much as possible!
-    *)
+
+  type mvvmapping =
+    | IlVar of Il.var
+    | IlArr of Il.var * int
+    | IlLeakname of string * Location.t
+
+  (* global lookups *)
+  let globilmacro2func : MVP.func Mf.t ref = ref Mf.empty (* lookup from Il.macro -> MVP.func *)
+  let globilvar2mv : ilvmapping Il.Mv.t ref = ref Il.Mv.empty (* lookup from Il.var -> MVE.var *)
+  let globmvvar2il : mvvmapping MVE.Mv.t ref = ref MVE.Mv.empty (* lookup from MVE.var -> Il.var *)
+
+  let mvglobalenv : MVP.global_env = Hashtbl.create 107 (* maskverif internal env *)
 
   type liftstate =
     {
-      globals    : MV.Prog.global_env;
       headerdefs : MVE.Sv.t;
       localdefs  : MVE.Sv.t;
-      leakdefs  : MVE.Sv.t;
+      leakdefs   : MVE.Sv.t;
       il2mv      : ilvmapping Il.Mv.t;
-      mv2il      : (Il.var * int option) MVE.Mv.t;
+      mv2il      : mvvmapping MVE.Mv.t;
     }
 
-  let empty_liftstate : liftstate =
-    {
-      globals = mvglobenv; (* local copy during lifting *)
-      headerdefs = MVE.Sv.empty;
-      localdefs = MVE.Sv.empty;
-      leakdefs = MVE.Sv.empty;
-      il2mv = Il.Mv.empty;
-      mv2il = MVE.Mv.empty;
-    }
 (*
   let map_ilvar (v:Il.var) : MVE.var =
     Il.Mv.find v !globil2mv
@@ -123,7 +118,7 @@ end = struct
           | false -> env.localdefs in
         (* update the bindings in our mapping *)
         let il2mv = Il.Mv.add v (MScalar mvvar) env.il2mv in
-        let mv2il = MVE.Mv.add mvvar (v,None) env.mv2il in
+        let mv2il = MVE.Mv.add mvvar (IlVar v) env.mv2il in
         (* return the variable and the new env *)
         mvvar, {env with headerdefs; localdefs; il2mv; mv2il}
       end
@@ -166,7 +161,7 @@ end = struct
           (* add the variable to the set of defined variables *)
           let headerdefs = MVE.Sv.add mvvar env.headerdefs in
           (* update the bindings in our mapping *)
-          let mv2il = MVE.Mv.add mvvar (v,Some i) env.mv2il in
+          let mv2il = MVE.Mv.add mvvar (IlArr(v, i)) env.mv2il in
           (* return the variable and the new env *)
           mvvar::vs, {env with headerdefs; mv2il}
         in
@@ -191,7 +186,7 @@ end = struct
             (* add the variable to the set of defined variables *)
             let headerdefs = MVE.Sv.add mvbvar env.headerdefs in
             (* update the bindings in our mapping *)
-            let mv2il = MVE.Mv.add mvbvar (v, None) env.mv2il in
+            let mv2il = MVE.Mv.add mvbvar (IlVar v) env.mv2il in
             (* update the binding from il -> mv variable *)
             let il2mv = Il.Mv.add v (MBaseArray(mvbvar, mvvars)) env.il2mv in
             (* return the variable and the new env *)
@@ -591,7 +586,14 @@ end = struct
               (* this variable has been defined in the header but uid of il var is fresh *)
               let mvvar = MVE.Sv.find_first (filterbyname mvname) env.headerdefs in
               (* copy the entry *)
-              let v',_ = MVE.Mv.find mvvar env.mv2il in
+              let v' =
+                match MVE.Mv.find mvvar env.mv2il with
+                | IlVar(v) -> v
+                | IlArr(v,_) -> v
+                | IlLeakname(_) ->
+                  error (Some (fst i.i_loc))
+                    "@[unexpected typing error. leakage variable reused.@]@."
+              in
               let mvvars_full = Il.Mv.find v' env.il2mv in
               (* add the alias *)
               let il2mv = Il.Mv.add v mvvars_full env.il2mv in
@@ -600,7 +602,14 @@ end = struct
               (* this variable has been defined in the header but v.v_uid is fresh *)
               let mvvar = MVE.Sv.find_first (filterbyname v.v_name) env.localdefs in
               (* copy the entry *)
-              let v',_ = MVE.Mv.find mvvar env.mv2il in
+              let v' =
+                match MVE.Mv.find mvvar env.mv2il with
+                | IlVar(v) -> v
+                | IlArr(v,_) -> v
+                | IlLeakname(_) ->
+                  error (Some (fst i.i_loc))
+                    "@[unexpected typing error. leakage variable reused.@]@."
+              in
               let mvvars_full = Il.Mv.find v' env.il2mv in
               (* add the alias *)
               let il2mv = Il.Mv.add v mvvars_full env.il2mv in
@@ -641,12 +650,11 @@ end = struct
       match li with
       | Some lname ->
         begin
-          (* by convention: leakage-names must be
-             locally defined maskverif variables and single assignment *)
           (* need to create the variable, add it to the leak definitions *)
           let lv = MVE.V.mk_var lname MVE.w1 in
           let leakdefs = MVE.Sv.add lv env.leakdefs in
-          lv, { env with leakdefs }
+          let mv2il = MVE.Mv.add lv (IlLeakname(lname, fst i.i_loc)) env.mv2il in
+          lv, { env with leakdefs; mv2il }
         end
       | None ->
         begin
@@ -655,7 +663,8 @@ end = struct
             (* create a fresh unnamed variable *)
             let lv = MVE.V.mk_var "unnamedleak" MVE.w1 in
             let leakdefs = MVE.Sv.add lv env.leakdefs in
-            lv, { env with leakdefs }
+            let mv2il = MVE.Mv.add lv (IlLeakname("unnamedleak", fst i.i_loc)) env.mv2il in
+            lv, { env with leakdefs; mv2il }
         end
     in
     let es', env = List.fold_right fold_lift_expr es ([],env) in
@@ -692,7 +701,15 @@ end = struct
 
   let to_maskverif (m:Il.macro) (an:Ileval.initial) (st:Ileval.state)
     : MV.Prog.func =
-    let (lenv:liftstate) = empty_liftstate in
+    if Mf.mem m !globilmacro2func then
+      error None
+        "@[macro %s already lifted.@]@." m.mc_name;
+    let lenv : liftstate = {
+      headerdefs = MVE.Sv.empty;
+      localdefs = MVE.Sv.empty;
+      leakdefs = MVE.Sv.empty;
+      il2mv = !globilvar2mv;
+      mv2il = !globmvvar2il; } in
     let f_name = MV.Util.HS.make m.mc_name in
     (* FIXME: not supported in scverif for now *)
     let f_kind = MV.Util.NONE in
@@ -715,16 +732,48 @@ end = struct
       f_other;(* internal variables *)
       f_rand; (* input entropy *)
       f_cmd } in
-    (* the rest as in Maskverif.Prog.func *)
-    let func = MV.Prog.Process.macro_expand_func mvglob func in
-    MV.Prog.add_global lenv.globals func;
+    (* as in Maskverif.Prog.func *)
+    let func = MV.Prog.Process.macro_expand_func mvglobalenv func in
+    (* update the global state accordingly *)
+    globilvar2mv := lenv.il2mv;
+    globmvvar2il := lenv.mv2il;
+    (* update the binding *)
+    globilmacro2func := Mf.add m func !globilmacro2func;
+    (* return the resulting func *)
     func
+
+  let get_mvprog (m:Il.macro) : MVP.func =
+    try Mf.find m !globilmacro2func
+    with Not_found ->
+      error None
+        "@[cannot find lift of macro %s@]@." m.mc_name
+
+  let get_or_lift (m:Il.macro) (an:Ileval.initial) (st:Ileval.state) =
+    try Mf.find m !globilmacro2func
+    with Not_found ->
+      to_maskverif m an st
 
 end
 
-(* more functionality like checking TBD *)
-let to_maskverif_test (m:Il.macro) (an:Ileval.initial) (st:Ileval.state) =
-  let func = IlToMv.to_maskverif m an st in
+let print_mvprog (m:Il.macro) (an:Ileval.initial) (st:Ileval.state) =
+  let func = IlToMv.get_or_lift m an st in
   let pi:MVP.print_info = {var_full = !Glob_option.full; print_info = false} in
   Format.printf "@[lifting returned:@ @[<v>%a]@]@."
     (MV.Prog.pp_func ~full:pi) func
+
+let check_mvprog (params:Scv.scvcheckkind) (m:Il.macro) (an:Ileval.initial) (st:Ileval.state) : unit =
+  let func = IlToMv.get_or_lift m an st in
+  let algorithm =
+    (match params with
+    | Scv.Noninterference -> MV.Util.(`NI)
+    | Scv.Strongnoninterference -> MV.Util.(`SNI))
+  in
+  let (params, nb_shares, interns, outputs, _) =
+    MVP.build_obs_func
+      ~trans:false ~glitch:false ~ni:algorithm (IlToMv.lift_illoc m.mc_loc) func in
+  let order = (nb_shares - 1) in
+  let toolopts:MV.Util.tool_opt = {
+    pp_error = true;
+    checkbool = true;
+  } in
+  MV.Checker.check_sni toolopts ~para:true ~fname:(m.mc_name) params nb_shares ~order interns outputs

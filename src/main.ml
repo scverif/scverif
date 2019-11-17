@@ -192,18 +192,15 @@ let process_check (menv:mainenv) (c:Scv.scvcmd located) =
         Utils.hierror "Main.process_check:" (Some (loc c))
           "expected Check command but got %a" Scv.pp_scvcmd e
     end in
-  match ca with
-  | Strongnoninterference
-  | Noninterference ->
-    List.iter
-      (fun mn ->
-         (* TODO fail with location in error message *)
-         let m = Iltyping.find_macro menv.genv mn in
-         let st = Ileval.find_state menv.eenv mn in
-         let an = Ileval.find_initial menv.eenv mn in
-         Ilmaskverif.to_maskverif_test m an st)
-      mns;
-    menv
+  List.iter
+    (fun mn ->
+       (* TODO fail with location in error message *)
+       let m = Iltyping.find_macro menv.genv mn in
+       let st = Ileval.find_state menv.eenv mn in
+       let an = Ileval.find_initial menv.eenv mn in
+       Ilmaskverif.check_mvprog ca m an st)
+    mns;
+  menv
 
 let process_print menv (p:Scv.scvcmd located) =
   let open Scv in

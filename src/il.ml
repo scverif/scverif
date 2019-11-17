@@ -191,6 +191,7 @@ module M = struct
     else Format.fprintf fmt "%s" m.mc_name
 
   let pp fmt m = pp_full ~full:false fmt m
+  let compare (m1:t) (m2:t) : int = Uid.compare m1.mc_uid m2.mc_uid
 
 end
 

@@ -86,7 +86,7 @@ filterleak:
   leaks: "*Operand?";
 
 print:
-  kind: evaltrace
+  kind: maskverif
   target: secxor
   verbosity: 0;
 
