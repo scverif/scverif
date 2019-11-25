@@ -1,0 +1,4 @@
+* Installation
+1. Install [[https://gitlab.com/benjgregoire/maskverif/tree/SPINI][the maskverif SPINI branch]] (see install description there)
+2. run ~make native~
+3. run example via: ~./scverif --il testil/pseudo-secxor2.il~
