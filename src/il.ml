@@ -65,6 +65,7 @@ module Lbl : sig
   val pp      : Format.formatter -> t -> unit
   val pp_g    : Format.formatter -> t -> unit
   val pp_dbg  : Format.formatter -> t -> unit
+  val hasname  : string -> t -> bool
 
   val exit_ : t
 end = struct
@@ -76,6 +77,7 @@ end = struct
 
   let compare l1 l2 = Uid.compare l1.l_id l2.l_id
   let equal l1 l2 = Uid.equal l1.l_id l2.l_id
+  let hasname s l = String.equal s l.l_name
 
   let fresh l_name =
     { l_name;
@@ -480,6 +482,9 @@ let pp_macro ~full fmt m =
     (M.pp_full ~full) m (pp_params ~full) m.mc_params
     pp_locals m.mc_locals
     (pp_cmd ~full) m.mc_body
+
+let pp_macro_g p =
+  pp_macro ~full:!Glob_option.full p
 
 let pp_global ~full fmt = function
   | Gvar x -> Format.fprintf fmt "%a;" (pp_var_decl ~full) x

@@ -79,7 +79,7 @@ module AsmParse = struct
     lexbuf
 
   let parse_file = fun () ->
-    MenhirLib.Convert.Simplified.traditional2revised Asmparser.section
+    MenhirLib.Convert.Simplified.traditional2revised Asmparser.sections
 
   let lexer lexbuf = fun () ->
     let token = Asmlexer.main lexbuf in
@@ -116,15 +116,18 @@ let process_gvar menv x =
   let x    = Iltyping.process_var_decl x in
   let genv = Iltyping.add_gvar genv x in
   Glob_option.print_normal "%a@." Il.pp_global_g (Gvar x);
-  { menv with genv = genv }
+  { menv with genv }
 
 let process_macro menv m =
   let genv = menv.genv in
-  let m = Iltyping.process_macro genv m in
-  Glob_option.print_full "@[<v>type checked %s@ %a@]@."
-    m.mc_name Il.pp_global_g (Gmacro m);
-  let genv = Iltyping.add_macro genv m in
-  { menv with genv = genv }
+  let genv = Iltyping.process_macros genv [m] in
+  { menv with genv }
+
+let process_macros (menv:mainenv) (ms:Ilast.macro_decl located list) =
+  let genv = Iltyping.process_macros menv.genv ms in
+  (*Glob_option.print_full "@[<v>type checked %s@ %a@]@."
+    m.mc_name Il.pp_global_g (Gmacro m);*)
+  { menv with genv}
 
 let process_verbose (menv:mainenv) (v:Scv.scvverbosity) =
   let i, _ = Scv.scvverbosity_to_glob v in
@@ -305,13 +308,11 @@ let rec process_ilcommand really_exit mainenv = function
   | Ilast.Gexit -> if really_exit then exit 0 else mainenv
 
 and process_asm mainenv filename =
-  let asmast = AsmParse.process_file (Location.unloc filename) in
+  let asmasts = AsmParse.process_file (Location.unloc filename) in
   Glob_option.print_full "@[<v>ASM program parsed@ %a@]@."
-    Asmast.pp_section asmast;
-  let ilast = Asmlifter.lift_section asmast in
-  Glob_option.print_full "@[<v>ASM lifted to IL@ %a@]@."
-    Ilast.pp_command ilast;
-  process_ilcommand false mainenv ilast
+    (pp_list "@ @ " Asmast.pp_section) asmasts;
+  let ilasts = List.map Asmlifter.lift_section asmasts in
+  process_macros mainenv ilasts
 
 and process_il mainenv filename =
   let ilast = ILParse.process_file (Location.unloc filename) in
@@ -341,6 +342,8 @@ let main =
         loc_fname = "Command-line argument";
         loc_start = (!Arg.current, 0) }
       fname in
+  let process_dbg' i =
+    (Glob_option.set_verbose i; Format.print_flush ()) in
   let process_asm' fname =
     (mainenv := process_asm !mainenv (cmdloc fname); Format.print_flush ()) in
   let process_il' fname =
@@ -351,11 +354,20 @@ let main =
     [("--asm", Arg.String process_asm', ": process code in an assembly file");
      ("--il", Arg.String process_il', ": process declarations in an il file");
      ("--scv", Arg.String process_scv', ": process commands in a scv file");
+     ("-v", Arg.Int process_dbg', ": set verbosity");
      ("-i", Arg.Unit interactive, ": interactive mode");] in
   let cmdlineusage =
     "usage: " ^ Sys.argv.(0) ^
-    " [--asm filename] [--il filename] [--scv filename] [-i]" in
-
-  (* process command line arguments in order *)
-  Arg.parse argspec (fun a -> raise (Arg.Bad ("Parameter unknown " ^ a))) cmdlineusage;
-  interactive
+    " [--asm filename] [--il filename] [--scv filename] [-v level] [-i]" in
+  let batch = fun () ->
+    (* process command line arguments in order *)
+    try
+      Arg.parse argspec (fun a -> raise (Arg.Bad ("Parameter unknown " ^ a))) cmdlineusage;
+    with
+    | Utils.HiError (s,loc,msg) ->
+      Format.eprintf "%a@." Utils.pp_hierror (s, loc, msg);
+      exit 2
+    | Utils.Error (s,loc,msg) ->
+      Format.eprintf "%a@." Utils.pp_error (s, loc, msg);
+      exit 2 in
+  batch ()

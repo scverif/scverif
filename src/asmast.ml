@@ -26,6 +26,7 @@ type operand =
 type operands =
   | Ofixed    of operand list
   | Oflexible of ident list
+  | Onone
 [@@deriving show]
 
 type stmt_r = {

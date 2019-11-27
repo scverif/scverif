@@ -25,7 +25,11 @@ let refine_mname (mname:ident) (nargs:int) =
 let refine_label (secname:string) (offs:Asmast.hex) =
   let loc = loc offs in
   let offs = unloc offs in
-  let name = secname ^ "+" ^ (B.to_string_X offs) in
+  let name =
+    if B.equal B.zero offs then
+      secname
+    else
+      secname ^ "+" ^ (B.to_string_X offs) in
   mk_loc loc name
 
 let lift_regimm = function
@@ -36,13 +40,14 @@ let aexpr_var id = Aexpr (Ilast.mk_var id)
 
 let lift_operand o =
   match o with
-  | Regimm ir -> [Aexpr (lift_regimm ir)]
+  | Regimm ir       -> [Aexpr (lift_regimm ir)]
   | RegOffs (r, ir) -> [aexpr_var r; Aexpr (lift_regimm ir)]
-  | Label(id,offs)   -> [aexpr_var (refine_label (unloc id) offs)]
+  | Label(id,offs)  -> [aexpr_var (refine_label (unloc id) offs)]
 
 let lift_operands = function
   | Ofixed ops -> List.flatten (List.map lift_operand ops)
   | Oflexible rs -> List.map aexpr_var rs
+  | Onone -> []
 
 let lift_stmt (secname:string) (stmt:Asmast.stmt) =
   let stmt_loc = loc stmt in
@@ -55,22 +60,20 @@ let lift_stmt (secname:string) (stmt:Asmast.stmt) =
   [ilbl; ins]
 
 let infer_param_labels is =
-  let p = ref [] in
-  let aux i =
+  let aux i ps =
     match unloc i with
-    | Ilabel lbl -> p := Plabel lbl :: !p
-    | _          -> () in
-  List.iter aux is;
-  !p
+    | Ilabel lbl -> Plabel lbl :: ps
+    | _          -> ps in
+  List.fold_right aux is []
 
 let lift_section (sec:Asmast.section) =
   (* section becomes a macro with call statements *)
   let sloc    = loc sec in
   let m       = unloc sec in
-  let mc_name   = m.s_name in
+  let mc_name = m.s_name in
   let secname = unloc mc_name in
   (* compute the body *)
   let mc_body = List.flatten (List.map (lift_stmt secname) m.s_stmts) in
   let mc_locals = infer_param_labels mc_body in
   let m = { mc_name; mc_params = []; mc_locals; mc_body } in
-  Ilast.Gmacro (mk_loc sloc m)
+  mk_loc sloc m
