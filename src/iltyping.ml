@@ -538,7 +538,8 @@ let check_args env loc args params : env * macro_arg list =
   let check_arg' (env,ps) a p : env * macro_arg list =
     let env, p' = check_arg env a p in
     env, p'::ps in
-  List.fold_left2 check_arg' (env,[]) args params
+  let env, args = List.fold_left2 check_arg' (env,[]) args params in
+  env, List.rev args
 
 let rec type_i (env:env) (i:Ilast.instr) : env * Il.instr =
   let env, i_desc =

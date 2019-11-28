@@ -120,7 +120,7 @@ let inline_lv env loc x =
   let e = inline_e env loc (lv2e x) in
   try e2lv e
   with Not_found ->
-    in_error loc "lvalue %a inline to %a which can not be view as a lvalue"
+    in_error loc "   @[<v>lvalue %a inline to %a which cannot be viewed as a lvalue@]"
       (pp_lval ~full:true) x (pp_e ~full:true) e
 
 let inline_arg env loc arg =
