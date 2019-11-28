@@ -118,15 +118,13 @@ let process_gvar menv x =
   Glob_option.print_normal "%a@." Il.pp_global_g (Gvar x);
   { menv with genv }
 
-let process_macro menv m =
+let process_macro (menv:mainenv) (m:Ilast.macro_decl located) =
   let genv = menv.genv in
   let genv = Iltyping.process_macros genv [m] in
   { menv with genv }
 
 let process_macros (menv:mainenv) (ms:Ilast.macro_decl located list) =
   let genv = Iltyping.process_macros menv.genv ms in
-  (*Glob_option.print_full "@[<v>type checked %s@ %a@]@."
-    m.mc_name Il.pp_global_g (Gmacro m);*)
   { menv with genv}
 
 let process_verbose (menv:mainenv) (v:Scv.scvverbosity) =

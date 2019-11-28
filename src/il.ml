@@ -245,14 +245,19 @@ let params_label =
       | Plabel lbl -> Sl.add lbl s
       | _ -> s) Sl.empty
 
-let check_labels msg m =
+let check_labels (msg:string) (ms:macro Ms.t) (m:macro) =
   let def = defined_label m.mc_body in
   let dparams = params_label m.mc_params in
+  let globals = Ms.fold
+      (fun mn m s -> Sl.union s (params_label m.mc_locals))
+      ms Sl.empty in
   let all = Sl.union def dparams in
   let defined = ref Sl.empty in
   let check ii lbl =
     if not (Sl.mem lbl all) then
-      error msg ii "undefined label %a" Lbl.pp lbl in
+      (* try to find the label globally *)
+      if not (Sl.mem lbl globals) then
+        error msg ii "undefined label %a in %s" (Lbl.pp_full ~full:true) lbl m.mc_name in
   let check_def ii lbl =
     if Sl.mem lbl !defined then
       error msg ii "redifinition of label %a" Lbl.pp lbl;

@@ -64,12 +64,14 @@ let get_macros genv =
 (* Local environment                                 *)
 
 type id_kind = [%import: Iltyping.id_kind]
+type unsatdep = [%import: Iltyping.unsatdep]
 type env = [%import: Iltyping.env]
 
-let empty_env genv =
-  { genv; locals = Ms.empty; }
+let empty_env genv : env =
+  { genv; locals = Ms.empty; unsat = Ms.empty }
 
-let add_var env x =
+(* add a variable to the local definitions of this macro *)
+let add_var (env:env) (x:var) : env =
   match Ms.find x.v_name env.locals with
   | Var x' ->
     ty_error x.v_loc "variable %s is already declared at %a"
@@ -79,7 +81,8 @@ let add_var env x =
   | exception Not_found ->
     { env with locals = Ms.add x.v_name (Var x) env.locals }
 
-let add_label env local lbl =
+(* add a local label to the header of this macro *)
+let add_label (env:env) (local:bool) (lbl:Ilast.ident) : env * Lbl.t =
   let l = unloc lbl in
   match Ms.find l env.locals with
   | Var x' ->
@@ -88,38 +91,112 @@ let add_label env local lbl =
   | Label _ ->
     ty_error (loc lbl) "label %s is already declared" l
   | exception Not_found ->
-    let l' = Lbl.fresh l in
-    { env with locals = Ms.add l (Label(l',local)) env.locals }, l'
+    (* check dependencies *)
+    match Ms.find l env.unsat with
+    | DVar x', ms ->
+      ty_error (loc lbl) "label %s is already declared as variable at %a in %a"
+        l pp_loc x'.v_loc (pp_list ",@," pp_string) ms
+    | DLabel l', ms ->
+      (if not local then
+         ty_error (loc lbl) "non-unique label: label %s is already declared as %a in %a"
+           l Lbl.pp_g l' (pp_list ",@," pp_string) ms;
+       (* dependency is now resolved (i.e. declared) *)
+       { env with
+         unsat = Ms.remove l env.unsat;
+         locals = Ms.add l (Label(l',local)) env.locals }, l')
+    | exception Not_found ->
+      (* create a new label *)
+      let l' = Lbl.fresh l in
+      { env with locals = Ms.add l (Label(l',local)) env.locals }, l'
 
+(* find an existing local or global variable (not inside other macros) *)
 let find_var env x =
   let loc = loc x in
   let x = unloc x in
   match Ms.find x env.locals with
-  | Label _ -> ty_error loc "%s is a label, not a variable" x
+  | Label(l,_) -> ty_error loc "%s is a label %a, not a variable" x Lbl.pp_g l
   | Var x   -> x
   | exception Not_found ->
     try Ms.find x env.genv.glob_var
     with Not_found ->
-      ty_error loc "unknown variable %s" x
+      (match Ms.find x env.unsat with
+       | DLabel _, _ -> ty_error loc "%s is defined as label in a dependency, not a variable" x
+       | DVar x, _   -> ty_error loc "unexpected"
+       (* FIXME this makes no sense: variables need to be local or global,
+                             but not shared between macros *)
+       (* TODO update the dependency statement *)
+       | exception Not_found ->
+         ty_error loc "unknown variable %s" x)
 
-let find_label env l =
+(* find an existing label within other macros *)
+let find_label_glob (env:env) (l:Ilast.ident) : Lbl.t option=
   let loc = loc l in
   let l = unloc l in
-  match Ms.find l env.locals with
-  | Label(l,local)      -> l, local
-  | Var _               -> ty_error loc "%s is a variable, not a label" l
-  | exception Not_found -> ty_error loc "unknown label %s" l
-
-(* FIXME check that if the result is a variable it is compatible
-   with label *)
-let find_goto env l =
-  let loc = loc l in
-  let l = unloc l in
-  try Ms.find l env.locals
+  try
+    (* try to find the macro based on the base name *)
+    let tgt = List.hd (String.split_on_char '+' l) in
+    let (m:Il.macro) = Ms.find tgt env.genv.macro in
+    let filter p = function
+      | Plabel l -> Lbl.hasname p l
+      | Pvar _ -> false in (* local variables can have multiple definitions *)
+    match List.find_all (filter l) m.mc_locals with
+    | [] ->
+      None
+    | [l] ->
+      (match l with
+       | Plabel l -> Some l
+       | _ -> assert false)
+    | hd::tl ->
+      ty_error loc "labels must be unique but \
+                    multiple labels named %s defined in %s" l m.mc_name
   with Not_found ->
-    try  Var(Ms.find l env.genv.glob_var)
-    with Not_found -> ty_error loc "unknown label %s" l
+    None (* TODO find label by exhaustive brute-force search *)
 
+(* find existing or unsatisfied label. otherwise define one but do not mark it as unsatisfied *)
+let find_label (makedep:bool) (env:env) (l:Ilast.ident) : env * Lbl.t * bool =
+  let loc = loc l in
+  let ln = unloc l in
+  match Ms.find ln env.locals with
+  | Label(l', local) ->
+    { env with unsat = Ms.remove ln env.unsat }, l', local
+  | Var _               -> ty_error loc "%s is typed as variable, not as label" ln
+  | exception Not_found ->
+    (* label is outside current macro *)
+    match find_label_glob env l with
+    | Some l -> env, l, false
+    | None ->
+      (* try to match an existing dependency *)
+      match Ms.find ln env.unsat with
+      | DLabel l', _ ->
+        { env with unsat = Ms.remove ln env.unsat }, l', true
+      | DVar x', ms ->
+        ty_error loc "label %s is already declared as variable at %a in %a"
+          ln pp_loc x'.v_loc (pp_list ",@," pp_string) ms
+      | exception Not_found ->
+        (* create new label and add it to the dependencies *)
+        let l' = Lbl.fresh ln in
+        if makedep then
+          (* TODO update dependency list *)
+          { env with unsat = Ms.add ln (DLabel(l'),[]) env.unsat }, l', false
+        else
+          env, l', false
+
+(* TODO check that if the result is a variable it is compatible
+   with label *)
+(* try to find destination in a goto statement and mark it unsatisfied otherwise *)
+let find_goto (env:env) (l:Ilast.ident) : env * id_kind=
+  let ln = unloc l in
+  (* try to find a local variable or label *)
+  try env, Ms.find ln env.locals
+  with Not_found ->
+    (* try to find global variables *)
+    try env, Var(Ms.find ln env.genv.glob_var)
+    with Not_found ->
+      (* try to find label within other macro *)
+      let env, l', b = find_label true env l in
+      assert(b == false);
+      (* define a dependency *)
+      env, Label(l', false)
 
 (* ********************************************** *)
 (* Type checking                                  *)
@@ -393,14 +470,14 @@ let check_bound loc n1 n2 j1 j2 =
     ty_error loc "invalid index, %a should be smaller than %a"
       B.pp_print n1 B.pp_print j2
 
-let check_arg env a p =
+let check_arg env a p : env * Il.macro_arg =
   match p with
   | Plabel _ ->
     begin match a with
       | Ilast.Alabel lbl
       | Ilast.Aexpr { pl_desc = Ilast.Evar lbl } ->
-        let lbl,_ = find_label env lbl in
-        Alabel lbl
+        let env, lbl, _ = find_label true env lbl in
+        env, Alabel lbl
       | Ilast.Aexpr {pl_loc = loc }
       | Ilast.Aindex ({pl_loc = loc}, _) ->
         ty_error loc "a label is expected"
@@ -434,7 +511,7 @@ let check_arg env a p =
       if not (B.equal sn si) then
         ty_error xloc "this array has size %a instead of %a"
           B.pp_print sn B.pp_print si;
-      Aindex(x, n1, n2)
+      env, Aindex(x, n1, n2)
     | ty ->
       let e =
         match a with
@@ -450,62 +527,68 @@ let check_arg env a p =
         | Ilast.Alabel lbl ->
           ty_error (loc lbl) "an expression is expected"
       in
-      Aexpr e
+      env, Aexpr e
 
-let check_args env loc args params =
+let check_args env loc args params : env * macro_arg list =
   let len1 = List.length args in
   let len2 = List.length params in
   if len1 <> len2 then
     ty_error loc "invalid number of arguments %i provided instead of %i"
       len1 len2;
-  List.map2 (check_arg env) args params
+  let check_arg' (env,ps) a p : env * macro_arg list =
+    let env, p' = check_arg env a p in
+    env, p'::ps in
+  List.fold_left2 check_arg' (env,[]) args params
 
-let rec type_i env i =
-  let i_desc =
+let rec type_i (env:env) (i:Ilast.instr) : env * Il.instr =
+  let env, i_desc =
     match unloc i with
     | Ilast.Iassgn(x,e) ->
       let x, ty = type_lval env x in
       let e = check_e env e ty in
-      Iassgn(x,e)
+      env, Iassgn(x,e)
 
     | Ilast.Ileak(i,es) ->
       let es = List.map (fun e -> fst (type_e env e)) es in
-      Ileak(i,es)
+      env, Ileak(i,es)
 
     | Ilast.Imacro(mname,args) ->
       let m = find_macro_loc env.genv mname in
-      let args = check_args env (loc i) args m.mc_params in
-      Imacro(m.mc_name,args)
+      let env, args = check_args env (loc i) args m.mc_params in
+      env, Imacro(m.mc_name,args)
 
     | Ilast.Ilabel lbl ->
-      let lbl', local = find_label env lbl in
+      let env, lbl', local = find_label false env lbl in
       if not local then
-        ty_error (loc lbl) "the label is not local";
-      Ilabel lbl'
+        ty_error (loc lbl)
+          "label definitions must be unique but %s is defined elsewhere"
+          (unloc lbl);
+      env, Ilabel lbl'
 
     | Ilast.Igoto lbl ->
       begin match find_goto env lbl with
-      | Label(lbl, _) -> Igoto lbl
-      | Var x         -> Iigoto x
+      | env, Label(lbl, _) -> env, Igoto lbl
+      | env, Var x         -> env, Iigoto x
       end
 
     | Ilast.Iif(e,c1,c2) ->
       let e = check_e env e tbool in
-      let c1 = type_c env c1 in
-      let c2 = type_c env c2 in
-      Iif(e,c1,c2)
+      let env, c1 = type_c env c1 in
+      let env, c2 = type_c env c2 in
+      env, Iif(e,c1,c2)
 
     | Ilast.Iwhile(c1,e,c2) ->
       let e = check_e env e tbool in
-      let c1 = type_c env c1 in
-      let c2 = type_c env c2 in
-      Iwhile(c1,e,c2) in
-  { i_desc; i_loc = loc i, []; }
+      let env, c1 = type_c env c1 in
+      let env, c2 = type_c env c2 in
+      env, Iwhile(c1,e,c2) in
+  env, { i_desc; i_loc = loc i, []; }
 
-and type_c env c = List.map (type_i env) c
+and type_c env c : env * Il.cmd =
+  List.fold_left_map type_i env c
 
 let process_param local env = function
-  | Ilast.Pvar xd    ->
+  | Ilast.Pvar xd ->
     let xd = process_var_decl xd in
     add_var env xd, Pvar xd
   | Ilast.Plabel lbl ->
@@ -515,17 +598,16 @@ let process_param local env = function
 let process_params local env ps =
   List.map_fold (process_param local) env ps
 
-let process_macro genv m =
+let process_macro env m : env * Il.macro =
   let loc    = loc m in
   let m      = unloc m in
   let params = m.Ilast.mc_params in
   let locals = m.Ilast.mc_locals in
   let body   = m.Ilast.mc_body in
-  let env    = empty_env genv in
 
   let env, mc_params = process_params false env params in
   let env, mc_locals = process_params true  env locals in
-  let mc_body        = type_c env body in
+  let env, mc_body   = type_c env body in
 
   let m = {
       mc_name = unloc m.Ilast.mc_name;
@@ -534,8 +616,33 @@ let process_macro genv m =
       mc_params;
       mc_locals;
       mc_body } in
-  check_labels "type error" m;
-  m
+  env, m
+
+let process_macros genv (ms:Ilast.macro_decl located list) =
+  let env = empty_env genv in
+  let env, ms = List.fold_left_map process_macro env ms in
+  let ms = List.rev ms in
+  (* check dependencies *)
+  if not (Ms.is_empty env.unsat) then
+     ty_error _dummy "unsatisfied dependencies:@   @[<v>%a@]"
+       (fun fmt ms -> Ms.iter (fun k v ->
+            let pp_dep fmt (d,ms) =
+              match d with
+              | DLabel l -> Format.fprintf fmt "missing label %a" Lbl.pp_g l
+              | DVar v -> Format.fprintf fmt "missing var %a" V.pp_g v
+            in
+            Format.fprintf fmt "@[%s -> %a;@]@ " k pp_dep v)
+            ms)
+       env.unsat;
+  (* update genv *)
+  let genv' = List.fold_left update_macro genv ms in
+  (* debug print all the macros *)
+  if !Glob_option.full then
+    List.iter (fun m -> Format.printf "@[<v>type checked %s@ %a@]@."
+                  m.mc_name (Il.pp_global ~full:true) (Gmacro m)) ms;
+  (* check labels *)
+  List.iter (Il.check_labels "type error in check_labels" genv'.macro) ms;
+  genv'
 
 let check_initval env loc v ty =
   let open Ileval in
