@@ -89,7 +89,7 @@ operands:
     { Onone }
 
 %inline operands_excl:
-  | ra=regident EXCLAMATION COMMA LCURLY regs=separated_list(COMMA,regident) RCURLY
+  | ra=regident EXCLAMATION COMMA LCURLY regs=separated_list(COMMA,regident) RCURLY commoreol
     { Oflexible (List.cons ra regs) }
 
 stmt:
