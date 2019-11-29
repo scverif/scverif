@@ -352,7 +352,163 @@ macro bn1 (label l)
   if (!apsrv) { goto l; }
 }
 
+macro bx1 (label l)
+{
+  /* TODO hardfault check */
+  goto l;
+}
+
+macro beqn1 (label l)
+{
+  if (!apsrv) { goto l; }
+}
+
 macro bnen1 (label l)
 {
   if (!apsrz) { goto l; }
+}
+
+macro blen1 (label l)
+{
+  lr <- pc +w32 (w32) 4;
+  if (!apsrz) { goto l; }
+}
+
+// TODO: offset
+macro bl1 (label l)
+{
+  lr <- pc +w32 (w32) 4;
+  goto l;
+}
+
+macro uxtb2 (w32 dst, w32 src)
+{
+  dst <- zeroextend w32 src;
+}
+
+macro uxth2 (w32 dst, w32 src)
+{
+}
+
+macro strb3 (w32 i, w32 j, w32 k)
+{
+
+}
+
+macro subs3 (w32 i, w32 j, w32 k)
+{
+
+}
+
+macro subs2 (w32 i, w32 j)
+{
+
+}
+
+macro negs2 (w32 i, w32 j)
+{
+
+}
+
+macro orrs2 (w32 i, w32 j)
+{
+
+}
+
+macro ldrb3 (w32 i, w32 j, w32 k)
+{
+
+}
+
+macro lsrs3 (w32 i, w32 j, w32 k)
+{
+
+}
+
+macro strh3 (w32 i, w32 j, w32 k)
+{
+
+}
+
+macro ldrh3 (w32 i, w32 j, w32 k)
+{
+
+}
+
+macro nop0 ()
+{}
+
+macro mvns2 (w32 i, w32 j)
+{
+
+}
+
+macro asrs2 (w32 i, w32 j)
+{
+
+}
+
+macro asrs3 (w32 i, w32 j, w32 k)
+{
+
+}
+
+macro adcs2 (w32 i, w32 j)
+{
+
+}
+
+macro sxtb2 (w32 i, w32 j)
+{
+
+}
+
+macro sxth2 (w32 i, w32 j)
+{
+
+}
+
+macro word1 (w32 i)
+{
+
+}
+
+macro bgtn1 (label l)
+{
+
+}
+
+macro bpln1 (label l)
+{
+
+}
+
+macro bhin1 (label l)
+{
+
+}
+
+macro blsn1 (label l)
+{
+
+}
+
+// TODO: make usefull
+macro rand ()
+  label rand
+{
+  rand:
+  r0 <- r0 +w32 (w32) 0;
+}
+
+macro memset ()
+  label memset
+{
+
+}
+
+macro memcpy ()
+  label memcpy
+{
+
 }
