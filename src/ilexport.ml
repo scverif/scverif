@@ -47,17 +47,144 @@ let mv_pp_header fmt (an, undefvar) =
       "@[Cannot serialize programs with unshared sensitive inputs: %a@]"
       (pp_list ", " V.pp_g) secvars
 
+(* tweaked serialization from Il.ml *)
+let rec mv_pp_e ~full fmt e =
+  match e with
+  | Eint i  ->
+    let v = B.to_zint i in
+    if Z.fits_int32 v then
+      Format.fprintf fmt "(0x%s:w32)" (Z.format "02x" v)
+  | Ebool b -> Format.fprintf fmt "(0b%b:w1)" b
+  | Evar v  -> V.pp_full ~full fmt v
+  | Eget(x,e) ->
+    Format.fprintf fmt "%a[%a]" (V.pp_full ~full) x (pp_e ~full) e (* INT allowed here *)
+  | Eload(ws, x, e) ->
+    assert false
+  | Eop(op, es) ->
+    match op.od, es with
+    | Oif _, _     -> assert false
+    | Oadd ws, es  -> mv_pp_op2_ows ~full "#add" fmt ws es
+    | Omul ws, es  -> mv_pp_op2_ows ~full "*" fmt ws es
+    | Omulh ws, es -> mv_pp_op2_ws ~full "**" fmt ws es
+    | Osub ws, es  -> mv_pp_op2_ows ~full "-" fmt ws es
+    | Oopp ws, es  -> mv_pp_op1_ows ~full "-" fmt ws es
+    | Olsl ws, es  -> mv_pp_op2_ws  ~full "<<" fmt ws es
+    | Olsr ws, es  -> mv_pp_op2_ws  ~full ">>" fmt ws es
+    | Oasr ws, es  -> mv_pp_op2_ws  ~full ">>s" fmt ws es
+    | Oand ws, es  -> mv_pp_op2_ows ~full "&" fmt ws es
+    | Oxor ws, es  -> mv_pp_op2_ows ~full "^" fmt ws es
+    | Oor  ws, es  -> mv_pp_op2_ows ~full "|" fmt ws es
+    | Onot ws, es  -> mv_pp_op1_ows ~full "!" fmt ws es
+    | Oeq  ws, es  -> mv_pp_op2     ~full "==" fmt es
+    | Olt(s,ws),es ->
+      let s = if s = Signed then "<s" else "<" in
+      mv_pp_op2_ows ~full s fmt ws es
+    | Ole(s,ws),es ->
+      let s = if s = Signed then "<=s" else "<=" in
+      mv_pp_op2_ows ~full s fmt ws es
+    | Osignextend(_, ws), es ->
+      mv_pp_op1_ws ~full "signextend" fmt ws es
+    | Ozeroextend(_, ws), es ->
+      mv_pp_op1_ws ~full "zeroextend" fmt ws es
+    | Ocast_int(s,_), es ->
+      let s = if s = Signed then "(int)" else "(uint)" in
+      mv_pp_op1 ~full s fmt es
+    | Ocast_w ws, es ->
+      let s = Format.sprintf "(%s)" (ws_string ws) in
+      mv_pp_op1 ~full s fmt es
+
+and mv_pp_be ~full fmt e =
+  match e with
+  | Eint _ | Ebool _ | Evar _ | Eget _ | Eload _ -> mv_pp_e ~full fmt e
+  | Eop _ -> Format.fprintf fmt "(%a)" (mv_pp_e ~full) e
+
+and mv_pp_op2 ~full s fmt es =
+  match es with
+  | [e1; e2] ->
+    Format.fprintf fmt "@[%a %s@ %a@]" (mv_pp_be ~full) e1 s (mv_pp_be ~full) e2
+  | _ -> assert false
+
+and mv_pp_op2_ws ~full s fmt ws es =
+  let s = Format.sprintf "%s%s" s (ws_string ws) in
+  mv_pp_op2 ~full s fmt es
+
+and mv_pp_op2_ows ~full s fmt ws es =
+  match ws with
+  | None -> Format.printf "shit@.";mv_pp_op2 ~full s fmt es
+  | Some ws -> mv_pp_op2_ws ~full s fmt ws es
+
+and mv_pp_op1 ~full s fmt es =
+  match es with
+  | [e1] ->
+    Format.fprintf fmt "@[%s@ %a@]" s (mv_pp_be ~full) e1
+  | _ -> assert false
+
+and mv_pp_op1_ws ~full s fmt ws es =
+  let s = Format.sprintf "%s%s" s (ws_string ws) in
+  mv_pp_op1 ~full s fmt es
+
+and mv_pp_op1_ows ~full s fmt ws es =
+  match ws with
+  | None -> mv_pp_op1 ~full s fmt es
+  | Some ws -> mv_pp_op1_ws ~full s fmt ws es
+
+let mv_pp_lval ~full fmt lv =
+  match lv with
+  | Lvar x ->
+    Format.fprintf fmt "%a" (V.pp_full ~full) x
+  | Lset(x, e) ->
+    Format.fprintf fmt "%a[%a]" (V.pp_full ~full) x (pp_e ~full) e (* integers allowed *)
+  | Lstore(_, _, _) ->
+    assert false
+
+let mv_pp_marg ~full fmt = function
+  | Aexpr e -> mv_pp_e ~full fmt e
+  | Alabel lbl -> Lbl.pp_full ~full fmt lbl
+  | Aindex (x,i1,i2) ->
+    Format.fprintf fmt "%a[%a:%a]"
+      (V.pp_full ~full) x B.pp_print i1 B.pp_print i2
+
+let mv_pp_margs ~full fmt args =
+  Format.fprintf fmt "@[(%a)@]"
+    (pp_list ",@ " (mv_pp_marg ~full)) args
+
+let rec mv_pp_i ~full fmt i =
+  match i.i_desc with
+  | Iassgn(x,e) ->
+    Format.fprintf fmt "@[%a <-@ %a;@]"
+      (mv_pp_lval ~full) x (mv_pp_e ~full) e
+  | Il.Ileak(li, es) ->
+    Format.fprintf fmt "@[leak %a (%a) @[<v>\"%a(%a)@,in %a\"@];@]"
+      pp_leak_info li (pp_list ", " (mv_pp_e ~full:!Glob_option.full)) es
+      pp_leak_info li (pp_list ", " (mv_pp_e ~full:!Glob_option.full)) es
+      pp_full_loc_first i.i_loc
+  | Il.Ilabel l ->
+    Format.fprintf fmt "@[(* %a *)@]" Lbl.pp_g l
+  | Imacro(mcname, args) ->
+    if full then
+      Format.fprintf fmt "@[%s%a;@]"
+        mcname (mv_pp_margs ~full) args
+    else
+      Format.fprintf fmt "@[%s%a;@]"
+        mcname (mv_pp_margs ~full) args
+  | Igoto _
+  | Iigoto _
+  | Iif(_,_,_)
+  | Iwhile(_, _, _) ->
+    assert false
+
+and mv_pp_cmd ~full fmt c =
+  Format.fprintf fmt "@[<v>{@   @[<v>%a@]@ }@]"
+    (pp_list "@ " (mv_pp_i ~full)) c
+
+and mv_pp_else ~full fmt c =
+  if c == [] then ()
+  else
+    Format.fprintf fmt "@ else@ %a" (mv_pp_cmd ~full) c
+
 let mv_pp_body fmt tr =
-  let pp_b fmt (i:Il.instr) =
-    match i.i_desc with
-    | Il.Ileak(li, es) ->
-      Format.fprintf fmt "@[leak %a (%a) @[<v>\"%a(%a)@,in %a\"@];@]"
-        pp_leak_info li (pp_list ", " (pp_e ~full:!Glob_option.full)) es
-        pp_leak_info li (pp_list ", " (pp_e ~full:!Glob_option.full)) es
-        pp_full_loc_first i.i_loc
-    | _ -> Format.fprintf fmt "%a" (pp_i ~full:!Glob_option.full) i in
   Format.fprintf fmt "@[<v>  @[<v>%a@]@]"
-    (pp_list "@ " pp_b) tr
+    (pp_list "@ " (mv_pp_i ~full:!Glob_option.full)) tr
 
 let undecl_of_eprog an st =
   let anvar = List.map snd (an.output_var @ an.input_var) in

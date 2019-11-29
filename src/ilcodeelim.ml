@@ -253,9 +253,9 @@ let deadcodeelim (eenv:Ileval.eenv) (mn:Il.macro_name) =
       | Ileak(_, dexpr) ->
         lmap := List.fold_left liveset_add_expr !lmap dexpr;
         true
+      | Ilabel _ -> true
       | Iigoto _ (* FIXME *)
-      | Igoto _
-      | Ilabel _ -> false
+      | Igoto _ -> false
       | Iif _
       | Iwhile _
       | Imacro _ ->
