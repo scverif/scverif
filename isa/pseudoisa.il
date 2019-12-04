@@ -42,8 +42,10 @@ macro xor (w32 op1, w32 op2)
   leak xorOperandA (opA, op1);
   leak xorOperandB (opB, op2);
   leak xorTransition (op1, op1 ^w32 op2);
+
   opA <- op1;
   opB <- op2;
+
   op1 <- op1 ^w32 op2;
 }
 
@@ -54,8 +56,10 @@ macro and (w32 op1, w32 op2)
   leak andOperandA (opA, op1);
   leak andOperandB (opB, op2);
   leak andTransition (op1, op1 &w32 op2);
+
   opA <- op1;
   opB <- op2;
+
   op1 <- op1 &w32 op2;
 }
 
@@ -64,21 +68,30 @@ macro load (w32 dst, w32 ptr, int index)
   w32 val
 {
   val <- [w32 mem (int) (ptr +w32 (w32) (index * 4))];
+
+  leak loadOperand1 (opA, ptr, opB, index);
+  leak loadOperand2 (opA, ptr, index, val);
   leak loadMemOperand (opR, val);
   leak loadTransition (dst, val);
-  leak loadOperand (opB, val); /* Needs confirmation */
+
+  opA <- ptr;
+  opB <- dst;
   opR <- val;
-  opA <- val;
+
   dst <- val;
 }
 
 /* index is an offset in units of 32bit */
 macro store (w32 src, w32 ptr, int index)
 {
+  leak storeOperand1 (opA, ptr, opB, index)
+  leak storeOperand2 (opA, ptr, index, src);
   leak storeMemOperand (opW, src);
-  leak storeOperand (opA, src);
-  opA <- src; /* Needs confirmation */
+
+  opA <- ptr;
+  opB <- src;
   opW <- src;
+
   [w32 mem (uint) (ptr +w32 (w32) (index * 4))] <- src;
 }
 
