@@ -66,12 +66,16 @@ let find_var env loc x =
   (* Globals are not bound *)
   with Not_found -> VIexpr (Evar x)
   (* FIXME: ensure that x is global *)
-  (* in_error loc "unbound variable %a, please repport" V.pp_dbg x *)
+  (* in_error loc "unbound variable %a, please report" V.pp_dbg x *)
 
-let find_lbl env loc lbl =
+let find_lbl (genvlookup:bool) (env:env) (loc:Utils.full_loc) (lbl:Lbl.t) =
+  (* first try to find a local label *)
   try Ml.find lbl env.elbl
   with Not_found ->
-    in_error loc "unbound label %a, please repport" Lbl.pp_dbg lbl
+    if genvlookup then
+      lbl  (* FIXME *)
+    else
+      in_error loc "locally unbound label %a, cannot substitute" Lbl.pp_dbg lbl
 
 let get_var loc e =
   match e with
@@ -120,13 +124,14 @@ let inline_lv env loc x =
   let e = inline_e env loc (lv2e x) in
   try e2lv e
   with Not_found ->
-    in_error loc "   @[<v>lvalue %a inline to %a which cannot be viewed as a lvalue@]"
-      (pp_lval ~full:true) x (pp_e ~full:true) e
+    in_error loc "   @[<v>lvalue %a inline to %a which cannot be viewed as lvalue@]"
+      (pp_lval ~full:true) x pp_e_dbg e
 
 let inline_arg env loc arg =
   match arg with
   | Aexpr e -> Aexpr (inline_e env loc e)
-  | Alabel lbl -> Alabel (find_lbl env loc lbl)
+  | Alabel lbl ->
+    Alabel (find_lbl true env loc lbl)
   | Aindex(x, j1, j2) ->
     let _, n1, n2 = get_arr x.v_ty in
     let y, i1, i2 =
@@ -160,12 +165,15 @@ let rec inline_i genv env locs i =
     let locs = fst loc :: snd loc in
     inline_macro_app genv env locs m args
   | Ilabel lbl ->
-    let lbl = find_lbl env loc lbl in
+    (* only local labels are allowed *)
+    let lbl = find_lbl false env loc lbl in
     add_i env loc (Ilabel lbl)
   | Igoto lbl ->
-    let lbl = find_lbl env loc lbl in
+    (* global jumps allowed, not inlined *)
+    let lbl = find_lbl true env loc lbl in
     add_i env loc (Igoto lbl)
   | Iigoto x ->
+    (* global jumps allowed, not inlined *)
     add_i env loc (Iigoto (get_var loc (inline_var env loc x)))
   | Iif(e,c1,c2) ->
     let e  = inline_e env loc e in
