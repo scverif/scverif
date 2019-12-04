@@ -5,7 +5,7 @@ open Utils
 open Common
 open Il
 
-let ev_hierror () = hierror "evaluation" None
+let ev_hierror (loc:full_loc) fmsg = error "evaluation" loc fmsg
 
 type pointer = [%import: Ileval.pointer]
 type cpointer = [%import: Ileval.cpointer]
@@ -182,15 +182,16 @@ let eif (v1,v2,v3) =
   | Vbool b -> if b then v2 else v3
   | _       -> Vunknown
 
-let eadd ws (v1, v2) =
+let eadd (loc:full_loc) ws (v1, v2) =
   match ws, v1, v2 with
   | None   , Vint i1, Vint i2 -> Vint (B.add i1 i2)
   | _      , Vptr p , Vint i
   | _      , Vint i , Vptr p  -> Vptr { p with p_ofs = B.add p.p_ofs i }
   | Some ws, Vint i1, Vint i2 -> op_ww_w B.add ws i1 i2
   | _                         ->
-    Format.printf "@[<v>eadd: cannot evaluate Oadd %a %a@]@."
-      pp_bvalue v1 pp_bvalue v2;
+    Format.printf "@[<v>eadd: cannot evaluate Oadd %a %a in %a@]@."
+      pp_bvalue v1 pp_bvalue v2
+      pp_full_loc loc;
     Vunknown
 
 let esub ws (v1, v2) =
@@ -333,13 +334,13 @@ let ecast_int s ws v =
 
   | _     , _     , _        -> Vunknown
 
-let eval_op op vs =
+let eval_op (loc:full_loc) (op:Il.op) (vs:bvalue list) : bvalue =
   match op.od with
   | Oif   _  -> eif (as_seq3 vs)
-  | Oadd  ws -> eadd ws (as_seq2 vs)
+  | Oadd  ws -> eadd loc ws (as_seq2 vs)
   | Omul  ws -> emul ws (as_seq2 vs)
   | Omulh _ ->
-    ev_hierror () "op %s not yet implemented please report" (op_string op)
+    ev_hierror loc "op %s not yet implemented please raise an issue request" (op_string op)
   | Osub  ws -> esub ws (as_seq2 vs)
   | Oopp  ws -> eopp ws (as_seq1 vs)
   | Olsl  ws -> elsl ws (as_seq2 vs)
@@ -366,17 +367,17 @@ let eval_var st x =
   | Varr _ -> Vunknown
   | exception Not_found -> Vunknown
 
-let eval_index msg x i =
+let eval_index (loc:full_loc) msg x i =
   let _, i1, i2 = get_arr x.v_ty in
   if not (B.le i1 i && B.le i i2) then
-    ev_hierror () "%s out of bound (%a:[%a:%a]) [%a] " msg
+    ev_hierror loc "%s out of bound (%a:[%a:%a]) [%a] " msg
       V.pp_g x B.pp_print i1 B.pp_print i2 B.pp_print i;
   B.to_int (B.sub i i1)
 
-let eval_get st x (v,ei) =
+let eval_get (loc:full_loc) st x (v,ei) =
   match v with
   | Vint i ->
-    let ofs = eval_index "eval_get" x i in
+    let ofs = eval_index loc "eval_get" x i in
     let vi =
       match Mv.find x st.st_mvar with
       | Varr t              -> t.(ofs)
@@ -392,38 +393,39 @@ let get_ofs ws p =
   assert (B.equal (B.erem p.p_ofs q) B.zero);
   B.div p.p_ofs q
 
-let eval_mem_index st ws m e (v,_ei) =
+let eval_mem_index (loc:full_loc) (st:state) (ws:Common.wsize) (m:var) (e:expr) (v,_ei) =
   match v with
   | Vptr p when V.equal m p.p_mem ->
     let bty, _i1, _i2 = get_arr p.p_dest.v_ty in
     if bty <> W ws then
-      ev_hierror () "eval_mem_index : invalid word size";
+      ev_hierror loc "eval_mem_index : invalid word size";
     let ofs = get_ofs ws p in
-    let iofs = eval_index "eval_load region" p.p_dest ofs in
+    let iofs = eval_index loc "eval_load region" p.p_dest ofs in
     let t =
       try Mv.find p.p_dest st.st_mregion
       with Not_found ->
-        ev_hierror () "eval_mem_index : unknown region" in
+        ev_hierror loc "eval_mem_index : unknown region" in
     t, iofs, p.p_dest, Eint ofs
   | _ ->
-    ev_hierror () "@[<v>%a@ eval_mem_index : cannot evaluate pointer %a@]"
+    ev_hierror loc "@[<v>%a@ eval_mem_index : cannot evaluate pointer %a in %a@]"
       pp_state st
+      pp_bvalue v
       (pp_e ~full:!Glob_option.full) e
 
-let eval_load st ws m e (v,ei) =
-  let t, iofs, dest, eofs = eval_mem_index st ws m e (v,ei) in
+let eval_load loc st ws m e (v,ei) =
+  let t, iofs, dest, eofs = eval_mem_index loc st ws m e (v,ei) in
   t.(iofs), Eget(dest, eofs)
 
-let rec eval_e st e =
+let rec eval_e (loc:full_loc) (st:state) (e:expr) : bvalue * expr =
   match e with
   | Eint i  -> Vint i, e
   | Ebool b -> Vbool b, e
   | Evar x  -> eval_var st x, e
-  | Eget(x,e) -> eval_get st x (eval_e st e)
-  | Eload(ws, m, e) -> eval_load st ws m e (eval_e st e)
+  | Eget(x,e) -> eval_get loc st x (eval_e loc st e)
+  | Eload(ws, m, e) -> eval_load loc st ws m e (eval_e loc st e)
   | Eop(op, es) ->
-    let vs, es = eval_es st es in
-    let v = eval_op op vs in
+    let vs, es = eval_es loc st es in
+    let v = eval_op loc op vs in
     let e =
       match v with
       | Vint i  -> Eint i
@@ -431,12 +433,12 @@ let rec eval_e st e =
       | _       -> Eop(op, es) in
     v, e
 
-and eval_es st es = List.split (List.map (eval_e st) es)
+and eval_es (loc:full_loc) (st:state) (es:expr list) = List.split (List.map (eval_e loc  st) es)
 
 (* ********************************************* *)
 (* Programs evaluation                           *)
 
-let find_label lbl st =
+let find_label (loc:full_loc) (lbl:Lbl.t) (st:state) =
   let rec aux c =
     match c with
     | [] -> raise Not_found
@@ -450,49 +452,71 @@ let find_label lbl st =
             with Not_found ->
               aux c2
         end
-  | Ilabel lbl' when Lbl.equal lbl lbl' -> c'
-  | (Ilabel _ | Iassgn _ | Ileak _ | Imacro _ | Igoto _ | Iigoto _) ->
-    aux c' in
+      | Ilabel lbl' when Lbl.equal lbl lbl' ->
+        c'
+      | Ilabel _
+      | Iassgn _
+      | Ileak _
+      | Imacro _
+      | Igoto _
+      | Iigoto _ ->
+        aux c'
+  in
   try aux st.st_prog
   with Not_found ->
-    ev_hierror () "unknown label %a" Lbl.pp_g lbl
+    ev_hierror loc "unknown label %a" Lbl.pp_g lbl
 
 let unknown_arr i1 i2 =
   assert (B.le i1 i2);
   let size = B.to_int (B.add (B.sub i2 i1) B.one) in
   Array.make size Vunknown
 
-let rec eval_i st =
+let rec eval_i (st:state) : unit =
 (*  Format.eprintf "%a@." pp_state st; *)
   match st.st_pc with
   | [] -> ()
   | i :: c ->
     match i.i_desc with
-    | Iassgn (x, e) -> eval_assgn st i.i_loc x e c
+    | Iassgn (x, e) -> eval_assgn i.i_loc st x e c
     | Ileak(li, es) ->
-      let i' = { i_desc = Ileak(li, snd (eval_es st es)); i_loc = i.i_loc } in
+      let i' = { i_desc = Ileak(li, snd (eval_es i.i_loc st es)); i_loc = i.i_loc } in
       next st (Some i') c
     | Imacro (mname,_) ->
-      ev_hierror () "@[<v>%a@ eval Imacro: found macro %s but expected it to be inlined]"
+      ev_hierror i.i_loc "@[<v>%a@ eval %a: found macro %s but expected it to be inlined@]"
         pp_state st
+        pp_i_dbg i
         mname
     | Ilabel _ ->
       next st (Some i) c
     | Igoto lbl ->
-      let c = find_label lbl st in
+      let c =
+        try find_label i.i_loc lbl st
+        with Not_found ->
+          ev_hierror i.i_loc "@[<v>%a@ eval Igoto: encountered global jump %a \
+                         but expected it to be inlined@]"
+            pp_state st
+            pp_i_dbg i
+      in
       next st (Some i) c
     | Iigoto x ->
       begin match eval_var st x with
       | Vcptr lbl ->
-        let c = find_label lbl st in
+        let c =
+          try find_label i.i_loc lbl st
+          with Not_found ->
+            ev_hierror i.i_loc "@[<v>%a@ eval Iigoto: encountered global jump %a \
+                           but expected it to be inlined@]"
+              pp_state st
+              pp_i_dbg i
+        in
         next st (Some i) c
       | _ -> assert false (* FIXME : error msg *)
       end
     | Iif(e,c1,c2) ->
-      begin match eval_e st e with
+      begin match eval_e i.i_loc st e with
       | Vbool b, _  -> next st None ((if b then c1 else c2) @ c)
       | Vunknown, _ ->
-        ev_hierror () "@[<v>%a@ eval Iif: cannot evaluate conditional expression %a@]"
+        ev_hierror i.i_loc "@[<v>%a@ eval Iif: cannot evaluate conditional expression %a@]"
           pp_state st
           (pp_e ~full:!Glob_option.full) e
       | _, _        -> assert false
@@ -501,13 +525,13 @@ let rec eval_i st =
       let c = c1 @ {i_desc = Iif (e, c2 @ [i], []); i_loc = i.i_loc} :: c in
       next st None c
 
-and next st i c =
+and next (st:state) (i:Il.instr option) (c:Il.cmd) : unit =
   oiter (fun i ->  st.st_eprog <- i :: st.st_eprog) i;
   st. st_pc <- c;
   eval_i st
 
-and eval_assgn st loc lv e c =
-  let v, e = eval_e st e in
+and eval_assgn (loc:Utils.full_loc) (st:state) (lv:Il.lval) (e:Il.expr) (c:Il.cmd) =
+  let v, e = eval_e loc st e in
   let lv, c =
     match lv with
     | Lvar x ->
@@ -517,12 +541,12 @@ and eval_assgn st loc lv e c =
       else
         lv, c
     | Lset(x,ei) ->
-      let vi, ei = eval_e st ei in
+      let vi, ei = eval_e loc st ei in
       begin match vi with
       | Vint i   ->
         let _, i1, i2 = get_arr x.v_ty in
         if not (B.le i1 i && B.le i i2) then
-          ev_hierror () "eval_set : out of bound";
+          ev_hierror loc "eval_set : out of bound";
         let ofs = B.to_int (B.sub i i1) in
         let t =
           match Mv.find x st.st_mvar with
@@ -541,7 +565,7 @@ and eval_assgn st loc lv e c =
       Lset(x,ei), c
 
     | Lstore(ws, m, ei) ->
-      let t, iofs, dest, eofs = eval_mem_index st ws m ei (eval_e st ei) in
+      let t, iofs, dest, eofs = eval_mem_index loc st ws m ei (eval_e loc st ei) in
       t.(iofs) <- v;
       Lset(dest, eofs), c
   in
@@ -556,13 +580,13 @@ let find_initial eenv mn =
   try
     Ms.find mn eenv.initial
   with Not_found ->
-    ev_hierror () "no initial state annotation available for macro %s" mn
+    hierror "evaluation" None "no initial state annotation available for macro %s" mn
 
 let find_state eenv mn =
   try
     Ms.find mn eenv.state
   with Not_found ->
-    ev_hierror () "no program state available for macro %s" mn
+    hierror "evaluation" None "no program state available for macro %s" mn
 
 let update_initial eenv mn initial =
   try

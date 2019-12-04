@@ -386,6 +386,7 @@ and pp_op1_ows ~full s fmt ws es =
   | Some ws -> pp_op1_ws ~full s fmt ws es
 
 let pp_e_g fmt e = pp_e ~full:!Glob_option.full fmt e
+let pp_e_dbg fmt e = pp_e ~full:true fmt e
 
 let pp_lval ~full fmt lv =
   match lv with
@@ -478,6 +479,7 @@ and pp_else ~full fmt c =
 
 let pp_cmd_g fmt = pp_cmd ~full:!Glob_option.full fmt
 let pp_i_g fmt = pp_i ~full:!Glob_option.full fmt
+let pp_i_dbg fmt = pp_i ~full:true fmt
 
 let pp_macro ~full fmt m =
   let pp_locals fmt locals =
