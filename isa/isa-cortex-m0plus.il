@@ -352,10 +352,10 @@ macro bn1 (label l)
   if (!apsrv) { goto l; }
 }
 
-macro bx1 (label l)
+macro bx1 (w32 adr)
 {
   /* TODO hardfault check */
-  goto l;
+  pc <- adr;
 }
 
 macro beqn1 (label l)
