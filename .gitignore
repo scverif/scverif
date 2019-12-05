@@ -110,6 +110,8 @@ _opam/
 
 logs/
 scverif
+.gitmodules
+gadgets
 
 # End of https://www.gitignore.io/api/coq,emacs,ocaml,merlin
 
