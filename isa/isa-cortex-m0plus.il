@@ -100,6 +100,13 @@ macro add2 (w32 op1, w32 op2)
   add3(op1, op1, op2);
 }
 
+macro adcs2 (w32 op1, w32 op2)
+{
+  AddWithCarry(op1, op2, apsrc, op1, apsrc, apsrv);
+  ExtractBit(op1, 31, apsrn);
+  IsZero(op1, apsrz);
+}
+
 macro sub3 (w32 dst, w32 op1, w32 op2)
   bool i, bool j
 {
@@ -347,20 +354,16 @@ macro cmp2 (w32 op1, w32 op2)
   IsZero(cmpr, apsrz);
 }
 
+
+/* Branching */
 macro bn1 (label l)
 {
-  if (!apsrv) { goto l; }
-}
-
-macro bx1 (w32 adr)
-{
-  /* TODO hardfault check */
-  pc <- adr;
+  goto l;
 }
 
 macro beqn1 (label l)
 {
-  if (!apsrv) { goto l; }
+  if (apsrz) { goto l; }
 }
 
 macro bnen1 (label l)
@@ -368,18 +371,85 @@ macro bnen1 (label l)
   if (!apsrz) { goto l; }
 }
 
-macro blen1 (label l)
+macro bcsn1 (label l)
 {
-  lr <- pc +w32 (w32) 4;
-  if (!apsrz) { goto l; }
+  if (apsrc) { goto l; }
 }
 
-// TODO: offset
+macro bccn1 (label l)
+{
+  if (!apsrc) { goto l; }
+}
+
+macro bmin1 (label l)
+{
+  if (apsrn) { goto l; }
+}
+
+macro bpln1 (label l)
+{
+  if (!apsrn) { goto l; }
+}
+
+macro bvsn1 (label l)
+{
+  if (apsrv) { goto l; }
+}
+
+macro bvcn1 (label l)
+{
+  if (!apsrv) { goto l; }
+}
+
+macro bhin1 (label l)
+{
+  if (apsrc & !apsrz)
+  { goto l; }
+}
+
+macro blsn1 (label l)
+{
+  if (!apsrc | apsrz)
+  { goto l; }
+}
+
+macro bgen1 (label l)
+{
+  if (apsrn == apsrv)
+  { goto l; }
+}
+
+macro bltn1 (label l)
+{
+  if (apsrn != apsrv)
+  { goto l; }
+}
+
+macro bgtn1 (label l)
+{
+  if (!apsrz & (apsrn == apsrv))
+  { goto l; }
+}
+
+macro blen1 (label l)
+{
+  if (apsrz | (apsrn != apsrv))
+  { goto l; }
+}
+
 macro bl1 (label l)
 {
   lr <- pc +w32 (w32) 4;
   goto l;
 }
+
+macro bx1 (w32 adr)
+{
+  pc <- adr;
+}
+
+
+
 
 macro uxtb2 (w32 dst, w32 src)
 {
@@ -453,11 +523,6 @@ macro asrs3 (w32 i, w32 j, w32 k)
 
 }
 
-macro adcs2 (w32 i, w32 j)
-{
-
-}
-
 macro sxtb2 (w32 i, w32 j)
 {
 
@@ -473,25 +538,6 @@ macro word1 (w32 i)
 
 }
 
-macro bgtn1 (label l)
-{
-
-}
-
-macro bpln1 (label l)
-{
-
-}
-
-macro bhin1 (label l)
-{
-
-}
-
-macro blsn1 (label l)
-{
-
-}
 
 // TODO: make usefull
 macro rand ()

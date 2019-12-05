@@ -59,7 +59,7 @@ macro str3_leak (w32 val, w32 adr, w32 ofs)
   opW <- val;
 }
 
-macro movs2 (w32 dst, w32 src)
+macro movs2_leak (w32 dst, w32 src)
 {
   leak movsOperand (opA, dst, opB, src);
   leak movsTransition (dst, src);
