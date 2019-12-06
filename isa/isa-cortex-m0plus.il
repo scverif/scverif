@@ -63,6 +63,18 @@ macro LSL_C (w32 x, int shift, w32 result, bool carry_out)
   ExtractBit(x, (31 - (uint) shift), carry_out);
 }
 
+macro LSR_C (w32 x, int shift, w32 result, bool carry_out)
+{
+  result <- x >>uw32 (uint) shift;
+  ExtractBit(x, ((uint) shift - 1), carry_out);
+}
+
+macro ASR_C (w32 x, int shift, w32 result, bool carry_out)
+{
+  result <- x >>sw32 (uint) shift;
+  ExtractBit(x, ((uint) shift - 1), carry_out);
+}
+
 /************** INSTRUCTIONS **************/
 
 macro mov2 (w32 dst, w32 op)
@@ -118,6 +130,18 @@ macro sub2 (w32 op1, w32 op2)
   sub3(op1, op1, op2);
 }
 
+macro subs3 (w32 dst, w32 op1, w32 op2)
+{
+  SubWithCarry(op1, op2, dst, apsrc, apsrv);
+  ExtractBit(op1, 31, apsrn);
+  IsZero(op1, apsrz);
+}
+
+macro subs2 (w32 op1, w32 op2)
+{
+  subs3(op1, op1, op2);
+}
+
 macro ldr3 (w32 dst, w32 adr, w32 ofs)
   w32 address
 {
@@ -125,11 +149,51 @@ macro ldr3 (w32 dst, w32 adr, w32 ofs)
   dst <- [w32 mem (int) address];
 }
 
+macro ldrb3 (w32 dst, w32 adr, w32 ofs)
+  w32 address
+{
+  add3(address, adr, ofs);
+  dst <- zeroextend w32 [w8 mem (int) address];
+}
+
+macro ldrh3 (w32 dst, w32 adr, w32 ofs)
+  w32 address
+{
+  add3(address, adr, ofs);
+  dst <- zeroextend w32 [w16 mem (int) address];
+}
+
 macro str3 (w32 op, w32 adr, w32 ofs)
   w32 address
 {
   add3(address, adr, ofs);
   [w32 mem (int) address] <- op;
+}
+
+macro strb3 (w32 op, w32 adr, w32 ofs)
+  w32 address, w8 val
+{
+  add3(address, adr, ofs);
+  val <- (w8) (uint) op;
+  [w8 mem (int) address] <- val;
+}
+
+macro strh3 (w32 op, w32 adr, w32 ofs)
+  w32 address, w16 val
+{
+  add3(address, adr, ofs);
+  val <- (w16) (uint) op;
+  [w16 mem (int) address] <- val;
+}
+
+macro sxtb2 (w32 dst, w32 src)
+{
+  dst <- signextend w32 (w8) ((uint) src);
+}
+
+macro sxth2 (w32 dst, w32 src)
+{
+  dst <- signextend w32 (w16) ((uint) src);
 }
 
 macro push1 (w32 op1)
@@ -332,6 +396,34 @@ macro lsls2 (w32 op1, w32 op2)
   lsls3(op1, op1, op2);
 }
 
+macro lsrs3 (w32 dst, w32 op1, w32 shift)
+  int shift_n
+{
+  shift_n <- (uint) shift;
+  LSR_C(op1, shift_n, dst, apsrc);
+  ExtractBit(dst, 31, apsrn);
+  IsZero(dst, apsrz);
+}
+
+macro lsrs2 (w32 op1, w32 op2)
+{
+  lsrs3(op1, op1, op2);
+}
+
+macro asrs3 (w32 dst, w32 op1, w32 shift)
+  int shift_n
+{
+  shift_n <- (uint) shift;
+  ASR_C(op1, shift_n, dst, apsrc);
+  ExtractBit(dst, 31, apsrn);
+  IsZero(dst, apsrz);
+}
+
+macro asrs2 (w32 dst, w32 op1)
+{
+  asrs3(dst, op1, op1);
+}
+
 macro eors2 (w32 op1, w32 op2)
 {
   op1 <- op1 ^w32 op2;
@@ -346,6 +438,35 @@ macro ands2 (w32 op1, w32 op2)
   IsZero(op1, apsrz);
 }
 
+macro orrs2 (w32 op1, w32 op2)
+{
+  op1 <- op1 |w32 op2;
+  ExtractBit(op1, 31, apsrn);
+  IsZero(op1, apsrz);
+}
+
+macro rsbs2 (w32 op1, w32 op2)
+{
+  AddWithCarry(! w32 op1, op2, true, op1, apsrc, apsrv);
+  ExtractBit(op1, 31, apsrn);
+  IsZero(op1, apsrz);
+}
+
+macro negs2 (w32 op1, w32 op2)
+{
+  rsbs2(op1, op2);
+}
+
+macro uxtb2 (w32 dst, w32 src)
+{
+  dst <- zeroextend w32 ((w8) ((int) src));
+}
+
+macro uxth2 (w32 dst, w32 src)
+{
+  dst <- zeroextend w32 ((w16) ((int) src));
+}
+
 macro cmp2 (w32 op1, w32 op2)
   w32 cmpr
 {
@@ -354,6 +475,14 @@ macro cmp2 (w32 op1, w32 op2)
   IsZero(cmpr, apsrz);
 }
 
+macro mvns2 (w32 dst, w32 src)
+  w32 ival
+{
+  LSL_C(src, 0, ival, apsrc);
+  ExtractBit(dst, 31, apsrn);
+  IsZero(dst, apsrz);
+  dst <- !w32 ival;
+}
 
 /* Branching */
 macro bn1 (label l)
@@ -451,93 +580,11 @@ macro bx1 (w32 adr)
 
 
 
-macro uxtb2 (w32 dst, w32 src)
-{
-  dst <- zeroextend w32 src;
-}
-
-macro uxth2 (w32 dst, w32 src)
-{
-}
-
-macro strb3 (w32 i, w32 j, w32 k)
-{
-
-}
-
-macro subs3 (w32 i, w32 j, w32 k)
-{
-
-}
-
-macro subs2 (w32 i, w32 j)
-{
-
-}
-
-macro negs2 (w32 i, w32 j)
-{
-
-}
-
-macro orrs2 (w32 i, w32 j)
-{
-
-}
-
-macro ldrb3 (w32 i, w32 j, w32 k)
-{
-
-}
-
-macro lsrs3 (w32 i, w32 j, w32 k)
-{
-
-}
-
-macro strh3 (w32 i, w32 j, w32 k)
-{
-
-}
-
-macro ldrh3 (w32 i, w32 j, w32 k)
-{
-
-}
-
 macro nop0 ()
 {}
 
-macro mvns2 (w32 i, w32 j)
-{
-
-}
-
-macro asrs2 (w32 i, w32 j)
-{
-
-}
-
-macro asrs3 (w32 i, w32 j, w32 k)
-{
-
-}
-
-macro sxtb2 (w32 i, w32 j)
-{
-
-}
-
-macro sxth2 (w32 i, w32 j)
-{
-
-}
-
 macro word1 (w32 i)
-{
-
-}
-
+{}
 
 // TODO: make usefull
 macro rand ()
