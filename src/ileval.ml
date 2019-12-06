@@ -319,7 +319,7 @@ let ezeroextend ws1 ws2 v =
 let ecast_w ws v =
   match v with
   | Vint i -> Vint (of_int ws i)
-  | Vptr _ -> v (* Vptr { p with p_ofs = of_int ws p.p_ofs } *)
+  | Vptr _ -> v (* FIXME Vptr { p with p_ofs = of_int ws p.p_ofs } *)
   | _      -> Vunknown
 
 let ecast_int s ws v =
@@ -398,18 +398,19 @@ let eval_mem_index (loc:full_loc) (st:state) (ws:Common.wsize) (m:var) (e:expr) 
   | Vptr p when V.equal m p.p_mem ->
     let bty, _i1, _i2 = get_arr p.p_dest.v_ty in
     if bty <> W ws then
-      ev_hierror loc "eval_mem_index : invalid word size";
+      ev_hierror loc "%a@ eval_mem_index: invalid word size %a, expected %a"
+        pp_state st pp_bty bty pp_wsize ws;
     let ofs = get_ofs ws p in
     let iofs = eval_index loc "eval_load region" p.p_dest ofs in
     let t =
       try Mv.find p.p_dest st.st_mregion
       with Not_found ->
-        ev_hierror loc "eval_mem_index : unknown region" in
+        ev_hierror loc "%a@ eval_mem_index: unknown region %a"
+          pp_state st V.pp_dbg p.p_dest in
     t, iofs, p.p_dest, Eint ofs
   | _ ->
-    ev_hierror loc "@[<v>%a@ eval_mem_index : cannot evaluate pointer %a in %a@]"
-      pp_state st
-      pp_bvalue v
+    ev_hierror loc "@[<v>%a@ eval_mem_index: cannot evaluate pointer %a in %a@]"
+      pp_state st pp_bvalue v
       (pp_e ~full:!Glob_option.full) e
 
 let eval_load loc st ws m e (v,ei) =
@@ -482,9 +483,7 @@ let rec eval_i (g:genv) (st:state) : unit =
     | Imacro (mname,_) ->
       (* TODO implement this one as well *)
       ev_hierror i.i_loc "@[<v>%a@ eval %a: found macro %s but expected it to be inlined@]"
-        pp_state st
-        pp_i_dbg i
-        mname
+        pp_state st pp_i_dbg i mname
     | Ilabel _ ->
       next g st (Some i) c
     | Igoto lbl ->
@@ -502,7 +501,7 @@ let rec eval_i (g:genv) (st:state) : unit =
                                   but expected it to be inlined@]"
                 pp_state st mn pp_i_dbg i;
             (* change body of current evaluation *)
-            (* FIXME does with copy??? does st_prog need to be mutuable as well? *)
+            (* FIXME does it copy or reference ??? does st_prog need to be mutable as well? *)
             next g { st with st_prog = m.mc_body } (Some i) m.mc_body
               (* on return take evaluated part and append, proceed with next instr. *)
           with Not_found ->
@@ -518,13 +517,11 @@ let rec eval_i (g:genv) (st:state) : unit =
          | None ->
            ev_hierror i.i_loc "@[<v>%a@ eval Iigoto: encountered global jump %a \
                                but expected it to be inlined@]"
-             pp_state st
-             pp_i_dbg i)
-      | _ ->
+             pp_state st pp_i_dbg i)
+      | bv ->
         ev_hierror i.i_loc "@[<v>%a@ eval unexpected value in Iigoto: %a @ \
-                            expected a pointer@]"
-          pp_state st
-          pp_i_dbg i
+                            expected a pointer but got %a@]"
+          pp_state st pp_i_dbg i pp_bvalue bv
       end
     | Iif(e,c1,c2) ->
       begin match eval_e i.i_loc st e with
@@ -641,6 +638,7 @@ let partial_eval (g:genv) (eenv:eenv) (m:Il.macro) =
       | Icptr_exit      -> Vcptr Lbl.exit_ in
     Mv.add x (Vbase v) mv in
   let st_mvar = List.fold_left init_var Mv.empty init.init_var in
+  (* TODO set the program counter accordingly *)
 
   Glob_option.print_full "DEBUG mc@ @[<v>%a@]@." (pp_cmd ~full:true) m.mc_body;
   let st = {
