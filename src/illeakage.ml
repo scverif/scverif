@@ -43,7 +43,7 @@ let rec traverse_code genv instrs =
       | _ -> i :: traverse_code genv is
     end
 
-let addleakage (genv:Iltyping.genv) (mn:Il.macro_name) =
+let addleakage (genv:genv) (mn:Il.macro_name) =
   let m = Iltyping.find_macro genv mn in
   let leakycmds = traverse_code genv m.mc_body in
   let ml = { m with mc_body = leakycmds; mc_uid = Uid.fresh () } in
@@ -131,7 +131,7 @@ let leaknames_of_scvtarget (is:Il.instr list) (t:Scv.scvtarget) =
     end
 
 (* collect all leakage expressions in a single preceding leak statement *)
-let accumulate_leakages (genv:Iltyping.genv) (mn:Il.macro_name) (slt:Scv.scvtarget) (keep:bool) =
+let accumulate_leakages (genv:genv) (mn:Il.macro_name) (slt:Scv.scvtarget) (keep:bool) =
   (* decide whether to be selective on leakage and compute list of target leakages to compare to *)
   let m = Iltyping.find_macro genv mn in
   let selective, tls =

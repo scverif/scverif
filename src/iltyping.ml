@@ -7,13 +7,9 @@ open Il
 
 let ty_error loc = error "type error" (loc, [])
 
-(* ************************************************* *)
-(* Global environment                                *)
-
-type genv = [%import: Iltyping.genv]
-
 let empty_genv =
   { glob_var = Ms.empty;
+    glob_lbl = Ml.empty;
     macro    = Ms.empty;
   }
 
@@ -31,18 +27,40 @@ let add_macro genv m =
     ty_error m.mc_loc "the macro %s is already declared at %a"
       m.mc_name pp_loc m'.mc_loc
   with Not_found ->
-    { genv with macro = Ms.add m.mc_name m genv.macro }
+    let f (p:Il.param) gls =
+      match p with
+      | Il.Pvar _ -> gls
+      | Il.Plabel l -> Ml.add l m.mc_name gls
+    in
+    let glob_lbl = List.fold_right f m.mc_locals genv.glob_lbl in
+    Glob_option.print_full "@[DEBUG add macro %S: labels:{@   @[<v>%a@]}@]@."
+      m.mc_name (pp_glob_lbl ~full:true) glob_lbl;
+    { genv with macro = Ms.add m.mc_name m genv.macro; glob_lbl }
 
 let update_macro genv m =
+  let f (p:Il.param) gls =
+    match p with
+    | Il.Pvar _ -> gls
+    | Il.Plabel l -> Ml.add l m.mc_name gls
+  in
   try
     let mold = Ms.find m.mc_name genv.macro in
     if mold.mc_uid = m.mc_uid then
       ty_error m.mc_loc "refusing to update macro with same uid" m
     else
-      { genv with macro = Ms.update m.mc_name m.mc_name m genv.macro}
+      let glob_lbl = List.fold_right f m.mc_locals genv.glob_lbl in
+      Glob_option.print_full "@[DEBUG update macro %s: labels:{@   @[<v>%a@]}@]@."
+        m.mc_name (pp_glob_lbl ~full:true) glob_lbl;
+      { genv with
+        macro = Ms.update m.mc_name m.mc_name m genv.macro;
+        glob_lbl;
+      }
   with
     Not_found ->
-    { genv with macro = Ms.add m.mc_name m genv.macro}
+    let glob_lbl : macro_name Ml.t = List.fold_right f m.mc_locals genv.glob_lbl in
+    Glob_option.print_full "@[DEBUG update macro %s: labels:{@   @[<v>%a@]}@]@."
+      m.mc_name (pp_glob_lbl ~full:true) glob_lbl;
+    { genv with macro = Ms.add m.mc_name m genv.macro; glob_lbl}
 
 let find_macro_loc genv m =
   let loc = loc m in
@@ -152,7 +170,8 @@ let find_label_glob (env:env) (l:Ilast.ident) : Lbl.t option=
   with Not_found ->
     None (* TODO find label by exhaustive brute-force search *)
 
-(* find existing or unsatisfied label. otherwise define one but do not mark it as unsatisfied *)
+(* find existing local, global or unsatisfied label.
+   otherwise create a fresh label and conditionally mark it as a dependency *)
 let find_label (makedep:bool) (env:env) (l:Ilast.ident) : env * Lbl.t * bool =
   let loc = loc l in
   let ln = unloc l in
@@ -642,7 +661,7 @@ let process_macros genv (ms:Ilast.macro_decl located list) =
     List.iter (fun m -> Format.printf "@[<v>type checked %s@ %a@]@."
                   m.mc_name (Il.pp_global ~full:true) (Gmacro m)) ms;
   (* check labels *)
-  List.iter (Il.check_labels "type error in check_labels" genv'.macro) ms;
+  List.iter (Il.check_labels "type error in check_labels" genv') ms;
   genv'
 
 let check_initval env loc v ty =

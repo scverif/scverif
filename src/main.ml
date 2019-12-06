@@ -102,7 +102,7 @@ module AsmParse = struct
 end
 
 type mainenv = {
-  genv : Iltyping.genv;
+  genv : Il.genv;
   eenv : Ileval.eenv;
 }
 
@@ -232,6 +232,8 @@ let process_print menv (p:Scv.scvcmd located) =
                Format.printf "@[<v>%a@]@."
                  (pp_macro ~full:f) m)
             mn
+        | PGenv ->
+          Format.printf "@[%a@]@." pp_genv_g menv.genv
         | PState ->
           List.iter
             (fun mn ->

@@ -23,6 +23,7 @@ type scvverbosity = int located
 
 type scvprintkind =
   | PMacro
+  | PGenv
   | PState
   | PInitialEnvironment
   | PEvaluatedTrace

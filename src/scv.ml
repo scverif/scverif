@@ -94,6 +94,8 @@ let pp_scvprintkind fmt p =
   match p with
   | PMacro ->
     Format.fprintf fmt "macro"
+  | PGenv ->
+    Format.fprintf fmt "globals"
   | PState ->
     Format.fprintf fmt "state"
   | PInitialEnvironment ->
@@ -278,6 +280,7 @@ let scvprintkind_of_scvval pk =
   | SCVString s ->
     (match unloc s with
      | "macrodef" -> PMacro
+     | "globals" -> PGenv
      | "state" -> PState
      | "initials" -> PInitialEnvironment
      | "evaltrace" -> PEvaluatedTrace

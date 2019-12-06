@@ -65,7 +65,7 @@ module Lbl : sig
   val pp      : Format.formatter -> t -> unit
   val pp_g    : Format.formatter -> t -> unit
   val pp_dbg  : Format.formatter -> t -> unit
-  val hasname  : string -> t -> bool
+  val hasname : string -> t -> bool
 
   val exit_ : t
 end = struct
@@ -197,6 +197,52 @@ module M = struct
 
 end
 
+type genv = {
+  glob_var : V.t Ms.t;
+  glob_lbl : macro_name Ml.t; (* lookup from label to macro name for global jumps *)
+  macro    : macro Ms.t;
+}
+
+(* ************************************************* *)
+(* Global environment                                *)
+
+let pp_glob_var ~full fmt gvs =
+  Format.fprintf fmt "  @[<v>";
+  Ms.iter (fun n v ->
+      Format.fprintf fmt "%s -> %a@ "
+        n (V.pp_full ~full:full) v) gvs;
+  Format.fprintf fmt "@]"
+
+let pp_glob_lbl ~full fmt gls =
+  Format.fprintf fmt "  @[<v>";
+  Ml.iter (fun l mn ->
+      Format.fprintf fmt "%a -> %s@ "
+        (Lbl.pp_full ~full:full) l mn) gls;
+  Format.fprintf fmt "@]"
+
+let pp_glob_macro_name ~full fmt mm =
+  Format.fprintf fmt "  @[<v>";
+  let pp_mc_name fmt m =
+    if full then
+      Format.fprintf fmt "%s.%a" m.mc_name Uid.pp m.mc_uid
+    else
+      Format.fprintf fmt "%s" m.mc_name in
+  Ms.iter (fun mn m ->
+      Format.fprintf fmt "%s -> %a@ "
+        mn pp_mc_name m) mm;
+  Format.fprintf fmt "@]"
+
+let pp_genv ~full fmt g =
+  Format.fprintf fmt "@[<v>global vars:{@   @[<v>%a@]}@ \
+                      global labels:{@   @[<v>%a@]}@ \
+                      global macros:{@   @[<v>%a@]}@ @]"
+    (pp_glob_var ~full:full) g.glob_var
+    (pp_glob_lbl ~full:full) g.glob_lbl
+    (pp_glob_macro_name ~full:full) g.macro
+
+let pp_genv_g fmt g = pp_genv ~full:!Glob_option.full fmt g
+let pp_genv_dbg fmt g = pp_genv ~full:true fmt g
+
 (* *********************************************** *)
 (* Destructors                                     *)
 let destr_var e =
@@ -245,22 +291,25 @@ let params_label =
       | Plabel lbl -> Sl.add lbl s
       | _ -> s) Sl.empty
 
-let check_labels (msg:string) (ms:macro Ms.t) (m:macro) =
+let check_labels (msg:string) (g:genv) (m:macro) =
   let def = defined_label m.mc_body in
   let dparams = params_label m.mc_params in
-  let globals = Ms.fold
-      (fun mn m s -> Sl.union s (params_label m.mc_locals))
-      ms Sl.empty in
   let all = Sl.union def dparams in
   let defined = ref Sl.empty in
   let check ii lbl =
     if not (Sl.mem lbl all) then
       (* try to find the label globally *)
-      if not (Sl.mem lbl globals) then
-        error msg ii "undefined label %a in %s" (Lbl.pp_full ~full:true) lbl m.mc_name in
+      if not (Ml.mem lbl g.glob_lbl) then
+        error msg ii "%a@ undefined label %a in %s" pp_genv_dbg g (Lbl.pp_full ~full:true) lbl m.mc_name
+      else (* label defined, now check its definition *)
+        let mdest = Ms.find (Ml.find lbl g.glob_lbl) g.macro in
+        if not (Sl.mem lbl (params_label mdest.mc_locals)) then
+          error msg ii "%a@ inconsistent label %a in %s, globally known but stale in %s"
+            pp_genv_dbg g (Lbl.pp_full ~full:true) lbl m.mc_name mdest.mc_name
+  in
   let check_def ii lbl =
     if Sl.mem lbl !defined then
-      error msg ii "redifinition of label %a" Lbl.pp lbl;
+      error msg ii "redefinition of label %a" Lbl.pp lbl;
     defined := Sl.add lbl !defined
   in
   let check_args ii args =

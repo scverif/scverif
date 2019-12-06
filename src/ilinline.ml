@@ -68,12 +68,16 @@ let find_var env loc x =
   (* FIXME: ensure that x is global *)
   (* in_error loc "unbound variable %a, please report" V.pp_dbg x *)
 
-let find_lbl (genvlookup:bool) (env:env) (loc:Utils.full_loc) (lbl:Lbl.t) =
+let find_lbl (genvlookup:bool) (g:genv) (e:env) (loc:Utils.full_loc) (lbl:Lbl.t) =
   (* first try to find a local label *)
-  try Ml.find lbl env.elbl
+  try Ml.find lbl e.elbl
   with Not_found ->
     if genvlookup then
-      lbl  (* FIXME *)
+      if Ml.mem lbl g.glob_lbl then
+        lbl
+      else
+        in_error loc "%a@ local and global unbound label %a, cannot substitute"
+          (pp_genv ~full:true) g Lbl.pp_dbg lbl
     else
       in_error loc "locally unbound label %a, cannot substitute" Lbl.pp_dbg lbl
 
@@ -127,11 +131,11 @@ let inline_lv env loc x =
     in_error loc "   @[<v>lvalue %a inline to %a which cannot be viewed as lvalue@]"
       (pp_lval ~full:true) x pp_e_dbg e
 
-let inline_arg env loc arg =
+let inline_arg genv env loc arg =
   match arg with
   | Aexpr e -> Aexpr (inline_e env loc e)
   | Alabel lbl ->
-    Alabel (find_lbl true env loc lbl)
+    Alabel (find_lbl true genv env loc lbl)
   | Aindex(x, j1, j2) ->
     let _, n1, n2 = get_arr x.v_ty in
     let y, i1, i2 =
@@ -146,8 +150,8 @@ let inline_arg env loc arg =
       [i1 .............. i2] *)
    Aindex(y, B.add i1 (B.sub j1 n1), B.add i1 (B.sub j2 n1))
 
-let inline_args env loc args =
-  List.map (inline_arg env loc) args
+let inline_args genv env loc args =
+  List.map (inline_arg genv env loc) args
 
 let add_i env loc id =
   let i = { i_desc = id; i_loc = loc } in
@@ -161,16 +165,16 @@ let rec inline_i genv env locs i =
   | Ileak(i,es) ->
     add_i env loc (Ileak(i, inline_es env loc es))
   | Imacro(m,args) ->
-    let args = inline_args env loc args in
+    let args = inline_args genv env loc args in
     let locs = fst loc :: snd loc in
     inline_macro_app genv env locs m args
   | Ilabel lbl ->
     (* only local labels are allowed *)
-    let lbl = find_lbl false env loc lbl in
+    let lbl = find_lbl false genv env loc lbl in
     add_i env loc (Ilabel lbl)
   | Igoto lbl ->
     (* global jumps allowed, not inlined *)
-    let lbl = find_lbl true env loc lbl in
+    let lbl = find_lbl true genv env loc lbl in
     add_i env loc (Igoto lbl)
   | Iigoto x ->
     (* global jumps allowed, not inlined *)
@@ -203,7 +207,7 @@ and inline_macro_app genv env locs mcname args =
   env.elocals <- envm.elocals;
   env.econt  <- envm.econt
 
-let inline_macro (genv:Iltyping.genv) (m:Il.macro) =
+let inline_macro (genv:genv) (m:Il.macro) =
   let env = empty_env [] [] in
   let mc_params = add_dparams env m.mc_params in
   add_locals env m.mc_locals;
@@ -215,11 +219,3 @@ let inline_macro (genv:Iltyping.genv) (m:Il.macro) =
       mc_locals = env.elocals;
       mc_body = List.rev env.econt;
     }
-
-let inline_global genv g =
-  match g with
-  | Gvar _ -> g
-  | Gmacro m -> Gmacro (inline_macro genv m)
-
-let inline_globals gs =
-  List.map inline_global gs

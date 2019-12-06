@@ -4,11 +4,6 @@ open Utils
 open Common
 open Il
 
-type genv = {
-  glob_var : V.t Ms.t;
-  macro    : macro Ms.t;
-}
-
 type id_kind =
   | Label of Lbl.t * bool (* true means local label *)
   | Var   of var          (* variables given as parameters *)
