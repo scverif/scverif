@@ -72,4 +72,4 @@ val update_state   : eenv -> Il.macro_name -> state -> eenv
 val find_initial   : eenv -> Il.macro_name -> initial
 val update_initial : eenv -> Il.macro_name -> initial -> eenv
 
-val partial_eval : eenv -> Il.macro -> state
+val partial_eval : Il.genv -> eenv -> Il.macro -> state

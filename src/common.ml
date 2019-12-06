@@ -31,7 +31,7 @@ type cast =
   | Cint of sign
 [@@deriving show]
 
-let tint = Tbase Int
+let tint  = Tbase Int
 let tbool = Tbase Bool
 let tw s  = Tbase (W s)
 

@@ -438,10 +438,10 @@ and eval_es (loc:full_loc) (st:state) (es:expr list) = List.split (List.map (eva
 (* ********************************************* *)
 (* Programs evaluation                           *)
 
-let find_label (loc:full_loc) (lbl:Lbl.t) (st:state) =
+let find_label (loc:full_loc) (lbl:Lbl.t) (st:state) : instr list option =
   let rec aux c =
     match c with
-    | [] -> raise Not_found
+    | [] -> None
     | i :: c' ->
       match i.i_desc with
       | Iif(_,c1,c2) | Iwhile(c1,_,c2) ->
@@ -453,7 +453,7 @@ let find_label (loc:full_loc) (lbl:Lbl.t) (st:state) =
               aux c2
         end
       | Ilabel lbl' when Lbl.equal lbl lbl' ->
-        c'
+        Some c'
       | Ilabel _
       | Iassgn _
       | Ileak _
@@ -462,75 +462,90 @@ let find_label (loc:full_loc) (lbl:Lbl.t) (st:state) =
       | Iigoto _ ->
         aux c'
   in
-  try aux st.st_prog
-  with Not_found ->
-    ev_hierror loc "unknown label %a" Lbl.pp_g lbl
+  aux st.st_prog
 
 let unknown_arr i1 i2 =
   assert (B.le i1 i2);
   let size = B.to_int (B.add (B.sub i2 i1) B.one) in
   Array.make size Vunknown
 
-let rec eval_i (st:state) : unit =
+let rec eval_i (g:genv) (st:state) : unit =
 (*  Format.eprintf "%a@." pp_state st; *)
   match st.st_pc with
   | [] -> ()
   | i :: c ->
     match i.i_desc with
-    | Iassgn (x, e) -> eval_assgn i.i_loc st x e c
+    | Iassgn (x, e) -> eval_assgn g i.i_loc st x e c
     | Ileak(li, es) ->
       let i' = { i_desc = Ileak(li, snd (eval_es i.i_loc st es)); i_loc = i.i_loc } in
-      next st (Some i') c
+      next g st (Some i') c
     | Imacro (mname,_) ->
+      (* TODO implement this one as well *)
       ev_hierror i.i_loc "@[<v>%a@ eval %a: found macro %s but expected it to be inlined@]"
         pp_state st
         pp_i_dbg i
         mname
     | Ilabel _ ->
-      next st (Some i) c
+      next g st (Some i) c
     | Igoto lbl ->
-      let c =
-        try find_label i.i_loc lbl st
-        with Not_found ->
-          ev_hierror i.i_loc "@[<v>%a@ eval Igoto: encountered global jump %a \
-                         but expected it to be inlined@]"
-            pp_state st
-            pp_i_dbg i
-      in
-      next st (Some i) c
+      (match find_label i.i_loc lbl st with
+      | Some c -> next g st (Some i) c
+      | None ->
+        begin
+          try
+            (* check that label points to a macro *)
+            let mn = Ml.find lbl g.glob_lbl in
+            let m = Ms.find mn g.macro in
+            (* check that macro has no parameters *)
+            if List.length m.mc_params != 0 then
+              ev_hierror i.i_loc "@[<v>%a@ eval Igoto: global jump to macro %s with arguments \
+                                  but expected it to be inlined@]"
+                pp_state st mn pp_i_dbg i;
+            (* change body of current evaluation *)
+            (* FIXME does with copy??? does st_prog need to be mutuable as well? *)
+            next g { st with st_prog = m.mc_body } (Some i) m.mc_body
+              (* on return take evaluated part and append, proceed with next instr. *)
+          with Not_found ->
+            ev_hierror i.i_loc "@[<v>%a@ %a@ eval Igoto: encountered global jump \"%a\" \
+                                with unknown label@]"
+              pp_state st pp_genv_dbg g pp_i_dbg i
+          end)
     | Iigoto x ->
       begin match eval_var st x with
       | Vcptr lbl ->
-        let c =
-          try find_label i.i_loc lbl st
-          with Not_found ->
-            ev_hierror i.i_loc "@[<v>%a@ eval Iigoto: encountered global jump %a \
-                           but expected it to be inlined@]"
-              pp_state st
-              pp_i_dbg i
-        in
-        next st (Some i) c
-      | _ -> assert false (* FIXME : error msg *)
+        (match find_label i.i_loc lbl st with
+         | Some c -> next g st (Some i) c
+         | None ->
+           ev_hierror i.i_loc "@[<v>%a@ eval Iigoto: encountered global jump %a \
+                               but expected it to be inlined@]"
+             pp_state st
+             pp_i_dbg i)
+      | _ ->
+        ev_hierror i.i_loc "@[<v>%a@ eval unexpected value in Iigoto: %a @ \
+                            expected a pointer@]"
+          pp_state st
+          pp_i_dbg i
       end
     | Iif(e,c1,c2) ->
       begin match eval_e i.i_loc st e with
-      | Vbool b, _  -> next st None ((if b then c1 else c2) @ c)
+      | Vbool b, _  -> next g st None ((if b then c1 else c2) @ c)
       | Vunknown, _ ->
-        ev_hierror i.i_loc "@[<v>%a@ eval Iif: cannot evaluate conditional expression %a@]"
+        ev_hierror i.i_loc "@[<v>%a@ eval Iif: cannot evaluate conditional expression \"%a\" at %a@]"
           pp_state st
-          (pp_e ~full:!Glob_option.full) e
+          pp_e_dbg e
+          pp_full_loc i.i_loc
       | _, _        -> assert false
       end
     | Iwhile (c1, e, c2) ->
       let c = c1 @ {i_desc = Iif (e, c2 @ [i], []); i_loc = i.i_loc} :: c in
-      next st None c
+      next g st None c
 
-and next (st:state) (i:Il.instr option) (c:Il.cmd) : unit =
-  oiter (fun i ->  st.st_eprog <- i :: st.st_eprog) i;
-  st. st_pc <- c;
-  eval_i st
+and next (g:genv) (st:state) (i:Il.instr option) (c:Il.cmd) : unit =
+  oiter (fun i -> st.st_eprog <- i :: st.st_eprog) i;
+  st.st_pc <- c;
+  eval_i g st
 
-and eval_assgn (loc:Utils.full_loc) (st:state) (lv:Il.lval) (e:Il.expr) (c:Il.cmd) =
+and eval_assgn (g:genv) (loc:Utils.full_loc) (st:state) (lv:Il.lval) (e:Il.expr) (c:Il.cmd) =
   let v, e = eval_e loc st e in
   let lv, c =
     match lv with
@@ -569,7 +584,7 @@ and eval_assgn (loc:Utils.full_loc) (st:state) (lv:Il.lval) (e:Il.expr) (c:Il.cm
       t.(iofs) <- v;
       Lset(dest, eofs), c
   in
-  next st (Some {i_desc = Iassgn(lv, e); i_loc = loc }) c
+  next g st (Some {i_desc = Iassgn(lv, e); i_loc = loc }) c
 
 let empty_eenv = {
   state     = Ms.empty;
@@ -600,7 +615,7 @@ let update_state eenv mn state =
   with Not_found ->
     { eenv with state = Ms.add mn state eenv.state }
 
-let partial_eval eenv m =
+let partial_eval (g:genv) (eenv:eenv) (m:Il.macro) =
   let mdest = ref Mv.empty in
 
   let init = find_initial eenv m.mc_name in
@@ -639,5 +654,5 @@ let partial_eval eenv m =
     } in
   Glob_option.print_full "DEBUG st@ @[<v>%a@]@." (pp_cmd ~full:true) st.st_prog;
 
-  eval_i st;
+  eval_i g st;
   { st with st_eprog = List.rev st.st_eprog }

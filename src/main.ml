@@ -138,7 +138,7 @@ let process_trans_partialeval (menv:mainenv) (target:Scv.scvtarget) =
   let ms = Iltyping.macronames_of_scvtarget menv.genv target in
   let partialeval eenv mn =
     let m = Iltyping.find_macro menv.genv mn in
-    let estate = Ileval.partial_eval eenv m in
+    let estate = Ileval.partial_eval menv.genv eenv m in
     Ileval.update_state eenv mn estate in
   { menv with eenv = List.fold_left partialeval menv.eenv ms }
 

@@ -598,7 +598,3 @@ let clear_macro m =
     | Pvar x -> Sv.mem x uvar 
     | Plabel lbl -> Sl.mem lbl ulbl in
   { m with mc_locals = List.filter is_used m.mc_locals }
-
-
-
-
