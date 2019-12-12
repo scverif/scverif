@@ -53,6 +53,7 @@ type state = {
   mutable st_prog    : cmd;
   mutable st_pc      : cmd;
   mutable st_eprog   : cmd;
+          st_global  : Il.genv;
 }
 
 type eenv = {

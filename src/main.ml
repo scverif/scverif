@@ -107,7 +107,7 @@ type mainenv = {
 }
 
 let empty_mainenv = {
-  genv = Iltyping.empty_genv;
+  genv = Il.empty_genv;
   eenv = Ileval.empty_eenv;
 }
 

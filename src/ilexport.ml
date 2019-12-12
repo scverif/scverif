@@ -148,13 +148,19 @@ let mv_pp_margs ~full fmt args =
   Format.fprintf fmt "@[(%a)@]"
     (pp_list ",@ " (mv_pp_marg ~full)) args
 
+let pp_full_loc_first fmt (l,ls) =
+  let pp_loc fmt loc =
+    Format.fprintf fmt "\\ncaused by %s"
+      (Location.tostring loc) in
+  Format.fprintf fmt "%s%a" (Location.tostring l) pp_loc (List.hd ls)
+
 let rec mv_pp_i ~full fmt i =
   match i.i_desc with
   | Iassgn(x,e) ->
     Format.fprintf fmt "@[%a <-@ %a;@]"
       (mv_pp_lval ~full) x (mv_pp_e ~full) e
   | Il.Ileak(li, es) ->
-    Format.fprintf fmt "@[leak %a (%a) @[<v>\"%a(%a)@,in %a\"@];@]"
+    Format.fprintf fmt "@[leak %a (%a)@   @[\"%a(%a)\\ndefined in %a\"@];@]"
       pp_leak_info li (pp_list ", " (mv_pp_e ~full:!Glob_option.full)) es
       pp_leak_info li (pp_list ", " (mv_pp_e ~full:!Glob_option.full)) es
       pp_full_loc_first i.i_loc

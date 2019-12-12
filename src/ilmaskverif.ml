@@ -76,7 +76,8 @@ end = struct
       | Common.W (Common.U64) -> MV.Expr.W64
       | Common.Int ->
         error (Some v.v_loc)
-          "@[Maskverif does not support variables with type Int@]@."
+          "@[Maskverif does not support variable %a with type Int@]@."
+          Il.V.pp_dbg v
     in
     match v.v_ty with
     | Common.Tbase(bty) -> lift_bty bty
@@ -84,7 +85,7 @@ end = struct
     | Common.Tmem ->
       error (Some v.v_loc)
         "@[Maskverif does not support memory, eliminate %a prior analysis.@]@."
-        Il.V.pp_g v
+        Il.V.pp_dbg v
 
   (* translate il scalar variable to maskverif scalar variable
    * keep the mapping in il2mv and mv2il *)
@@ -96,13 +97,13 @@ end = struct
         if (Il.Mv.mem v env.il2mv) then
           error (Some (v.v_loc))
             "@[variable %a has already been lifted.@]@."
-            Il.V.pp_g v;
+            Il.V.pp_dbg v;
 
         (* make sure the variable's name has not been defined in the header elsewhere *)
         if (MVE.Sv.exists (fun var -> String.equal var.MVE.v_name v.v_name) env.headerdefs) then
           error (Some (v.v_loc))
             "@[variable %a defined multiple times in the header.@]@."
-            Il.V.pp_g v;
+            Il.V.pp_dbg v;
 
         (* create the variable with unique id *)
         let mvvar = MVE.V.mk_var v.v_name (lift_ilty v) in
@@ -128,7 +129,7 @@ end = struct
     | Common.Tmem ->
       error (Some v.v_loc)
         "@[Maskverif does not support memory, eliminate %a prior analysis.@]@."
-        Il.V.pp_g v
+        Il.V.pp_dbg v
 
   (* translate il array to maskverif var
    * keep the mapping in il2mv and mv2il *)
@@ -148,13 +149,13 @@ end = struct
           if (Il.Mv.mem v env.il2mv) then
             error (Some (v.v_loc))
               "@[variable %a has already been lifted.@]@."
-              Il.V.pp_g v;
+              Il.V.pp_dbg v;
 
           (* make sure the variable's name has not been defined in the header elsewhere *)
           if (MVE.Sv.exists (fun var -> String.equal var.MVE.v_name vname) env.headerdefs) then
             error (Some (v.v_loc))
               "@[variable %a defined multiple times in the header.@]@."
-              Il.V.pp_g v;
+              Il.V.pp_dbg v;
 
           (* create the variable with unique id *)
           let mvvar = MVE.V.mk_var vname (lift_ilty v) in
@@ -181,7 +182,7 @@ end = struct
                   env.headerdefs) then
               error (Some (v.v_loc))
                 "@[variable %a defined multiple times in the header.@]@."
-                Il.V.pp_g v;
+                Il.V.pp_dbg v;
             let mvbvar = MVE.V.mk_var v.v_name (lift_ilty v) in
             (* add the variable to the set of defined variables *)
             let headerdefs = MVE.Sv.add mvbvar env.headerdefs in
@@ -199,7 +200,7 @@ end = struct
     | Common.Tmem ->
       error (Some v.v_loc)
         "@[Maskverif does not support memory, eliminate %a prior analysis.@]@."
-        Il.V.pp_g v
+        Il.V.pp_dbg v
 
   let atys_of_an (aty:Ileval.t_ty) (ans:(Ileval.t_ty * Il.var) list)
     : Il.var list =
@@ -227,7 +228,7 @@ end = struct
       | Common.Tmem ->
         error (Some v.v_loc)
           "@[Maskverif does not support memory, eliminate %a prior analysis.@]"
-          Il.V.pp_g v
+          Il.V.pp_dbg v
     in
     (* initialize/define each random input variable, return the new leakage state*)
     List.fold_right init_var vars ([], env)
@@ -242,7 +243,7 @@ end = struct
       | Common.Tbase(_) ->
         error (Some v.v_loc)
           "@[cannot lift shared input %a consisting of a single element.@]@."
-          Il.V.pp_g v
+          Il.V.pp_dbg v
       | Common.Tarr(bty,rs,re) ->
         begin
           (* need to lift every index as variable *)
@@ -251,7 +252,7 @@ end = struct
           | [], _ ->
             error (Some v.v_loc)
               "@[unexpected error during lifting of shared input variable %a@]@."
-              Il.V.pp_g v
+              Il.V.pp_dbg v
           | vb::vs', env ->
             (* return the tuple with the individual shares *)
             [vb,vs']@vs, env
@@ -259,7 +260,7 @@ end = struct
       | Common.Tmem ->
         error (Some v.v_loc)
           "@[Maskverif does not support memory, eliminate %a prior analysis.@]"
-          Il.V.pp_g v
+          Il.V.pp_dbg v
     in
     (* initialize/define each random input variable, return the new leakage state*)
     List.fold_right init_var vars ([], env)
@@ -274,7 +275,7 @@ end = struct
       | Common.Tbase(_) ->
         error (Some v.v_loc)
           "@[cannot lift shared input %a consisting of a single element.@]@."
-          Il.V.pp_g v
+          Il.V.pp_dbg v
       | Common.Tarr(bty,rs,re) ->
         begin
           (* need to lift every index as variable *)
@@ -283,7 +284,7 @@ end = struct
           | [], _ ->
             error (Some v.v_loc)
               "@[unexpected error during lifting of shared input variable %a@]@."
-              Il.V.pp_g v
+              Il.V.pp_dbg v
           | vb::vs', env ->
             (* return the tuple with the individual shares *)
             vs'::vs, env
@@ -291,7 +292,7 @@ end = struct
       | Common.Tmem ->
         error (Some v.v_loc)
           "@[Maskverif does not support memory, eliminate %a prior analysis.@]"
-          Il.V.pp_g v
+          Il.V.pp_dbg v
     in
     (* initialize/define each random input variable, return the new leakage state*)
     List.fold_right init_var vars ([], env)
@@ -303,7 +304,7 @@ end = struct
     | Common.Tmem ->
       error (Some l)
         "@[expecting variable %a to have type Tbase.@]@."
-        Il.V.pp_g v
+        Il.V.pp_dbg v
 
   let mk_op2ttt t s = MVE.Op.make s (Some ([t;t], t)) MVE.NotBij MVE.Other
   let mk_op2tttbij t s = MVE.Op.make s (Some ([t;t], t)) MVE.Bij MVE.Other
@@ -340,16 +341,22 @@ end = struct
     | Il.Ebool false ->
       MVP.Econst MV.Expr.C._false, env
     | Il.Eint int ->
-      let maxval = Maskverif.Expr.ty_size exty in
+      let maxval = MVE.ty_size exty in
       let maxval = Common.B.pow (Common.B.of_int 2) maxval in
       if Common.B.le int maxval then
         let const = MVE.C.make exty (Common.B.to_zint int) in
         MVP.Econst const, env
+      else if (function | { Il.i_desc = Il.Ileak _ } -> true | _ -> false) i then
+        begin
+          (* inside leak statements we type scVerif constant integers as w64 *)
+          assert(Common.B.le int (Common.B.pow (Common.B.of_int 2) (MVE.ty_size MVE.w64)));
+          let const = MVE.C.make MVE.w64 (Common.B.to_zint int) in
+          MVP.Econst const, env
+        end
       else
         error (Some (fst i.i_loc))
-          "@[overflow detected. expected type %s does not match given integer %a.@]@."
-          (MVE.ty2string exty)
-          Common.B.pp_zint int
+          "@[overflow detected in %a: expected type %s does not match given integer %a.@]@."
+          Il.pp_i_dbg i (MVE.ty2string exty) Common.B.pp_zint int
     | Il.Evar v ->
       begin
         (* must be lifted, (no use-before-definition) *)
@@ -373,7 +380,7 @@ end = struct
           | Il.Eload(_,_,_) ->
             error (Some (fst i.i_loc))
               "@[Expecting evaluated program, cannot handle variable index %a@]@."
-              Il.pp_e_g iexpr
+              Il.pp_e_dbg iexpr
         in
         match v.v_ty, Il.Mv.find v env.il2mv with
         | Common.Tarr(bty,rs,re), MArray vs
@@ -393,25 +400,21 @@ end = struct
     | Il.Eload(_,_,_) ->
       error (Some (fst i.i_loc))
         "@[cannot lift memory %a. perform partial evaluation first.@]@."
-        Il.pp_e_g expr
+        Il.pp_e_dbg expr
 
   and lift_op (i:Il.instr) (exty:MVE.ty) (env:liftstate) (op:Il.op) (es:Il.expr list)
     : MVP.expr * liftstate =
     let err_unsupported () =
       error (Some (fst i.i_loc))
         "@[op %a not supported.@]@."
-        Il.pp_e_g (Il.Eop(op,es)) in
+        Il.pp_e_dbg (Il.Eop(op,es)) in
     let err_invalid () =
       error (Some (fst i.i_loc))
         "@[op %a invalid, perform partial evaluation.@]@."
-        Il.pp_e_g (Il.Eop(op,es)) in
+        Il.pp_e_dbg (Il.Eop(op,es)) in
     let fold_lift_expr ety e (es,env) =
       let e, env = lift_expr i ety env e in
       e::es, env in
-    let check_ty (ety:MVE.ty) : unit =
-      if ety != exty then
-        error (Some (fst i.i_loc))
-          "@[typing error, operator does not match expected type@]@." in
     let lift_existing (op:MVE.operator) (ety:MVE.ty) =
       (* TODO      check_ty ety; *)
       let mves, env = List.fold_right (fold_lift_expr ety) es ([],env) in
@@ -529,7 +532,7 @@ end = struct
               error (Some v.v_loc)
                 "@[unexpected error during lookup, \
                  lifted variable %a is a set of variables %a.@]@."
-                Il.V.pp_g v
+                Il.V.pp_dbg v
                 (MV.Util.pp_list ",@ " (MVE.pp_var)) vs
           end
         else if MVE.Sv.exists (filterbyname vn) env.headerdefs then
@@ -562,7 +565,7 @@ end = struct
             | Il.Eload(_,_,_) ->
               error (Some (fst i.i_loc))
                 "@[Expecting evaluated program, cannot handle variable index %a@]@."
-                Il.pp_e_g iexpr
+                Il.pp_e_dbg iexpr
           in
           let mvname = v.v_name ^ Common.B.to_string index in
           match v.v_ty with
@@ -625,13 +628,13 @@ end = struct
           | Common.Tmem ->
             error (Some (fst i.i_loc))
               "@[Expecting evaluated program, cannot handle %a@]@."
-              Il.pp_i_g i
+              Il.pp_i_dbg i
         end
       (* assignment to memory *)
       | Il.Lstore(_,_,_) ->
         error (Some (fst i.i_loc))
           "@[Expecting evaluated program, cannot handle %a@]@."
-          Il.pp_i_g i
+          Il.pp_i_dbg i
     in
     let i_kind = MV.Parsetree.IK_noleak in
     let i_expr, env = lift_expr i (i_var.v_ty) env rhs in
@@ -685,15 +688,18 @@ end = struct
       | Il.Imacro (_, _) ->
         error (Some (fst i.i_loc))
           "@[macro calls not yet supported: cannot handle %a@]@."
-          Il.pp_i_g i
-      | Il.Ilabel _
+          Il.pp_i_dbg i
+      | Il.Ilabel _ ->
+        error (Some (fst i.i_loc))
+          "@[sorry, you are hitting a regression at label %a@]@."
+          Il.pp_i_dbg i
       | Il.Igoto _
       | Il.Iigoto _
       | Il.Iif (_, _, _)
       | Il.Iwhile (_, _, _) ->
         error (Some (fst i.i_loc))
           "@[Expecting evaluated program, cannot handle %a@]@."
-          Il.pp_i_g i
+          Il.pp_i_dbg i
 
     in
     let is, env = List.fold_right lift_i (List.rev is) ([],env) in
@@ -720,7 +726,9 @@ end = struct
     let f_in, lenv = init_header_sharedinvars Ileval.Sharing lenv an.input_var in
     let f_out, lenv = init_header_sharedoutvars Ileval.Sharing lenv an.output_var in
     (* body *)
-    let f_cmd, lenv = lift_instr lenv st.st_eprog in
+    let body = List.filter (* remove the labels to keep lift_instr neat and clean *)
+        (function | { Il.i_desc = Il.Ilabel _} -> false | _ -> true) st.st_eprog in
+    let f_cmd, lenv = lift_instr lenv body in
     let f_other = MVE.Sv.elements lenv.localdefs in
     let (func:MV.Prog.func) = {
       f_name; (* function name *)

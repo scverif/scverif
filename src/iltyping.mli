@@ -19,9 +19,8 @@ type env = {
   (* unsatisfied dependency with reference to their origin *)
   (* TODO make use of macro_name list *)
   unsat  : (unsatdep * macro_name list) Ms.t;
+  current : macro_name;
 }
-
-val empty_genv : genv
 
 val process_var_decl : Ilast.var_decl Location.located -> V.t
 val add_gvar         : genv -> V.t -> genv

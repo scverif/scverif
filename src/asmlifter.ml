@@ -22,17 +22,12 @@ let refine_mname (mname:ident) (nargs:int) =
   let mname = mname ^ (string_of_int nargs) in
   mk_loc loc mname
 
-let refine_label (name:string) (base:B.zint) (offs:Asmast.hex) =
+let refine_label (name:string) (base:B.zint) (offs:Asmast.hex) : Ilast.label =
   let loc = loc offs in
   let offs = unloc offs in
   (* offset is relative to base (e.g. start of macro)*)
   let offset = (B.sub offs base) in
-  let name =
-    if B.equal B.zero offset then
-      name
-    else
-      name ^ "+" ^ (B.to_string_X offset) in
-  mk_loc loc name
+  { l_base = name; l_offs = offset; l_loc = loc }
 
 let lift_regimm = function
   | Reg r -> Ilast.mk_var r
@@ -44,7 +39,7 @@ let lift_operand o =
   match o with
   | Regimm ir       -> [Aexpr (lift_regimm ir)]
   | RegOffs (r, ir) -> [aexpr_var r; Aexpr (lift_regimm ir)]
-  | Label(id,offs)  -> [aexpr_var (refine_label (unloc id) B.zero offs)]
+  | Label(id,offs)  -> [Alabel (refine_label (unloc id) B.zero offs)]
 
 let lift_operands = function
   | Ofixed ops -> List.flatten (List.map lift_operand ops)
@@ -57,7 +52,7 @@ let lift_stmt (secname:string) (baseaddr:B.zint) (stmt:Asmast.stmt) =
   let margs = lift_operands stmt.instr_exp in
   let mname = refine_mname stmt.instr_asm (List.length margs) in
   let lbl   = refine_label secname baseaddr stmt.offset in
-  let ilbl  = mk_loc (loc lbl) (Ilast.Ilabel lbl) in
+  let ilbl  = mk_loc (lbl.l_loc) (Ilast.Ilabel lbl) in
   let ins   = mk_loc stmt_loc  (Ilast.Imacro (mname, margs)) in
   [ilbl; ins]
 

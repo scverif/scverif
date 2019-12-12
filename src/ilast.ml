@@ -12,8 +12,17 @@ type 'a located = [%import: 'a Location.located]
 type ident = string located
 [@@deriving show]
 
-type label = string located
-[@@deriving show]
+type label = {
+  l_base : string;
+  l_offs : B.zint;
+  l_loc  : Location.t;
+}
+
+let pp_label fmt (l:label) =
+  Format.fprintf fmt "%s+%a" l.l_base B.pp_print l.l_offs
+
+let label_to_string (l:label) : string =
+  l.l_base ^ (B.to_string l.l_offs)
 
 type leak_info = string option
 [@@deriving show]

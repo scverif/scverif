@@ -135,6 +135,12 @@ lval:
   | x=ident LBRACKET e=expr RBRACKET         { Lset(x,e) }
   | LBRACKET s=wsize x=ident e=expr RBRACKET { Lstore(s, x, e) }
 
+label:
+  | l=ident
+    { {l_base = unloc l; l_offs = B.zero; l_loc = loc l} }
+  | l=ident ADD i=loc(INT)
+    { {l_base = unloc l; l_offs = unloc i; l_loc = Location.merge (loc l) (loc i)} }
+
 instr_r:
   | x=lval LEFTARROW e=expr SEMICOLON
     { Iassgn(x,e) }
@@ -142,9 +148,9 @@ instr_r:
     { Ileak(i,es) }
   | m=ident args=macro_args SEMICOLON
     { Imacro(m,args) }
-  | l=ident COLON
+  | l=label COLON
     {Ilabel l }
-  | GOTO l=ident SEMICOLON
+  | GOTO l=label SEMICOLON
     { Igoto l }
   | IF e=expr c1=cmd c2=else_?
     { Iif(e,c1,Utils.odfl [] c2) }
@@ -168,7 +174,7 @@ var_decl:
 
 param_decl:
   | x=loc(var_decl)    { Pvar x }
-  | LABEL x=ident { Plabel x }
+  | LABEL l=label { Plabel l }
 
 macro_decl:
   | MACRO x=ident LPAREN p=separated_list(COMMA,param_decl) RPAREN

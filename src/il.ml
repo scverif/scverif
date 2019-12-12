@@ -55,47 +55,59 @@ end
 module Mv = Map.Make(V)
 module Sv = Set.Make(V)
 
+type lbl = {
+  l_name : string;
+  l_offs : B.zint;
+  l_id   : Uid.t;
+}
+
+
 module Lbl : sig
   type t
   val compare : t -> t -> int
   val equal   : t -> t -> bool
-  val fresh   : string -> t
+  val fresh   : string -> B.zint -> t
   val clone   : t -> t
   val pp_full : full:bool -> Format.formatter -> t -> unit
   val pp      : Format.formatter -> t -> unit
   val pp_g    : Format.formatter -> t -> unit
   val pp_dbg  : Format.formatter -> t -> unit
   val hasname : string -> t -> bool
+  val compdata: string -> B.zint -> t -> bool
 
   val exit_ : t
 end = struct
 
-  type t = {
-      l_name : string;
-      l_id   : Uid.t;
-    }
+  type t = lbl
 
   let compare l1 l2 = Uid.compare l1.l_id l2.l_id
   let equal l1 l2 = Uid.equal l1.l_id l2.l_id
   let hasname s l = String.equal s l.l_name
+  let compdata b o l = (String.equal l.l_name b) && (l.l_offs == o)
 
-  let fresh l_name =
+  let fresh l_name ofs =
     { l_name;
       l_id = Uid.fresh();
+      l_offs = ofs;
     }
 
-  let clone l = fresh l.l_name
+  let clone l = fresh l.l_name l.l_offs
 
   let pp_full ~full fmt l =
+    let ln =
+      if B.equal B.zero l.l_offs then
+        l.l_name
+      else
+        l.l_name ^ "+" ^ (B.to_string l.l_offs) in
     if full then
-      Format.fprintf fmt "%s.%a" l.l_name Uid.pp l.l_id
-    else Format.fprintf fmt "%s" l.l_name
+      Format.fprintf fmt "%s.%a" ln Uid.pp l.l_id
+    else Format.fprintf fmt "%s" ln
 
   let pp fmt l = pp_full ~full:false fmt l
   let pp_g fmt l = pp_full ~full:!Glob_option.full fmt l
   let pp_dbg fmt l = pp_full ~full:true fmt l
 
-  let exit_ = fresh "exit_macro"
+  let exit_ = fresh "exit_macro" B.zero
 
 end
 
@@ -200,8 +212,16 @@ end
 type genv = {
   glob_var : V.t Ms.t;
   glob_lbl : macro_name Ml.t; (* lookup from label to macro name for global jumps *)
+  glob_mem : B.zint Ml.t;     (* global memory, e.g. for data stored inside asm code *)
   macro    : macro Ms.t;
 }
+
+let empty_genv =
+  { glob_var = Ms.empty;
+    glob_lbl = Ml.empty;
+    glob_mem = Ml.empty;
+    macro    = Ms.empty;
+  }
 
 (* ************************************************* *)
 (* Global environment                                *)
