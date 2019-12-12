@@ -390,6 +390,7 @@ let eval_get (loc:full_loc) st x (v,ei) =
 
 let get_ofs ws p =
   let q = B.of_int (ws_byte ws) in
+  (* pointer's offset is a multiple of the expected wordsize *)
   assert (B.equal (B.erem p.p_ofs q) B.zero);
   B.div p.p_ofs q
 
@@ -397,10 +398,15 @@ let eval_mem_index (loc:full_loc) (st:state) (ws:Common.wsize) (m:var) (e:expr) 
   match v with
   | Vptr p when V.equal m p.p_mem ->
     let bty, _i1, _i2 = get_arr p.p_dest.v_ty in
-    if bty <> W ws then
+    (* FIXME allow ordered memory access *)
+    if ws_le (get_ws bty) ws then
+      ev_hierror loc "need to implement this kind of access";
+    if bty != W ws then
       ev_hierror loc "%a@ eval_mem_index: invalid word size %a, expected %a"
         pp_state st pp_bty bty pp_wsize ws;
+    (* compute offset in times of expected ws ??? *)
     let ofs = get_ofs ws p in
+    (* compute relative offset *)
     let iofs = eval_index loc "eval_load region" p.p_dest ofs in
     let t =
       try Mv.find p.p_dest st.st_mregion

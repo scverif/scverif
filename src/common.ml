@@ -72,6 +72,11 @@ let ws_le ws1 ws2 =
 
 let ty_eq (ty1:ty) ty2 = ty1 = ty2
 
+let get_ws (bty:bty) =
+  match bty with
+  | W w -> w
+  | _ -> raise (Invalid_argument "expecting word")
+
 let get_arr = function
   | Tarr(bty,i1,i2) -> bty, i1, i2
   | _ -> assert false
