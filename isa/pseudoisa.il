@@ -1,4 +1,4 @@
-// Copyright 2019 - NXP
+// Copyright 2019 - NXP, TU Darmstadt
 
 /* infinite amount of variables/registers */
 
@@ -70,7 +70,11 @@ macro load (w32 dst, w32 ptr, int index)
   val <- [w32 mem (int) (ptr +w32 (w32) (index * 4))];
 
   leak loadOperand1 (opA, ptr, opB, index);
-  leak loadOperand2 (opA, ptr, index, val);
+
+//  leak loadOperand2WC (opA, ptr, opB, dst, opR, val); /* extreme worst case not yet reported */
+//  leak loadOperand2 (opA, ptr, opB, dst);             /* worst case not yet reported */
+  leak loadOperand2A (opA, ptr);
+  leak loadOperand2B (opB, dst);
   leak loadMemOperand (opR, val);
   leak loadTransition (dst, val);
 
@@ -85,7 +89,11 @@ macro load (w32 dst, w32 ptr, int index)
 macro store (w32 src, w32 ptr, int index)
 {
   leak storeOperand1 (opA, ptr, opB, index);
-  leak storeOperand2 (opA, ptr, index, src);
+
+//  leak storeOperand2WC (opA, ptr, opB, dst, opW, src); /* extreme worst case not yet reported */
+//  leak storeOperand2 (opA, ptr, opB, dst);             /* worst case not yet reported */
+  leak storeOperand2A (opA, ptr);
+  leak storeOperand2B (opB, src);
   leak storeMemOperand (opW, src);
 
   opA <- ptr;
@@ -100,10 +108,40 @@ macro clear_opA ()
   opA <- pub;
 }
 
+macro clear_opB ()
+{
+  opB <- pub;
+}
+
+macro clear_opR ()
+{
+  opR <- pub;
+}
+
+macro clear_opW ()
+{
+  opW <- pub;
+}
+
 macro clear_all ()
 {
   opA <- pub;
   opB <- pub;
   opR <- pub;
   opW <- pub;
+}
+
+macro load_pub (w32 dst)
+{
+  leak loadOperand1 (opA, opB);
+  leak loadOperand2 (opA, pub);
+  leak loadMemOperand (opR, pub);
+  leak loadTransition (dst, pub);
+
+  opA <- pub;
+  opB <- dst;
+  opR <- pub;
+
+  dst <- pub;
+
 }
