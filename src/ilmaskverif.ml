@@ -342,7 +342,7 @@ end = struct
       MVP.Econst MV.Expr.C._false, env
     | Il.Eint int ->
       let maxval = MVE.ty_size exty in
-      let maxval = Common.B.pow (Common.B.of_int 2) maxval in
+      let maxval = Common.B.sub (Common.B.pow (Common.B.of_int 2) maxval) Common.B.one in
       if Common.B.le int maxval then
         let const = MVE.C.make exty (Common.B.to_zint int) in
         MVP.Econst const, env
@@ -659,13 +659,16 @@ end = struct
           let mv2il = MVE.Mv.add lv (IlLeakname(lname, fst i.i_loc)) env.mv2il in
           let lis = Format.sprintf "@[leak %s at %s@]"
               lname
-              (Location.tostring (List.hd (snd i.i_loc))) in
+              (List.fold_right
+                 (fun l s -> String.concat "\n" [Location.tostring l; s]) (snd i.i_loc) "") in
+          Format.printf "debug: %a@." Utils.pp_full_loc_first i.i_loc;
           lv, lis, { env with leakdefs; mv2il }
         end
       | None ->
         begin
           let lis = Format.sprintf "@[leak _ at %s@]"
-              (Location.tostring (List.hd (snd i.i_loc))) in
+              (List.fold_right
+                 (fun l s -> String.concat "\n" [Location.tostring l; s]) (snd i.i_loc) "") in
           try MVE.Sv.find_first (filterbyname "unnamedleak") env.leakdefs, lis, env
           with _ ->
             (* create a fresh unnamed variable *)

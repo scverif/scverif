@@ -109,8 +109,9 @@ and mv_pp_op2_ws ~full s fmt ws es =
   mv_pp_op2 ~full s fmt es
 
 and mv_pp_op2_ows ~full s fmt ws es =
+  (* FIXME need to add some operations and types *)
   match ws with
-  | None -> Format.printf "shit@.";mv_pp_op2 ~full s fmt es
+  | None -> mv_pp_op2 ~full s fmt es
   | Some ws -> mv_pp_op2_ws ~full s fmt ws es
 
 and mv_pp_op1 ~full s fmt es =

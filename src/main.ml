@@ -211,7 +211,8 @@ let process_print menv (p:Scv.scvcmd located) =
     begin
       match unloc p with
       | Print(target, pk, None) ->
-        (Iltyping.macronames_of_scvtarget menv.genv target, pk, !Glob_option.verbose, !Glob_option.full)
+        (Iltyping.macronames_of_scvtarget
+           menv.genv target, pk, !Glob_option.verbose, !Glob_option.full)
       | Print(target, pk, Some v) ->
         let v, f = scvverbosity_to_glob v in
         (Iltyping.macronames_of_scvtarget menv.genv target, pk, v, f)
