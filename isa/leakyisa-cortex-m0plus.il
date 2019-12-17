@@ -35,9 +35,7 @@ macro ldr3_leak (w32 dst, w32 adr, w32 ofs)
   val <- [w32 mem (int) (adr +w32 ofs)];
 
   leak ldrOperand1 (opA, adr, opB, ofs);
-  opB <- ofs;
-
-  leak ldrOperand2 (opA, adr, opB, val);
+  leak ldrOperand2 (opA, adr, ofs, val);
   leak ldrMemOperand (opR, val);
   leak ldrTransition (dst, val);
 
@@ -49,9 +47,7 @@ macro ldr3_leak (w32 dst, w32 adr, w32 ofs)
 macro str3_leak (w32 val, w32 adr, w32 ofs)
 {
   leak strOperand1 (opA, adr, opB, ofs);
-  opB <- ofs;
-
-  leak strOperand2 (opA, adr, opB, val);
+  leak strOperand2 (opA, adr, ofs, val);
   leak strMemOperand (opW, val);
 
   opA <- adr;

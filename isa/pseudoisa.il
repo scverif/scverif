@@ -70,9 +70,7 @@ macro load (w32 dst, w32 ptr, int index)
   val <- [w32 mem (int) (ptr +w32 (w32) (index * 4))];
 
   leak loadOperand1 (opA, ptr, opB, index);
-  opB <- (w32) index;
-
-  leak loadOperand2 (opA, ptr, opB, val);
+  leak loadOperand2 (opA, ptr, index, val);
   leak loadMemOperand (opR, val);
   leak loadTransition (dst, val);
 
@@ -86,10 +84,8 @@ macro load (w32 dst, w32 ptr, int index)
 /* index is an offset in units of 32bit */
 macro store (w32 src, w32 ptr, int index)
 {
-  leak storeOperand1 (opA, ptr, opB, index)
-  opB <- (w32) index;
-
-  leak storeOperand2 (opA, ptr, opB, src);
+  leak storeOperand1 (opA, ptr, opB, index);
+  leak storeOperand2 (opA, ptr, index, src);
   leak storeMemOperand (opW, src);
 
   opA <- ptr;
