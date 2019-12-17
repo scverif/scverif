@@ -397,23 +397,29 @@ let get_ofs ws p =
 let eval_mem_index (loc:full_loc) (st:state) (ws:Common.wsize) (m:var) (e:expr) (v,_ei) =
   match v with
   | Vptr p when V.equal m p.p_mem ->
-    let bty, _i1, _i2 = get_arr p.p_dest.v_ty in
-    (* FIXME allow ordered memory access *)
-    if ws_le (get_ws bty) ws then
-      ev_hierror loc "need to implement this kind of access";
-    if bty != W ws then
-      ev_hierror loc "%a@ eval_mem_index: invalid word size %a, expected %a"
-        pp_state st pp_bty bty pp_wsize ws;
-    (* compute offset in times of expected ws ??? *)
-    let ofs = get_ofs ws p in
-    (* compute relative offset *)
-    let iofs = eval_index loc "eval_load region" p.p_dest ofs in
-    let t =
-      try Mv.find p.p_dest st.st_mregion
-      with Not_found ->
-        ev_hierror loc "%a@ eval_mem_index: unknown region %a"
-          pp_state st V.pp_dbg p.p_dest in
-    t, iofs, p.p_dest, Eint ofs
+    begin
+      let bty, _i1, _i2 = get_arr p.p_dest.v_ty in
+      (* FIXME allow ordered memory access *)
+      let bty_ws = get_ws bty in
+      match ws_eq bty_ws ws with
+      | true ->
+        (* compute offset in times of expected ws ??? *)
+        let ofs = get_ofs ws p in
+        (* compute relative offset *)
+        let iofs = eval_index loc "eval_load region" p.p_dest ofs in
+        let t =
+          try Mv.find p.p_dest st.st_mregion
+          with Not_found ->
+            ev_hierror loc "%a@ eval_mem_index: unknown region %a"
+              pp_state st V.pp_dbg p.p_dest in
+        t, iofs, p.p_dest, Eint ofs
+      | false when (ws_le (get_ws bty) ws) ->
+        ev_hierror loc "need to implement this kind of access"
+      | false when not (ws_le (get_ws bty) ws) ->
+        ev_hierror loc "%a@ eval_mem_index: invalid word size %a, expected %a"
+          pp_state st pp_bty bty pp_wsize ws
+      | false -> assert false
+    end
   | _ ->
     ev_hierror loc "@[<v>%a@ eval_mem_index: cannot evaluate pointer %a in %a@]"
       pp_state st pp_bvalue v

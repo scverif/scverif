@@ -649,7 +649,7 @@ end = struct
       let e, env = lift_expr i MVE.w1 env e in
       e::es, env in
     let filterbyname (nm:string) (mvv:MVE.var) : bool = String.equal nm mvv.MVE.v_name in
-    let l_name, env =
+    let l_name, lis,  env =
       match li with
       | Some lname ->
         begin
@@ -657,24 +657,28 @@ end = struct
           let lv = MVE.V.mk_var lname MVE.w1 in
           let leakdefs = MVE.Sv.add lv env.leakdefs in
           let mv2il = MVE.Mv.add lv (IlLeakname(lname, fst i.i_loc)) env.mv2il in
-          lv, { env with leakdefs; mv2il }
+          let lis = Format.sprintf "@[leak %s at %s@]"
+              lname
+              (Location.tostring (List.hd (snd i.i_loc))) in
+          lv, lis, { env with leakdefs; mv2il }
         end
       | None ->
         begin
-          try MVE.Sv.find_first (filterbyname "unnamedleak") env.leakdefs, env
+          let lis = Format.sprintf "@[leak _ at %s@]"
+              (Location.tostring (List.hd (snd i.i_loc))) in
+          try MVE.Sv.find_first (filterbyname "unnamedleak") env.leakdefs, lis, env
           with _ ->
             (* create a fresh unnamed variable *)
             let lv = MVE.V.mk_var "unnamedleak" MVE.w1 in
             let leakdefs = MVE.Sv.add lv env.leakdefs in
             let mv2il = MVE.Mv.add lv (IlLeakname("unnamedleak", fst i.i_loc)) env.mv2il in
-            lv, { env with leakdefs; mv2il }
+            lv, lis, { env with leakdefs; mv2il }
         end
     in
     let es', env = List.fold_right fold_lift_expr es ([],env) in
     let l_exprs = MVP.Eop(MVE.o_tuple, es') in
     let instr_d = MVP.Ileak({l_name; l_exprs}) in
-    (* TODO improve location *)
-    let instr_info = MVP.ToProg.pp_loc_info (lift_illoc (fst i.i_loc)) "" in
+        let instr_info = MVP.ToProg.pp_loc_info (lift_illoc (fst i.i_loc)) lis in
     { instr_d; instr_info }::is, env
 
   let lift_instr (env:liftstate) (is:Il.cmd) : MVP.cmd * liftstate =

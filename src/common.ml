@@ -70,6 +70,14 @@ let ws_le ws1 ws2 =
   | U64, (U8 | U16 | U32) -> false
   | U64, U64 -> true
 
+let ws_eq ws1 ws2 =
+  match ws1, ws2 with
+  | U8 , U8 -> true
+  | U16, U16 -> true
+  | U32, U32 -> true
+  | U64, U64 -> true
+  | _, _  -> false
+
 let ty_eq (ty1:ty) ty2 = ty1 = ty2
 
 let get_ws (bty:bty) =
