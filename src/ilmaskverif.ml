@@ -782,7 +782,7 @@ let check_mvprog (params:Scv.scvcheckkind) (m:Il.macro) (an:Ileval.initial) (st:
     | Scv.Noninterference -> MV.Util.(`NI)
     | Scv.Strongnoninterference -> MV.Util.(`SNI))
   in
-  let (params, nb_shares, interns, outputs, _) =
+  let (mvparams, nb_shares, interns, outputs, _) =
     MVP.build_obs_func
       ~trans:false ~glitch:false ~ni:algorithm (IlToMv.lift_illoc m.mc_loc) func in
   let order = (nb_shares - 1) in
@@ -790,4 +790,10 @@ let check_mvprog (params:Scv.scvcheckkind) (m:Il.macro) (an:Ileval.initial) (st:
     pp_error = true;
     checkbool = true;
   } in
-  MV.Checker.check_sni toolopts ~para:true ~fname:(m.mc_name) params nb_shares ~order interns outputs
+  match params with
+  | Scv.Noninterference ->
+    MV.Checker.check_ni
+      toolopts ~para:true ~fname:(m.mc_name) mvparams nb_shares ~order interns
+  | Scv.Strongnoninterference ->
+    MV.Checker.check_sni
+      toolopts ~para:true ~fname:(m.mc_name) mvparams nb_shares ~order interns outputs
