@@ -661,7 +661,6 @@ end = struct
               lname
               (List.fold_right
                  (fun l s -> String.concat "\n" [Location.tostring l; s]) (snd i.i_loc) "") in
-          Format.printf "debug: %a@." Utils.pp_full_loc_first i.i_loc;
           lv, lis, { env with leakdefs; mv2il }
         end
       | None ->
