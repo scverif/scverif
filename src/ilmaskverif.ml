@@ -418,7 +418,13 @@ end = struct
     let lift_existing (op:MVE.operator) (ety:MVE.ty) =
       (* TODO      check_ty ety; *)
       let mves, env = List.fold_right (fold_lift_expr ety) es ([],env) in
-      MVP.Eop(op, mves), env
+      match mves with
+      | [e] ->
+        MVP.Eop1(op, e), env
+      | [e1;e2] ->
+        MVP.Eop2(op, e1, e2), env
+      | _ ->
+        MVP.Eop(op, mves), env
     in
     match op.od with
     | Il.Oxor(None) ->
@@ -739,8 +745,8 @@ end = struct
     let (func:MV.Prog.func) = {
       f_name; (* function name *)
       f_pin;  (* public input *)
-      f_ein;  (* extra inputs perfectly shared (? shared inputs ?) *)
-      f_kind; (* SNI gadget? *)
+      f_ein;  (* for tight private circuits/tightPROVE), not used by scVerif *)
+      f_kind; (* SNI gadget or not, scVerif does not use it *)
       f_in;   (* input shares *)
       f_out;  (* output shares *)
       f_other;(* internal variables *)
@@ -790,10 +796,14 @@ let check_mvprog (params:Scv.scvcheckkind) (m:Il.macro) (an:Ileval.initial) (st:
     pp_error = true;
     checkbool = true;
   } in
-  match params with
+  let success = match params with
   | Scv.Noninterference ->
     MV.Checker.check_ni
       toolopts ~para:true ~fname:(m.mc_name) mvparams nb_shares ~order interns
   | Scv.Strongnoninterference ->
     MV.Checker.check_sni
-      toolopts ~para:true ~fname:(m.mc_name) mvparams nb_shares ~order interns outputs
+      toolopts ~para:true ~fname:(m.mc_name) mvparams nb_shares ~order interns outputs in
+  if success then
+    Format.printf "successful check@."
+  else
+    Format.printf "failed check@."
