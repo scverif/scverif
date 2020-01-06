@@ -266,7 +266,7 @@ let process_print menv (p:Scv.scvcmd located) =
                let m = Iltyping.find_macro menv.genv mn in
                let st = Ileval.find_state menv.eenv mn in
                let an = Ileval.find_initial menv.eenv mn in
-               Ilexport.serialize_mvprog st an m)
+               Ilmaskverif.print_mvprog m an st)
             mn
       end in
     Glob_option.set_verbose v;

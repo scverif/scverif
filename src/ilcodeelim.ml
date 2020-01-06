@@ -6,6 +6,8 @@ open Location
 open Il
 open Iltyping
 
+let ce_error a = Utils.hierror "deadcodeelim" a
+
 type lvpos =
   | LVbasePos
   | LVoPos of B.zint list
@@ -21,7 +23,7 @@ let merge_pos lv1 lv2 =
     LVoPos (List.sort_uniq B.compare (List.append l1 l2))
   | LVoPos _    , LVbasePos
   | LVbasePos   , LVoPos _ ->
-    Utils.hierror "deadcodeelim" None
+    ce_error None
       "merge_pos: cannot merge base and index.@"
   | LVbasePos     , LVbasePos -> LVbasePos
 
@@ -89,9 +91,9 @@ let rec lvpos_of_expr e =
       | [] -> assert false in
     inner e2
   | Il.Ebool _ ->
-    Utils.hierror "liveness" None
+    ce_error None
       "indexed variable access based on a bool, undefined behavior. %a@"
-      (pp_e ~full:!Glob_option.full) e
+      pp_e_dbg e
 
 let liveset_add_v lmap var =
   liveset_add_v_pos lmap var (lvpos_of_var var)
@@ -143,18 +145,18 @@ and lvpos_of_e lmap e =
       | [] -> assert false in
     inner lmap e2
   | Il.Ebool _ ->
-    Utils.hierror "deadcodeelim" None
+    ce_error None
       "indexed variable access based on a bool, no idea what to do. %a@"
-      (pp_e ~full:!Glob_option.full) e
+      pp_e_dbg e
 
 let liveset_remove_v_is lmap v is =
   try
     match Mv.find v lmap with
     | LVunknownPos -> lmap
     | LVbasePos ->
-      Utils.hierror "deadcodeelim" None
+      ce_error None
         "cannot remove a position of variable %a as it is live on base.@"
-        V.pp_g v
+        V.pp_dbg v
     | LVoPos l ->
       let l' = List.filter (fun e -> not (List.mem e is)) l in
       if List.length l' == 0 then
@@ -181,15 +183,15 @@ let liveset_remove_v_pos lmap v pos =
        match Mv.find v lmap with
        | LVbasePos -> Mv.remove v lmap
        | LVoPos _ ->
-         Utils.hierror "deadcodeelim" None
+         ce_error None
            "cannot remove base of variable %a as it is live on a position.@"
-           V.pp_g v
+           V.pp_dbg v
        | LVunknownPos -> lmap
      with Not_found -> lmap)
   | LVunknownPos ->
-    Utils.hierror "deadcodeelim" None
+    ce_error None
       "cannot remove unknown position of variable %a.@"
-      V.pp_g v
+      V.pp_dbg v
   | LVoPos l ->
     liveset_remove_v_is lmap v l
 
@@ -221,7 +223,7 @@ let deadcodeelim (eenv:Ileval.eenv) (mn:Il.macro_name) =
   let st = try(
     Ileval.find_state eenv mn
   ) with HiError (_,_,_) ->
-    Utils.hierror "deadcode elimination" None
+    ce_error None
       "macro %s has not been partially evaluated yet." mn
   in
   let eprog = st.st_eprog in
@@ -254,13 +256,14 @@ let deadcodeelim (eenv:Ileval.eenv) (mn:Il.macro_name) =
         lmap := List.fold_left liveset_add_expr !lmap dexpr;
         true
       | Ilabel _ -> true
-      | Iigoto _ (* FIXME *)
+      | Iigoto _
       | Igoto _ -> false
       | Iif _
       | Iwhile _
       | Imacro _ ->
-        Utils.hierror "deadcodeelim" None "@[<v>cannot handle@ %a@]"
-          (pp_i ~full:false) instr
+        ce_error (Some (fst instr.i_loc))
+          "@[<v>cannot handle, expecting evaluated program@ %a@]"
+          pp_i_dbg instr
     end in
   let elimprog = List.rev (List.filter is_livestmt (List.rev eprog)) in
   let nan = {annot with input_var = infer_inputs annot.input_var !lmap } in

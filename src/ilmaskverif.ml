@@ -458,6 +458,7 @@ end = struct
     | Il.Onot(Some Common.U64) ->
       lift_existing MVE.o_negw64 MVE.W64
     | Il.Oor(None) ->
+      (* TODO or a b = not (and (not a) (not b))*)
       lift_existing o_orb MVE.W1
     | Il.Oor(Some Common.U8) ->
       lift_existing o_orw8 MVE.W8
@@ -729,11 +730,10 @@ end = struct
       il2mv = !globilvar2mv;
       mv2il = !globmvvar2il; } in
     let f_name = MV.Util.HS.make m.mc_name in
-    (* FIXME: not supported in scverif for now *)
     let f_kind = MV.Util.NONE in
     let f_pin, lenv = init_header_vars Ileval.Public lenv an.input_var in
     let f_rand, lenv = init_header_vars Ileval.URandom lenv an.input_var in
-    (* FIXME: shared inputs, not supported in scverif for now *)
+    let f_pout, lenv = init_header_vars Ileval.Public lenv an.output_var in
     let f_ein = [] in
     let f_in, lenv = init_header_sharedinvars Ileval.Sharing lenv an.input_var in
     let f_out, lenv = init_header_sharedoutvars Ileval.Sharing lenv an.output_var in
@@ -749,6 +749,7 @@ end = struct
       f_kind; (* SNI gadget or not, scVerif does not use it *)
       f_in;   (* input shares *)
       f_out;  (* output shares *)
+      f_pout; (* public outputs which are checked to be probabilistic independent *)
       f_other;(* internal variables *)
       f_rand; (* input entropy *)
       f_cmd } in
@@ -778,19 +779,24 @@ end
 let print_mvprog (m:Il.macro) (an:Ileval.initial) (st:Ileval.state) =
   let func = IlToMv.get_or_lift m an st in
   let pi:MVP.print_info = {var_full = !Glob_option.full; print_info = false} in
-  Format.printf "@[lifting returned:@ @[<v>%a]@]@."
+  Format.printf "@[<v>%a@]@."
     (MV.Prog.pp_func ~full:pi) func
 
-let check_mvprog (params:Scv.scvcheckkind) (m:Il.macro) (an:Ileval.initial) (st:Ileval.state) : unit =
+let check_mvprog (params:Scv.scvcheckkind) (m:Il.macro) (an:Ileval.initial) (st:Ileval.state)
+  : unit =
   let func = IlToMv.get_or_lift m an st in
+  (* debug print the program *)
+  Glob_option.print_full "Lifted maskverif program:@     @[<v>%a@]@."
+    (MVP.pp_func ~full:MVP.dft_pinfo) func;
   let algorithm =
     (match params with
     | Scv.Noninterference -> MV.Util.(`NI)
     | Scv.Strongnoninterference -> MV.Util.(`SNI))
   in
-  let (mvparams, nb_shares, interns, outputs, _) =
+  let (mvparams, nb_shares, interns, outputs, pubout, _) =
     MVP.build_obs_func
-      ~trans:false ~glitch:false ~ni:algorithm (IlToMv.lift_illoc m.mc_loc) func in
+      ~ni:algorithm ~trans:false ~glitch:false
+      (IlToMv.lift_illoc m.mc_loc) func in
   let order = (nb_shares - 1) in
   let toolopts:MV.Util.tool_opt = {
     pp_error = true;
@@ -802,7 +808,8 @@ let check_mvprog (params:Scv.scvcheckkind) (m:Il.macro) (an:Ileval.initial) (st:
       toolopts ~para:true ~fname:(m.mc_name) mvparams nb_shares ~order interns
   | Scv.Strongnoninterference ->
     MV.Checker.check_sni
-      toolopts ~para:true ~fname:(m.mc_name) mvparams nb_shares ~order interns outputs in
+      toolopts ~para:true ~fname:(m.mc_name) mvparams nb_shares ~order
+      interns ~outpub:pubout outputs in
   if success then
     Format.printf "successful check@."
   else
