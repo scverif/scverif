@@ -63,6 +63,7 @@ type eenv = {
 
 val empty_eenv : eenv
 
+val pp_t_ty    : Format.formatter -> t_ty -> unit
 val pp_regions : Format.formatter -> bvalue array Il.Mv.t -> unit
 val pp_vars    : Format.formatter -> value Il.Mv.t -> unit
 val pp_state   : Format.formatter -> state -> unit

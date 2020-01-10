@@ -266,8 +266,8 @@ let deadcodeelim (eenv:Ileval.eenv) (mn:Il.macro_name) =
           pp_i_dbg instr
     end in
   let elimprog = List.rev (List.filter is_livestmt (List.rev eprog)) in
-  let nan = {annot with input_var = infer_inputs annot.input_var !lmap } in
-  let eenv = Ileval.update_initial eenv mn nan in
+  (*let nan = { annot with input_var = infer_inputs annot.input_var !lmap } in
+    let eenv = Ileval.update_initial eenv mn nan in*)
   let nst = { st with st_eprog = elimprog } in
   let eenv = Ileval.update_state eenv mn nst in
   eenv

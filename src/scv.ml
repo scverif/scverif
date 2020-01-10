@@ -10,6 +10,7 @@ type scvstring    = [%import: Scv.scvstring]
 type scvval       = [%import: Scv.scvval]
 type scvtarget    = [%import: Scv.scvtarget]
 type scvcheckkind = [%import: Scv.scvcheckkind]
+type scvmvrewriteparam = [%import: Scv.scvmvrewriteparam]
 type scvprintkind = [%import: Scv.scvprintkind]
 type scvverbosity = [%import: Scv.scvverbosity]
 type scvcmd       = [%import: Scv.scvcmd]
@@ -105,6 +106,14 @@ let pp_scvprintkind fmt p =
   | PMaskverifProg ->
     Format.fprintf fmt "maskverif"
 
+let sym_inferpubin = "inferinput"
+let sym_inferstout = "inferoutput"
+
+let pp_scvmvrewriteparam fmt p =
+  Format.fprintf fmt "@[<v>%s: %b@ %s: %b@]"
+    sym_inferpubin p.inferpubin
+    sym_inferstout p.inferstout
+
 let pp_scvverbosity fmt v =
   Format.fprintf fmt "%d" (unloc v)
 
@@ -141,6 +150,10 @@ let pp_scvcmd fmt c =
     Format.fprintf fmt "@[<v>check:@   @[<v>kind: %a@ target: %a@]@]"
       pp_scvcheckkind ca
       pp_scvtarget t
+  | RewriteMV(t, p) ->
+    Format.fprintf fmt
+      "@[<v>rewriteformv:@   @[<v>target: %a@ %a@]@]"
+      pp_scvtarget t pp_scvmvrewriteparam p
   | Verbosity v ->
     Format.fprintf fmt "@[<v>verbosity:@   @[<v>level: %a@]@]"
       pp_scvverbosity v
@@ -370,6 +383,15 @@ let scvval_to_scvcmd_loc (v:scvval located) =
         let target = scvtarget_of_scvval t "target" in
         let kind = scvcheckkind_of_scvval k in
         mk_loc (loc c) (Check(target, kind))
+      end
+    | "rewriteformv" ->
+      begin
+        [@warning "-8"]
+        let [t;ipi;iso] = check_scvarg a ["target"; sym_inferpubin; sym_inferstout] in
+        let target = scvtarget_of_scvval t "target" in
+        let inferpubin = bool_of_scvval ipi in
+        let inferstout = bool_of_scvval iso in
+        mk_loc (loc c) (RewriteMV(target, {inferpubin; inferstout}))
       end
     | "partialeval" ->
       begin

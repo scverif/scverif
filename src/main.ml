@@ -203,6 +203,25 @@ let process_check (menv:mainenv) (c:Scv.scvcmd located) =
     mns;
   menv
 
+let process_rewritemv (menv:mainenv) (c:Scv.scvcmd located) =
+  let mns, p =
+    (* typecheck print command and requested verbosity *)
+    begin
+      match unloc c with
+      | RewriteMV(target, p) ->
+        Iltyping.macronames_of_scvtarget menv.genv target, p
+      | e ->
+        Utils.hierror "Main.process_check:" (Some (loc c))
+          "expected RewriteMV command but got %a" Scv.pp_scvcmd e
+    end in
+  List.fold_left
+    (fun m mn ->
+       (* TODO fail with location in error message *)
+       { m with
+        eenv =
+          Ilmaskverifrewrite.rewriteformaskverif m.genv m.eenv mn p})
+    menv mns
+
 let process_print menv (p:Scv.scvcmd located) =
   let open Scv in
   let o', f' = !Glob_option.verbose, !Glob_option.full in
@@ -282,6 +301,7 @@ let process_scvcommand mainenv (scvs:(Scv.scvval located) list) =
     match unloc cmd with
     | Scv.Print _ -> process_print menv cmd
     | Scv.Check _ -> process_check menv cmd
+    | Scv.RewriteMV _ -> process_rewritemv menv cmd
     | Scv.Accumulate(target, leaktarget, keep) ->
       process_trans_accumulateleaks menv target leaktarget keep
     | Scv.AddLeakCalls(target) ->
