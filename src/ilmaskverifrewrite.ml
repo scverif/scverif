@@ -43,7 +43,6 @@ let mki l i = {i_desc = i; i_loc = l}
       - variables which are input and output become
         - input (never assigned)
         - (new) output (used on-wards)
-      - within leaks replace operations unsupported by maskverif with leaks of all their inputs
     conditionally annotate:
       - NA variables with read access are required to be public (NA becomes public)
       - all non-annotated variables with assignments are ensured to be public after execution

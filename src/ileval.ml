@@ -331,7 +331,6 @@ let ecast_int s ws v =
   | Vbool b, _    , _        -> if b then Vint B.one else Vint B.zero
   | Vptr p, Some w, Signed   -> Vptr {p with p_ofs = to_int w p.p_ofs}
   | Vptr p, Some w, Unsigned -> Vptr {p with p_ofs = to_uint w p.p_ofs}
-
   | _     , _     , _        -> Vunknown
 
 let eval_op (loc:full_loc) (op:Il.op) (vs:bvalue list) : bvalue =

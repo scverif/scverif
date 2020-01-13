@@ -6,9 +6,9 @@ module MVE = Maskverif.Expr
 module MVU = Maskverif.Util
 
 module IlToMv : sig
-  val to_maskverif: Il.macro -> Ileval.initial -> Ileval.state -> MV.Prog.func
-  val get_or_lift: Il.macro -> Ileval.initial -> Ileval.state -> MV.Prog.func
-  val get_mvprog: Il.macro -> MV.Prog.func
+  val to_maskverif: Il.macro -> Ileval.initial -> Ileval.state -> MVP.func
+  val get_or_lift: Il.macro -> Ileval.initial -> Ileval.state -> MVP.func
+  val get_mvprog: Il.macro -> MVP.func
 
   val lift_illoc: Location.t -> MVU.location
 
@@ -64,24 +64,27 @@ end = struct
     }
 
   let lift_ilvname (v:Il.var) : P.ident =
-    MV.Util.mkloc (lift_illoc v.v_loc) v.v_name
+    MVU.mkloc (lift_illoc v.v_loc) v.v_name
+
+  let lift_ws (ws:Common.wsize) : MVE.ty =
+    match ws with
+    | Common.U8 -> MVE.W8
+    | Common.U16 -> MVE.W16
+    | Common.U32 -> MVE.W32
+    | Common.U64 -> MVE.W64
+
+  let lift_bty (l:Location.t option) (bty:Common.bty) : MVE.ty =
+    match bty with
+    | Common.Bool -> MVE.W1
+    | Common.W ws -> lift_ws ws
+    | Common.Int ->
+      error l
+        "@[Maskverif does not support variables with type Int@]@."
 
   let lift_ilty (v:Il.var) : MVE.ty =
-    let lift_bty (bty:Common.bty) : MVE.ty =
-      match bty with
-      | Common.Bool -> MV.Expr.W1
-      | Common.W (Common.U8) -> MV.Expr.W8
-      | Common.W (Common.U16) -> MV.Expr.W16
-      | Common.W (Common.U32) -> MV.Expr.W32
-      | Common.W (Common.U64) -> MV.Expr.W64
-      | Common.Int ->
-        error (Some v.v_loc)
-          "@[Maskverif does not support variable %a with type Int@]@."
-          Il.V.pp_dbg v
-    in
     match v.v_ty with
-    | Common.Tbase(bty) -> lift_bty bty
-    | Common.Tarr(bty,_,_) -> lift_bty bty
+    | Common.Tbase(bty) -> lift_bty (Some v.v_loc) bty
+    | Common.Tarr(bty,_,_) -> lift_bty (Some v.v_loc) bty
     | Common.Tmem ->
       error (Some v.v_loc)
         "@[Maskverif does not support memory, eliminate %a prior analysis.@]@."
@@ -337,9 +340,9 @@ end = struct
     : MVP.expr * liftstate =
     match expr with
     | Il.Ebool true ->
-      MVP.Econst MV.Expr.C._true, env
+      MVP.Econst MVE.C._true, env
     | Il.Ebool false ->
-      MVP.Econst MV.Expr.C._false, env
+      MVP.Econst MVE.C._false, env
     | Il.Eint int ->
       let maxval = MVE.ty_size exty in
       let maxval = Common.B.sub (Common.B.pow (Common.B.of_int 2) maxval) Common.B.one in
@@ -426,6 +429,16 @@ end = struct
       | _ ->
         MVP.Eop(op, mves), env
     in
+    let lift_or (oor:MVE.operator) (oand:MVE.operator) (onot:MVE.operator) (ety:MVE.ty) =
+      let mves, env = List.fold_right (fold_lift_expr ety) es ([],env) in
+      match mves with
+      | [e1;e2] ->
+        (* or a b = not (and (not a) (not b)) *)
+        MVP.Eop1(onot, MVP.Eop2(oand, MVP.Eop1(onot, e1), MVP.Eop1(onot,e2))), env
+      | [_]
+      | _ ->
+        error (Some (fst i.i_loc)) "@[unexpected or in %a.@]@."
+          Il.pp_e_dbg (Il.Eop(op,es)) in
     match op.od with
     | Il.Oxor(None) ->
       lift_existing MVE.o_addb MVE.W1
@@ -458,16 +471,15 @@ end = struct
     | Il.Onot(Some Common.U64) ->
       lift_existing MVE.o_negw64 MVE.W64
     | Il.Oor(None) ->
-      (* TODO or a b = not (and (not a) (not b))*)
-      lift_existing o_orb MVE.W1
+      lift_or o_orb MVE.o_mulb MVE.o_negb MVE.W1
     | Il.Oor(Some Common.U8) ->
-      lift_existing o_orw8 MVE.W8
+      lift_or o_orw8 MVE.o_mulw8 MVE.o_negw8 MVE.W1
     | Il.Oor(Some Common.U16) ->
-      lift_existing o_orw16 MVE.W16
+      lift_or o_orw16 MVE.o_mulw16 MVE.o_negw16 MVE.W1
     | Il.Oor(Some Common.U32) ->
-      lift_existing o_orw32 MVE.W32
+      lift_or o_orw32 MVE.o_mulw32 MVE.o_negw32 MVE.W1
     | Il.Oor(Some Common.U64) ->
-      lift_existing o_orw64 MVE.W64
+      lift_or o_orw64 MVE.o_mulw64 MVE.o_negw64 MVE.W1
     | Il.Oadd(None) ->
       lift_existing o_aaddb MVE.W1
     | Il.Oadd(Some Common.U8) ->
@@ -540,7 +552,7 @@ end = struct
                 "@[unexpected error during lookup, \
                  lifted variable %a is a set of variables %a.@]@."
                 Il.V.pp_dbg v
-                (MV.Util.pp_list ",@ " (MVE.pp_var)) vs
+                (MVU.pp_list ",@ " (MVE.pp_var)) vs
           end
         else if MVE.Sv.exists (filterbyname vn) env.headerdefs then
           (* this variable has been defined in the header but v.v_uid is fresh *)
@@ -695,7 +707,7 @@ end = struct
       : MVP.cmd * liftstate =
       match i.i_desc with
       | Il.Iassgn (lvar, expr) ->
-        lift_Iassgn i (is,env) lvar expr
+        lift_Iassgn i (is, env) lvar expr
       | Il.Ileak (li, es) ->
         lift_Ileak i (is,env) li es
       | Il.Imacro (_, _) ->
@@ -719,7 +731,7 @@ end = struct
     List.rev is, env
 
   let to_maskverif (m:Il.macro) (an:Ileval.initial) (st:Ileval.state)
-    : MV.Prog.func =
+    : MVP.func =
     if Mf.mem m !globilmacro2func then
       error None
         "@[macro %s already lifted.@]@." m.mc_name;
@@ -729,8 +741,8 @@ end = struct
       leakdefs = MVE.Sv.empty;
       il2mv = !globilvar2mv;
       mv2il = !globmvvar2il; } in
-    let f_name = MV.Util.HS.make m.mc_name in
-    let f_kind = MV.Util.NONE in
+    let f_name = MVU.HS.make m.mc_name in
+    let f_kind = MVU.NONE in
     let f_pin, lenv = init_header_vars Ileval.Public lenv an.input_var in
     let f_rand, lenv = init_header_vars Ileval.URandom lenv an.input_var in
     let f_pout, lenv = init_header_vars Ileval.Public lenv an.output_var in
@@ -742,7 +754,7 @@ end = struct
         (function | { Il.i_desc = Il.Ilabel _} -> false | _ -> true) st.st_eprog in
     let f_cmd, lenv = lift_instr lenv body in
     let f_other = MVE.Sv.elements lenv.localdefs in
-    let (func:MV.Prog.func) = {
+    let (func:MVP.func) = {
       f_name; (* function name *)
       f_pin;  (* public input *)
       f_ein;  (* for tight private circuits/tightPROVE), not used by scVerif *)
@@ -754,7 +766,7 @@ end = struct
       f_rand; (* input entropy *)
       f_cmd } in
     (* as in Maskverif.Prog.func *)
-    let func = MV.Prog.Process.macro_expand_func mvglobalenv func in
+    let func = MVP.Process.macro_expand_func mvglobalenv func in
     (* update the global state accordingly *)
     globilvar2mv := lenv.il2mv;
     globmvvar2il := lenv.mv2il;
@@ -780,7 +792,7 @@ let print_mvprog (m:Il.macro) (an:Ileval.initial) (st:Ileval.state) =
   let func = IlToMv.get_or_lift m an st in
   let pi:MVP.print_info = {var_full = !Glob_option.full; print_info = false} in
   Format.printf "@[<v>%a@]@."
-    (MV.Prog.pp_func ~full:pi) func
+    (MVP.pp_func ~full:pi) func
 
 let check_mvprog (params:Scv.scvcheckkind) (m:Il.macro) (an:Ileval.initial) (st:Ileval.state)
   : unit =
@@ -790,15 +802,15 @@ let check_mvprog (params:Scv.scvcheckkind) (m:Il.macro) (an:Ileval.initial) (st:
     (MVP.pp_func ~full:MVP.dft_pinfo) func;
   let algorithm =
     (match params with
-    | Scv.Noninterference -> MV.Util.(`NI)
-    | Scv.Strongnoninterference -> MV.Util.(`SNI))
+    | Scv.Noninterference -> MVU.(`NI)
+    | Scv.Strongnoninterference -> MVU.(`SNI))
   in
   let (mvparams, nb_shares, interns, outputs, pubout, _) =
     MVP.build_obs_func
       ~ni:algorithm ~trans:false ~glitch:false
       (IlToMv.lift_illoc m.mc_loc) func in
   let order = (nb_shares - 1) in
-  let toolopts:MV.Util.tool_opt = {
+  let toolopts:MVU.tool_opt = {
     pp_error = true;
     checkbool = true;
   } in
