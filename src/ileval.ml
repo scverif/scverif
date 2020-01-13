@@ -95,10 +95,10 @@ let pp_ivars fmt iv =
   Format.fprintf fmt "@]"
 
 let pp_t_ty fmt = function
-  | Sharing -> Format.fprintf fmt "sharing "
-  | URandom -> Format.fprintf fmt "urandom "
-  | Public  -> Format.fprintf fmt "public "
-  | Secret  -> Format.fprintf fmt "secret "
+  | Sharing -> Format.fprintf fmt "sharing"
+  | URandom -> Format.fprintf fmt "urandom"
+  | Public  -> Format.fprintf fmt "public"
+  | Secret  -> Format.fprintf fmt "secret"
 
 let pp_iovars fmt iov =
   Format.fprintf fmt "  @[<v>";

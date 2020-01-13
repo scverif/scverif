@@ -357,6 +357,9 @@ let main =
         exit 2
       | Utils.Error (s,loc,msg) ->
         Format.eprintf "%a@." Utils.pp_error (s, loc, msg);
+      | Maskverif.Util.Error (s,loc,msg) ->
+        Format.eprintf "%a@." Maskverif.Util.pp_error (s, loc, msg);
+        exit 2
     done in
   let cmdloc fname = Location.mk_loc
       { Location._dummy with
@@ -390,5 +393,9 @@ let main =
       exit 2
     | Utils.Error (s,loc,msg) ->
       Format.eprintf "%a@." Utils.pp_error (s, loc, msg);
-      exit 2 in
+      exit 2
+    | Maskverif.Util.Error (s,loc,msg) ->
+      Format.eprintf "%a@." Maskverif.Util.pp_error (s, loc, msg);
+      exit 2
+    in
   batch ()
