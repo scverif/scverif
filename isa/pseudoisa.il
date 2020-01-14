@@ -63,6 +63,19 @@ macro and (w32 op1, w32 op2)
   op1 <- op1 &w32 op2;
 }
 
+macro mov (w32 dst, w32 src)
+{
+  // non-profiled assumptions without validation, warranty, whatsoever
+  leak movCompResult (src);
+  leak movOperand (opA, dst, opB, src);
+  leak movTransition (dst, src);
+
+  opA <- dst; // assumption
+  opB <- src;
+
+  dst <- src;
+}
+
 /* index is an offset in units of 32bit */
 macro load (w32 dst, w32 ptr, int index)
   w32 val
@@ -71,8 +84,6 @@ macro load (w32 dst, w32 ptr, int index)
 
   leak loadOperand1 (opA, ptr, opB, index);
 
-//  leak loadOperand2WC (opA, ptr, opB, dst, opR, val); /* extreme worst case not yet reported */
-//  leak loadOperand2 (opA, ptr, opB, dst);             /* worst case not yet reported */
   leak loadOperand2A (opA, ptr);
   leak loadOperand2B (opB, dst);
   leak loadMemOperand (opR, val);
