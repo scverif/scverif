@@ -322,15 +322,15 @@ let ecast_w ws v =
   | Vptr _ -> v (* FIXME Vptr { p with p_ofs = of_int ws p.p_ofs } *)
   | _      -> Vunknown
 
-let ecast_int s ws v =
-  match v, ws, s with
-  | Vint i, Some w, Signed   -> Vint (to_int w i)
-  | Vint i, Some w, Unsigned -> Vint (to_uint w i)
-  | Vint i, None  , Signed   -> Vint i
-  | Vint i, None  , Unsigned -> Vint (B.abs i)
-  | Vbool b, _    , _        -> if b then Vint B.one else Vint B.zero
-  | Vptr p, Some w, Signed   -> Vptr {p with p_ofs = to_int w p.p_ofs}
-  | Vptr p, Some w, Unsigned -> Vptr {p with p_ofs = to_uint w p.p_ofs}
+let ecast_int s bty v =
+  match v, bty, s with
+  | Vint i, W w, Signed   -> Vint (to_int w i)
+  | Vint i, W w, Unsigned -> Vint (to_uint w i)
+  | Vint i, Int, Signed   -> Vint i
+  | Vint i, Int, Unsigned -> Vint (B.abs i)
+  | Vbool b, Bool    , _        -> if b then Vint B.one else Vint B.zero
+  | Vptr p, W w, Signed   -> Vptr {p with p_ofs = to_int w p.p_ofs}
+  | Vptr p, W w, Unsigned -> Vptr {p with p_ofs = to_uint w p.p_ofs}
   | _     , _     , _        -> Vunknown
 
 let eval_op (loc:full_loc) (op:Il.op) (vs:bvalue list) : bvalue =
@@ -355,7 +355,7 @@ let eval_op (loc:full_loc) (op:Il.op) (vs:bvalue list) : bvalue =
   | Osignextend(ws1,ws2) -> esignextend ws1 ws2 (as_seq1 vs)
   | Ozeroextend(ws1,ws2) -> ezeroextend ws1 ws2 (as_seq1 vs)
   | Ocast_w ws -> ecast_w ws (as_seq1 vs)
-  | Ocast_int (s,ws) -> ecast_int s ws (as_seq1 vs)
+  | Ocast_int (s,bty) -> ecast_int s bty (as_seq1 vs)
 
 (* ********************************************** *)
 (* Expressions evaluation                         *)

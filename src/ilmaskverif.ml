@@ -311,12 +311,14 @@ end = struct
   let mk_op2tttbij t s = MVE.Op.make s (Some ([t;t], t)) MVE.Bij MVE.Other
 
   let o_castsintint = MVE.Op.make "(sint)"    (Some ([MVE.INT], MVE.INT)) MVE.NotBij MVE.Other
+  let o_castsintb   = MVE.Op.make "(sint)b"   (Some ([MVE.W1],  MVE.INT)) MVE.NotBij MVE.Other
   let o_castsintw8  = MVE.Op.make "(sint)w8"  (Some ([MVE.W8],  MVE.INT)) MVE.NotBij MVE.Other
   let o_castsintw16 = MVE.Op.make "(sint)w16" (Some ([MVE.W16], MVE.INT)) MVE.NotBij MVE.Other
   let o_castsintw32 = MVE.Op.make "(sint)w32" (Some ([MVE.W32], MVE.INT)) MVE.NotBij MVE.Other
   let o_castsintw64 = MVE.Op.make "(sint)w64" (Some ([MVE.W64], MVE.INT)) MVE.NotBij MVE.Other
 
   let o_castuintint = MVE.Op.make "(uint)"    (Some ([MVE.INT], MVE.INT)) MVE.NotBij MVE.Other
+  let o_castuintb   = MVE.Op.make "(uint)b"   (Some ([MVE.W1],  MVE.INT)) MVE.NotBij MVE.Other
   let o_castuintw8  = MVE.Op.make "(uint)w8"  (Some ([MVE.W8],  MVE.INT)) MVE.NotBij MVE.Other
   let o_castuintw16 = MVE.Op.make "(uint)w16" (Some ([MVE.W16], MVE.INT)) MVE.NotBij MVE.Other
   let o_castuintw32 = MVE.Op.make "(uint)w32" (Some ([MVE.W32], MVE.INT)) MVE.NotBij MVE.Other
@@ -361,16 +363,16 @@ end = struct
   let o_asrw32 = MVE.Op.make ">>sw32" (Some ([MVE.W32], MVE.W32)) MVE.NotBij MVE.Other
   let o_asrw64 = MVE.Op.make ">>sw64" (Some ([MVE.W64], MVE.W64)) MVE.NotBij MVE.Other
 
-  let o_castww8  = MVE.Op.make "(w8)"  (Some ([MVE.W8],  MVE.W8)) MVE.NotBij MVE.Other
-  let o_castww16 = MVE.Op.make "(w16)" (Some ([MVE.W16], MVE.W16)) MVE.NotBij MVE.Other
-  let o_castww32 = MVE.Op.make "(w32)" (Some ([MVE.W32], MVE.W32)) MVE.NotBij MVE.Other
-  let o_castww64 = MVE.Op.make "(w64)" (Some ([MVE.W64], MVE.W64)) MVE.NotBij MVE.Other
+  let o_castww8  = MVE.Op.make "(w8)"  (Some ([MVE.INT], MVE.W8)) MVE.NotBij MVE.Other
+  let o_castww16 = MVE.Op.make "(w16)" (Some ([MVE.INT], MVE.W16)) MVE.NotBij MVE.Other
+  let o_castww32 = MVE.Op.make "(w32)" (Some ([MVE.INT], MVE.W32)) MVE.NotBij MVE.Other
+  let o_castww64 = MVE.Op.make "(w64)" (Some ([MVE.INT], MVE.W64)) MVE.NotBij MVE.Other
 
-  let o_aoppint = MVE.Op.make "-1"    (Some ([MVE.INT], MVE.INT)) MVE.NotBij MVE.Other
-  let o_aoppw8  = MVE.Op.make "-1w8"  (Some ([MVE.W8],  MVE.W8)) MVE.NotBij MVE.Other
-  let o_aoppw16 = MVE.Op.make "-1w16" (Some ([MVE.W16], MVE.W16)) MVE.NotBij MVE.Other
-  let o_aoppw32 = MVE.Op.make "-1w32" (Some ([MVE.W32], MVE.W32)) MVE.NotBij MVE.Other
-  let o_aoppw64 = MVE.Op.make "-1w64" (Some ([MVE.W64], MVE.W64)) MVE.NotBij MVE.Other
+  let o_aoppint = MVE.Op.make "--"    (Some ([MVE.INT], MVE.INT)) MVE.NotBij MVE.Other
+  let o_aoppw8  = MVE.Op.make "--w8"  (Some ([MVE.W8],  MVE.W8)) MVE.NotBij MVE.Other
+  let o_aoppw16 = MVE.Op.make "--w16" (Some ([MVE.W16], MVE.W16)) MVE.NotBij MVE.Other
+  let o_aoppw32 = MVE.Op.make "--w32" (Some ([MVE.W32], MVE.W32)) MVE.NotBij MVE.Other
+  let o_aoppw64 = MVE.Op.make "--w64" (Some ([MVE.W64], MVE.W64)) MVE.NotBij MVE.Other
 
   let o_eqint = MVE.Op.make "==int" (Some ([MVE.INT;MVE.INT], MVE.W1)) MVE.NotBij MVE.Other
   let o_eqb   = MVE.Op.make "=="    (Some ([MVE.W1;MVE.W1],   MVE.W1)) MVE.NotBij MVE.Other
@@ -531,7 +533,7 @@ end = struct
       lift_or MVE.o_mulw64 MVE.o_negw64 MVE.W64
 
     | Il.Oadd(None) ->
-      lift_existing o_aaddint MVE.W1
+      lift_existing o_aaddint MVE.INT
     | Il.Oadd(Some Common.U8) ->
       lift_existing o_aaddw8 MVE.W8
     | Il.Oadd(Some Common.U16) ->
@@ -542,7 +544,7 @@ end = struct
       lift_existing o_aaddw64 MVE.W64
 
     | Il.Osub(None) ->
-      lift_existing o_asubint MVE.W1
+      lift_existing o_asubint MVE.INT
     | Il.Osub(Some Common.U8) ->
       lift_existing o_asubw8 MVE.W8
     | Il.Osub(Some Common.U16) ->
@@ -553,7 +555,7 @@ end = struct
       lift_existing o_asubw64 MVE.W64
 
     | Il.Omul(None) ->
-      lift_existing o_amulint MVE.W1
+      lift_existing o_amulint MVE.INT
     | Il.Omul(Some Common.U8) ->
       lift_existing o_amulw8 MVE.W8
     | Il.Omul(Some Common.U16) ->
@@ -564,7 +566,7 @@ end = struct
       lift_existing o_amulw64 MVE.W64
 
     | Il.Oopp(None) ->
-      lift_existing o_aoppint MVE.W1
+      lift_existing o_aoppint MVE.INT
     | Il.Oopp(Some Common.U8) ->
       lift_existing o_aoppw8 MVE.W8
     | Il.Oopp(Some Common.U16) ->
@@ -574,30 +576,43 @@ end = struct
     | Il.Oopp(Some Common.U64) ->
       lift_existing o_aoppw64 MVE.W64
 
-    | Il.Ocast_int(Signed, None) ->
-      lift_existing o_castsintint MVE.W1
-    | Il.Ocast_int(Signed, Some Common.U8) ->
-      lift_existing o_castsintw8 MVE.W8
-    | Il.Ocast_int(Signed, Some Common.U16) ->
-      lift_existing o_castsintw16 MVE.W16
-    | Il.Ocast_int(Signed, Some Common.U32) ->
-      lift_existing o_castsintw32 MVE.W32
-    | Il.Ocast_int(Signed, Some Common.U64) ->
-      lift_existing o_castsintw64 MVE.W64
+    | Il.Ocast_int(Signed, Common.Int) ->
+      lift_existing o_castsintint MVE.INT
+      (* TODO need to distinguish based on expected type *)
+      (*Glob_option.print_full
+      Format.printf
+        "@[ilmaskverif: lifting %a to cast-expr expecting %s as input@]@."
+        Il.pp_i_dbg i (MVE.ty2string exty);
+      if exty = MVE.INT then
+        lift_existing o_castsintint MVE.INT
+      else
+        lift_existing o_castsintb MVE.INT*)
+    | Il.Ocast_int(Signed, Common.Bool) ->
+      lift_existing o_castsintb MVE.INT
+    | Il.Ocast_int(Signed, W Common.U8) ->
+      lift_existing o_castsintw8 MVE.INT
+    | Il.Ocast_int(Signed, W Common.U16) ->
+      lift_existing o_castsintw16 MVE.INT
+    | Il.Ocast_int(Signed, W Common.U32) ->
+      lift_existing o_castsintw32 MVE.INT
+    | Il.Ocast_int(Signed, W Common.U64) ->
+      lift_existing o_castsintw64 MVE.INT
 
-    | Il.Ocast_int(Unsigned, None) ->
-      lift_existing o_castuintint MVE.W1
-    | Il.Ocast_int(Unsigned, Some Common.U8) ->
-      lift_existing o_castuintw8 MVE.W8
-    | Il.Ocast_int(Unsigned, Some Common.U16) ->
-      lift_existing o_castuintw16 MVE.W16
-    | Il.Ocast_int(Unsigned, Some Common.U32) ->
-      lift_existing o_castuintw32 MVE.W32
-    | Il.Ocast_int(Unsigned, Some Common.U64) ->
-      lift_existing o_castuintw64 MVE.W64
+    | Il.Ocast_int(Unsigned, Int) ->
+      lift_existing o_castuintint MVE.INT
+    | Il.Ocast_int(Unsigned, Bool) ->
+      lift_existing o_castuintb MVE.INT
+    | Il.Ocast_int(Unsigned, W Common.U8) ->
+      lift_existing o_castuintw8 MVE.INT
+    | Il.Ocast_int(Unsigned, W Common.U16) ->
+      lift_existing o_castuintw16 MVE.INT
+    | Il.Ocast_int(Unsigned, W Common.U32) ->
+      lift_existing o_castuintw32 MVE.INT
+    | Il.Ocast_int(Unsigned, W Common.U64) ->
+      lift_existing o_castuintw64 MVE.INT
 
     | Il.Olt(Signed, None) ->
-      lift_existing o_ltsint MVE.W1
+      lift_existing o_ltsint MVE.INT
     | Il.Olt(Signed, Some Common.U8) ->
       lift_existing o_ltsw8 MVE.W8
     | Il.Olt(Signed, Some Common.U16) ->
@@ -608,7 +623,7 @@ end = struct
       lift_existing o_ltsw64 MVE.W64
 
     | Il.Olt(Unsigned, None) ->
-      lift_existing o_ltuint MVE.W1
+      lift_existing o_ltuint MVE.INT
     | Il.Olt(Unsigned, Some Common.U8) ->
       lift_existing o_ltuw8 MVE.W8
     | Il.Olt(Unsigned, Some Common.U16) ->
@@ -619,7 +634,7 @@ end = struct
       lift_existing o_ltuw64 MVE.W64
 
     | Il.Ole(Signed, None) ->
-      lift_existing o_lesint MVE.W1
+      lift_existing o_lesint MVE.INT
     | Il.Ole(Signed, Some Common.U8) ->
       lift_existing o_lesw8 MVE.W8
     | Il.Ole(Signed, Some Common.U16) ->
@@ -630,7 +645,7 @@ end = struct
       lift_existing o_lesw64 MVE.W64
 
     | Il.Ole(Unsigned, None) ->
-      lift_existing o_leuint MVE.W1
+      lift_existing o_leuint MVE.INT
     | Il.Ole(Unsigned, Some Common.U8) ->
       lift_existing o_leuw8 MVE.W8
     | Il.Ole(Unsigned, Some Common.U16) ->
@@ -677,17 +692,17 @@ end = struct
       lift_existing o_castww64 MVE.W64
 
     | Il.Oeq (Common.Bool) ->
-      lift_existing o_eqb MVE.W8
+      lift_existing o_eqb MVE.W1
     | Il.Oeq (Common.Int) ->
-      lift_existing o_eqint MVE.W8
+      lift_existing o_eqint MVE.W1
     | Il.Oeq (W Common.U8)->
-      lift_existing o_eqw8 MVE.W8
+      lift_existing o_eqw8 MVE.W1
     | Il.Oeq (W Common.U16)->
-      lift_existing o_eqw16 MVE.W16
+      lift_existing o_eqw16 MVE.W1
     | Il.Oeq (W Common.U32)->
-      lift_existing o_eqw32 MVE.W32
+      lift_existing o_eqw32 MVE.W1
     | Il.Oeq (W Common.U64)->
-      lift_existing o_eqw64 MVE.W64
+      lift_existing o_eqw64 MVE.W1
 
     | Il.Osignextend(ws1, ws2)
     | Il.Ozeroextend(ws1, ws2) -> err_unsupported ()
@@ -995,7 +1010,8 @@ let check_mvprog (params:Scv.scvcheckkind) (m:Il.macro) (an:Ileval.initial) (st:
   let success = match params with
   | Scv.Noninterference ->
     MV.Checker.check_ni
-      toolopts ~para:true ~fname:(m.mc_name) mvparams nb_shares ~order interns
+      toolopts ~para:true ~fname:(m.mc_name) mvparams nb_shares ~order
+      ~outpub:pubout interns
   | Scv.Strongnoninterference ->
     MV.Checker.check_sni
       toolopts ~para:true ~fname:(m.mc_name) mvparams nb_shares ~order

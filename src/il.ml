@@ -135,7 +135,7 @@ type op_desc =
   | Ole  of sign * wsize option
   | Osignextend of wsize * wsize   (* from, to *)
   | Ozeroextend of wsize * wsize   (* from, to *)
-  | Ocast_int   of sign * wsize option
+  | Ocast_int   of sign * bty
   | Ocast_w     of wsize
 
 type op = {
