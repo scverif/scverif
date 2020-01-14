@@ -414,6 +414,9 @@ end = struct
         match Il.Mv.find v env.il2mv with
         | MScalar mv ->
           MVP.Evar mv, env
+        | exception Not_found ->
+          error (Some v.v_loc)
+            "@[variable use before definition, check your input annotations.@]@."
         | _ ->
           error (Some v.v_loc)
             "@[unexpected error during lookup of variable which should be defined.@]@."

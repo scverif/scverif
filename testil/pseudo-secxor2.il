@@ -76,14 +76,10 @@ print:
 partialeval:
   target: secxor;
 
-deadcodeelim:
-  target: secxor;
-
-/* remove all ...OperandA and ...OperandB leakages */
-filterleak:
+rewriteformv:
   target: secxor
-  inverse: false
-  leaks: "*Operand?";
+  inferinput: true
+  inferoutput: true;
 
 print:
   kind: maskverif
