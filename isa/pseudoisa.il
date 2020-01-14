@@ -63,7 +63,7 @@ macro and (w32 op1, w32 op2)
   op1 <- op1 &w32 op2;
 }
 
-macro mov (w32 dst, w32 src)
+macro copy (w32 dst, w32 src)
 {
   // non-profiled assumptions without validation, warranty, whatsoever
   leak movCompResult (src);
@@ -112,6 +112,16 @@ macro store (w32 src, w32 ptr, int index)
   opW <- src;
 
   [w32 mem (uint) (ptr +w32 (w32) (index * 4))] <- src;
+}
+
+// clear leakage state
+macro clear(w32 l) {
+  l <- pub;
+}
+
+// clear regular state
+macro scrub(w32 r) {
+  r <- pub;
 }
 
 macro clear_opA ()
