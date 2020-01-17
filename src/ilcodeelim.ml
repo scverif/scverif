@@ -257,7 +257,7 @@ let deadcodeelim (eenv:Ileval.eenv) (mn:Il.macro_name) =
         true
       | Ilabel _ -> true
       | Iigoto _
-      | Igoto _ -> false
+      | Igoto _
       | Iif _
       | Iwhile _
       | Imacro _ ->

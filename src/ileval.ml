@@ -499,7 +499,7 @@ let rec eval_i (st:state) : unit =
       next st (Some i) c
     | Igoto lbl ->
       (match find_label i.i_loc lbl st with
-      | Some c -> next st (Some i) c
+      | Some c -> next st (None) c
       | None ->
         begin
           try
@@ -514,7 +514,7 @@ let rec eval_i (st:state) : unit =
                 pp_state st mn pp_i_dbg i;
             (* change body of current evaluation *)
             st.st_prog <- m.mc_body;
-            next st (Some i) m.mc_body
+            next st (None) m.mc_body
               (* on return take evaluated part and append, proceed with next instr. *)
           with Not_found ->
             ev_hierror i.i_loc "@[<v>%a@ %a@ eval Igoto: encountered global jump \"%a\" \
@@ -525,7 +525,7 @@ let rec eval_i (st:state) : unit =
       begin match eval_var st x with
       | Vcptr lbl ->
         (match find_label i.i_loc lbl st with
-         | Some c -> next st (Some i) c
+         | Some c -> next st (None) c
          | None ->
            ev_hierror i.i_loc "@[<v>%a@ eval Iigoto: encountered global jump %a \
                                but expected it to be inlined@]"

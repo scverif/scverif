@@ -268,12 +268,7 @@ let rewriteformaskverif (genv:genv) (eenv:eenv) (mn:macro_name) (params:Scv.scvm
   Glob_option.print_full
     "@[rewriteformaskverif starting core rewrite@]@.";
   (* rewrite and annotate the instructions *)
-  let body = let is = List.rev st.st_eprog in
-    match List.hd is with
-    | {i_desc = Il.Igoto _} -> List.rev (List.tl is) (* remove the last goto exit*)
-    | {i_desc = Il.Iigoto _} -> List.rev (List.tl is) (* remove the last goto exit*)
-    | _ -> List.rev is in
-  let mrenv, prog = List.fold_left_map rewrite_i mrenv body in
+  let mrenv, prog = List.fold_left_map rewrite_i mrenv st.st_eprog in
   (* recreate list style annotation *)
   let input_var, output_var =
     Mv.fold
