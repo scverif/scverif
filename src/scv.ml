@@ -1,4 +1,4 @@
-(* Copyright 2019 - NXP *)
+(* Copyright 2019-2020 - NXP *)
 
 open Utils
 open Common
@@ -79,17 +79,16 @@ let pp_scvtarget fmt t =
   | TWildcard _ ->
     Format.fprintf fmt "\"*\""
 
-let pp_scvmaskverifparam fmt p =
-  match p with
-  | Noninterference -> Format.fprintf fmt "NI"
-  | Strongnoninterference -> Format.fprintf fmt "SNI"
-
 let pp_scvcheckkind fmt ca =
   match ca with
   | Noninterference ->
     Format.fprintf fmt "NI"
   | Strongnoninterference ->
     Format.fprintf fmt "SNI"
+  | StatefulNoninterference ->
+    Format.fprintf fmt "Stateful NI"
+  | StatefulStrongnoninterference ->
+    Format.fprintf fmt "Stateful SNI"
 
 let pp_scvprintkind fmt p =
   match p with
@@ -324,6 +323,8 @@ let scvcheckkind_of_scvval (v:scvval) =
     (match unloc s with
      | "NI" -> Noninterference
      | "SNI" -> Strongnoninterference
+     | "Stateful NI" -> StatefulNoninterference
+     | "Stateful SNI" -> StatefulStrongnoninterference
      | _ -> scverror (Some (loc s))
               "unknown check kind: %a"
               pp_scvval a

@@ -141,6 +141,5 @@ and comment lvl = parse
 and string buf = parse
   | "\""          { buf }
   | newline       { unterminated_string (L.of_lexbuf lexbuf) }
-  | blank+        { unterminated_string (L.of_lexbuf lexbuf) }
   | _ as c        { Buffer.add_char buf c   ; string buf lexbuf }
   | eof           { unterminated_string (L.of_lexbuf lexbuf) }

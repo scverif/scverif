@@ -1,4 +1,4 @@
-(* Copyright 2019 - NXP *)
+(* Copyright 2019-2020 - NXP *)
 
 open Common
 open Location
@@ -32,6 +32,8 @@ type scvprintkind =
 type scvcheckkind =
   | Noninterference
   | Strongnoninterference
+  | StatefulNoninterference
+  | StatefulStrongnoninterference
 
 type scvmvrewriteparam = {
     inferpubin : bool;

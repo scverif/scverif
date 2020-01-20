@@ -1,4 +1,4 @@
-(* Copyright 2019 - NXP *)
+(* Copyright 2019-2020 - NXP *)
 
 module MV = Maskverif
 module MVP = Maskverif.Prog
@@ -899,8 +899,11 @@ let check_mvprog (params:Scv.scvcheckkind) (m:Il.macro) (an:Ileval.initial) (st:
     (MVP.pp_func ~full:MVP.dft_pinfo) func;
   let algorithm =
     (match params with
+    | Scv.StatefulNoninterference
     | Scv.Noninterference -> MVU.(`NI)
-    | Scv.Strongnoninterference -> MVU.(`SNI))
+    | Scv.StatefulStrongnoninterference
+    | Scv.Strongnoninterference -> MVU.(`SNI)
+    )
   in
   let (mvparams, nb_shares, interns, outputs, pubout, _) =
     MVP.build_obs_func
@@ -912,14 +915,21 @@ let check_mvprog (params:Scv.scvcheckkind) (m:Il.macro) (an:Ileval.initial) (st:
     checkbool = true;
   } in
   let success = match params with
-  | Scv.Noninterference ->
+  | Scv.StatefulNoninterference ->
     MV.Checker.check_ni
       toolopts ~para:true ~fname:(m.mc_name) mvparams nb_shares ~order
       ~outpub:pubout interns
+  | Scv.StatefulStrongnoninterference ->
+    MV.Checker.check_sni
+      toolopts ~para:true ~fname:(m.mc_name) mvparams nb_shares ~order
+      interns ~outpub:pubout outputs
+  | Scv.Noninterference ->
+    MV.Checker.check_ni
+      toolopts ~para:true ~fname:(m.mc_name) mvparams nb_shares ~order interns
   | Scv.Strongnoninterference ->
     MV.Checker.check_sni
       toolopts ~para:true ~fname:(m.mc_name) mvparams nb_shares ~order
-      interns ~outpub:pubout outputs in
+      interns outputs in
   if success then
     Format.printf "successful check@."
   else
