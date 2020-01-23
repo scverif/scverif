@@ -166,3 +166,8 @@ macro load_pub (w32 dst)
   dst <- pub;
 
 }
+
+macro scrub(w32 r)
+{
+  r <- pub;
+}
