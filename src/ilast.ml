@@ -153,6 +153,7 @@ type eval_info = {
 type read_kind =
   | Asm
   | Il
+  | Gas
 [@@deriving show]
 
 type command =

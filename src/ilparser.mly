@@ -1,4 +1,4 @@
-(* Copyright 2019 - Inria, NXP *)
+(* Copyright 2019-2020 - Inria, NXP *)
 
 %{
   open Location
@@ -15,7 +15,7 @@
 %token ANNOTATION INIT REGION EXIT
 %token SCVDOCSTART SCVDOCEND NULL
 %token INPUT OUTPUT SECRET PUBLIC URANDOM SHARING
-%token INCLUDE ASM IL
+%token INCLUDE ASM IL GAS
 %token BOOL TINT UINT W8 W16 W32 W64
 %token ADD SUB MUL MULH AND XOR OR NOT EQ NEQ LSL LSR ASR ZEROEXTEND SIGNEXTEND TRUE FALSE
 %token <Common.sign> LT
@@ -212,6 +212,7 @@ eval_command:
 include_kind:
   | ASM { Asm }
   | IL  { Il }
+  | GAS { Gas }
 
 include_:
   | INCLUDE k=include_kind s=loc(STRING) { (k,s) }

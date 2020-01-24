@@ -382,6 +382,14 @@ macro ldmiaexcl2 (w32 adr, w32 dst1)
   add2(adr, (w32) 4);
 }
 
+macro ldmia3 (bool wb, w32 adr, w32 dst1)
+{
+  ldr3(dst1, adr, (w32) 0);
+  if wb {
+    add2(adr, (w32) 4);
+  }
+}
+
 macro lsls3 (w32 dst, w32 op1, w32 shift)
   int shift_n
 {

@@ -22,6 +22,7 @@
     "exit"  , EXIT   ;
     "false" , FALSE  ;
     "goto"  , GOTO   ;
+    "gas"   , GAS    ;
     "include", INCLUDE;
     "if"    , IF     ;
     "il"    , IL     ;

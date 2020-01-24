@@ -6,6 +6,8 @@ open Location
 open Asmast
 open Asmparser
 open Asmlexer
+open Gasparser
+open Gaslexer
 open Asmlifter
 
 open Ilast
@@ -83,6 +85,42 @@ module AsmParse = struct
 
   let lexer lexbuf = fun () ->
     let token = Asmlexer.main lexbuf in
+    (token, L.lexeme_start_p lexbuf, L.lexeme_end_p lexbuf)
+
+  let from_channel parse ~name channel =
+    let lexbuf = lexbuf_from_channel name channel in
+    parse () (lexer lexbuf)
+
+  let from_file parse filename =
+    let channel = open_in filename in
+    finally
+      (fun () -> close_in channel)
+      (from_channel parse ~name:filename) channel
+
+  let process_file filename =
+    let decl = from_file parse_file filename in
+    decl
+
+end
+
+module GasParse = struct
+  module L = Lexing
+
+  let lexbuf_from_channel = fun name channel ->
+    let lexbuf = L.from_channel channel in
+    lexbuf.L.lex_curr_p <- {
+        L.pos_fname = name;
+        L.pos_lnum  = 1;
+        L.pos_bol   = 0;
+        L.pos_cnum  = 0
+      };
+    lexbuf
+
+  let parse_file = fun () ->
+    MenhirLib.Convert.Simplified.traditional2revised Gasparser.gasfile
+
+  let lexer lexbuf = fun () ->
+    let token = Gaslexer.main lexbuf in
     (token, L.lexeme_start_p lexbuf, L.lexeme_end_p lexbuf)
 
   let from_channel parse ~name channel =
@@ -325,6 +363,7 @@ let rec process_ilcommand really_exit mainenv = function
   | Ilast.Gannotation evi -> process_annotation mainenv evi
   | Ilast.Ginclude(Asm, filename) -> process_asm mainenv filename
   | Ilast.Ginclude(Il, filename) -> process_il mainenv filename
+  | Ilast.Ginclude(Gas, filename) -> process_gas mainenv filename
   | Ilast.Gscvcmd(scvs) -> process_scvcommand mainenv scvs
   | Ilast.Gexit -> if really_exit then exit 0 else mainenv
 
@@ -338,6 +377,12 @@ and process_asm mainenv filename =
 and process_il mainenv filename =
   let ilast = ILParse.process_file (Location.unloc filename) in
   List.fold_left (process_ilcommand false) mainenv ilast
+
+and process_gas mainenv filename =
+  let asts = GasParse.process_file (Location.unloc filename) in
+  Glob_option.print_full "@[<v>Gas program parsed@ %a@]@."
+    (pp_list "@ @ " Ilast.pp_macro_decl) (List.map unloc asts);
+  process_macros mainenv asts
 
 and process_scv mainenv filename =
   let scv = ILParse.process_scvfile (Location.unloc filename) in
@@ -370,6 +415,8 @@ let main =
     (Glob_option.set_verbose i; Format.print_flush ()) in
   let process_asm' fname =
     (mainenv := process_asm !mainenv (cmdloc fname); Format.print_flush ()) in
+  let process_gas' fname =
+    (mainenv := process_gas !mainenv (cmdloc fname); Format.print_flush ()) in
   let process_il' fname =
     (mainenv := process_il !mainenv (cmdloc fname); Format.print_flush ()) in
   let process_scv' fname =
@@ -378,11 +425,12 @@ let main =
     [("--asm", Arg.String process_asm', ": process code in an assembly file");
      ("--il", Arg.String process_il', ": process declarations in an il file");
      ("--scv", Arg.String process_scv', ": process commands in a scv file");
+     ("--gas", Arg.String process_gas', ": process code in a gnu assembly file");
      ("-v", Arg.Int process_dbg', ": set verbosity");
      ("-i", Arg.Unit interactive, ": interactive mode");] in
   let cmdlineusage =
     "usage: " ^ Sys.argv.(0) ^
-    " [--asm filename] [--il filename] [--scv filename] [-v level] [-i]" in
+    " [--asm filename] [--il filename] [--scv filename] [--gas filename] [-v level] [-i]" in
   let batch = fun () ->
     (* process command line arguments in order *)
     try
