@@ -1,4 +1,4 @@
-# Copyright 2019 - NXP
+# Copyright 2019-2020 - NXP
 
 true:   bin_annot, thread
 true:   package(ppx_import, ppx_deriving.show, menhirLib, batteries, zarith)
@@ -8,4 +8,4 @@ true:   package(ppx_import, ppx_deriving.show, menhirLib, batteries, zarith)
 <main.{byte,native}>:                   package(maskverif)
 <src/{main,ilmaskverif*}.*>:            package(maskverif)
 
-<src/{iltyping,scv,illeakage,main}.*>:  package(re)
+<src/{iltyping,scv,ileval,illeakage,main}.*>:  package(re)

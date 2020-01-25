@@ -1,4 +1,4 @@
-(* Copyright 2019 - Inria, NXP *)
+(* Copyright 2019-2020 - Inria, NXP *)
 
 open Location
 open Utils
@@ -68,6 +68,53 @@ let pp_state fmt st =
     pp_vars    st.st_mvar
     (pp_cmd ~full:!Glob_option.full) st.st_pc
     (pp_cmd ~full:!Glob_option.full) (List.rev st.st_eprog)
+
+let vars_of_scvtarget (st:state) (t:Scv.scvtarget) : (var * value) list =
+  match t with
+  | Scv.TIdent [] -> []
+  | Scv.TIdent ns ->
+    let mvars = Mv.bindings st.st_mvar in
+    let mregs = Mv.bindings st.st_mregion in
+    let (f, unfound : (var * value) list * string located list) =
+      List.fold_left
+        (fun (f,nf) (n:string located) ->
+           let mv = List.find_opt (fun (k,bva) -> String.equal k.v_name (unloc n)) mvars in
+           let mr = List.find_opt (fun (k,bva) -> String.equal k.v_name (unloc n)) mregs in
+           match mv, mr with
+           | Some mv, Some (k,bv) -> mv::(k,Varr bv)::f,nf
+           | None   , Some (k,bv) ->     (k,Varr bv)::f,nf
+           | Some m , None        -> m              ::f,nf
+           | None   , None        -> f,n            ::  nf)
+        ([],[]) ns in
+    if List.length unfound == 0 then
+      f
+    else
+      Utils.hierror "Ileval.vars_of_scvtarget" (Some (loc (List.hd unfound)))
+        "state contains no definition of @[<v>%a@]"
+        (pp_list ",@," Scv.pp_scvstring) unfound
+  | Scv.TWildcard _ ->
+    Mv.bindings st.st_mvar @
+    (List.map (fun (k,bva) -> k,Varr bva) (Mv.bindings st.st_mregion))
+  | Scv.TRegex r ->
+    let regex = Re.execp (Re.compile (Re.Glob.glob (unloc r))) in
+    Mv.fold (fun k bva ms ->
+        if regex k.v_name then (k,bva)::ms else ms) st.st_mvar []
+    |> Mv.fold (fun k bva ms ->
+        if regex k.v_name then (k, Varr bva)::ms else ms) st.st_mregion
+
+let pp_statevars fmt (st,vtgt : state * Scv.scvtarget) : unit =
+  let vars = vars_of_scvtarget st vtgt in
+  let rec pp_varval fmt (va : (var * value) list) : unit =
+    match va with
+    | [] -> ()
+    | [v,bv] ->
+      Format.fprintf fmt "@[%a => %a@]"
+        V.pp_g v pp_value bv
+    | (v,bv)::va ->
+      Format.fprintf fmt "@[%a => %a@]@ %a"
+        V.pp_g v pp_value bv pp_varval va
+  in
+  pp_varval fmt vars
 
 let pp_iregions fmt ir =
   Format.fprintf fmt "  @[<v>";

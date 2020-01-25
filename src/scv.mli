@@ -28,6 +28,7 @@ type scvprintkind =
   | PInitialEnvironment
   | PEvaluatedTrace
   | PMaskverifProg
+  | PVariableValue of scvtarget
 
 type scvcheckkind =
   | Noninterference

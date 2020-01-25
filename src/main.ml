@@ -300,6 +300,14 @@ let process_print menv (p:Scv.scvcmd located) =
                Format.printf "@[<v>state of %s:@   @[<v>%a@]@]@."
                  mn Ileval.pp_state st)
             mn
+        | PVariableValue vs ->
+          List.iter
+            (fun mn ->
+               (* TODO fail with location in error message *)
+               let st = Ileval.find_state menv.eenv mn in
+               Format.printf "@[<v>queried variable values of %s:@   @[<v>%a@]@]@."
+                 mn Ileval.pp_statevars (st,vs))
+            mn
         | PInitialEnvironment ->
           List.iter
             (fun mn ->

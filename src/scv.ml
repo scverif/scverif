@@ -104,6 +104,8 @@ let pp_scvprintkind fmt p =
     Format.fprintf fmt "trace"
   | PMaskverifProg ->
     Format.fprintf fmt "maskverif"
+  | PVariableValue _ ->
+    Format.fprintf fmt "variables"
 
 let sym_inferpubin = "inferinput"
 let sym_inferstout = "inferoutput"
@@ -136,6 +138,17 @@ let pp_scvcmd fmt c =
   | PartialEval t ->
     Format.fprintf fmt "@[<v>partialeval:@   @[<v>target: %a@]@]"
       pp_scvtarget t
+  | Print(t, PVariableValue vs, None) ->
+    Format.fprintf fmt "@[<v>print:@   @[<v>kind: %a@ target: %a@ variables: %a@]@]"
+      pp_scvprintkind (PVariableValue vs)
+      pp_scvtarget t
+      pp_scvtarget vs
+  | Print(t, PVariableValue vs, Some v) ->
+    Format.fprintf fmt "@[<v>print:@   @[<v>kind: %a@ target: %a@ variables: %a@ verbosity: %a@]@]"
+      pp_scvprintkind (PVariableValue vs)
+      pp_scvtarget t
+      pp_scvtarget vs
+      pp_scvverbosity v
   | Print(t, pk, Some v) ->
     Format.fprintf fmt "@[<v>print:@   @[<v>kind: %a@ target: %a@ verbosity: %a@]@]"
       pp_scvprintkind pk
@@ -286,7 +299,7 @@ let bool_of_scvval = function
   | e -> scverror None
            "expected SCVBool but got:%a" pp_scvval e
 
-let scvprintkind_of_scvval pk =
+let scvprintkind_of_scvval pk vars =
   let c, a = extract_scvarg "kind" pk in
   match a with
   | SCVString s ->
@@ -294,6 +307,7 @@ let scvprintkind_of_scvval pk =
      | "macrodef" -> PMacro
      | "globals" -> PGenv
      | "state" -> PState
+     | "variables" -> PVariableValue (oget vars)
      | "initials" -> PInitialEnvironment
      | "evaltrace" -> PEvaluatedTrace
      | "maskverif" -> PMaskverifProg
@@ -366,15 +380,24 @@ let scvval_to_scvcmd_loc (v:scvval located) =
     | "print" ->
       begin
         [@warning "-8"]
-        let (k,t,vb) =
-          if List.length a == 2 then
+        let (k,t,vb,vars) =
+          match List.length a with
+          | 2 ->
             let [k;t] = check_scvarg a ["kind";"target"] in
-            (k,t,None)
-          else
-            let [k;t;vb] = check_scvarg a ["kind";"target";"verbosity"] in
-            (k,t,Some (scvverbosity_of_scvval vb)) in
+            (k,t,None,None)
+          | 3 ->
+            (try
+               let [k;t;vs] = check_scvarg a ["kind";"target";"variables"] in
+               (k,t,None,Some (scvtarget_of_scvval vs "variables"))
+             with ScvError(_,_) ->
+               let [k;t;vb] = check_scvarg a ["kind";"target";"verbosity"] in
+               (k,t,Some (scvverbosity_of_scvval vb), None))
+          | 4 ->
+            let [k;t;vb;vs] = check_scvarg a ["kind";"target";"verbosity";"variables"] in
+            (k,t,Some (scvverbosity_of_scvval vb), Some (scvtarget_of_scvval vs "variables"))
+        in
         let target = scvtarget_of_scvval t "target" in
-        let kind = scvprintkind_of_scvval k in
+        let kind = scvprintkind_of_scvval k vars in
         mk_loc (loc c) (Print(target, kind, vb))
       end
     | "check" ->

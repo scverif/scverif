@@ -1,4 +1,4 @@
-(* Copyright 2019 - Inria, NXP *)
+(* Copyright 2019-2020 - Inria, NXP *)
 
 open Utils
 open Common
@@ -63,11 +63,12 @@ type eenv = {
 
 val empty_eenv : eenv
 
-val pp_t_ty    : Format.formatter -> t_ty -> unit
-val pp_regions : Format.formatter -> bvalue array Il.Mv.t -> unit
-val pp_vars    : Format.formatter -> value Il.Mv.t -> unit
-val pp_state   : Format.formatter -> state -> unit
-val pp_initial : Format.formatter -> initial -> unit
+val pp_t_ty      : Format.formatter -> t_ty -> unit
+val pp_regions   : Format.formatter -> bvalue array Il.Mv.t -> unit
+val pp_vars      : Format.formatter -> value Il.Mv.t -> unit
+val pp_state     : Format.formatter -> state -> unit
+val pp_initial   : Format.formatter -> initial -> unit
+val pp_statevars : Format.formatter -> state * Scv.scvtarget -> unit
 
 val find_state     : eenv -> Il.macro_name -> state
 val update_state   : eenv -> Il.macro_name -> state -> eenv
