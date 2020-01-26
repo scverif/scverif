@@ -131,6 +131,7 @@ type op_desc =
   | Oor  of wsize option
   | Onot of wsize option
   | Oeq  of bty
+  | Onamecmp
   | Olt  of sign * wsize option
   | Ole  of sign * wsize option
   | Osignextend of wsize * wsize   (* from, to *)
@@ -366,6 +367,7 @@ let op_string op =
   | Oor   _ -> "|"
   | Onot  _ -> "!"
   | Oeq   _ -> "=="
+  | Onamecmp -> "=name="
   | Olt   _ -> "<"
   | Ole   _ -> "<="
   | Osignextend _ -> "signextend"
@@ -402,6 +404,7 @@ let rec pp_e ~full fmt e =
     | Oor  ws, es  -> pp_op2_ows ~full "|" fmt ws es
     | Onot ws, es  -> pp_op1_ows ~full "!" fmt ws es
     | Oeq  ws, es  -> pp_op2     ~full "==" fmt es
+    | Onamecmp, es -> pp_op2     ~full "=name=" fmt es
     | Olt(s,ws),es ->
       let s = if s = Signed then "<s" else "<" in
       pp_op2_ows ~full s fmt ws es

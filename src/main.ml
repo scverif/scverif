@@ -1,4 +1,4 @@
-(* Copyright 2019 - Inria, NXP *)
+(* Copyright 2019-2020 - Inria, NXP *)
 
 open Utils
 open Location
@@ -150,15 +150,11 @@ let empty_mainenv = {
 }
 
 let process_gvar menv x =
-  let genv = menv.genv in
-  let x    = Iltyping.process_var_decl x in
-  let genv = Iltyping.add_gvar genv x in
-  Glob_option.print_normal "%a@." Il.pp_global_g (Gvar x);
+  let genv = Iltyping.process_gvar_decl menv.genv x in
   { menv with genv }
 
 let process_macro (menv:mainenv) (m:Ilast.macro_decl located) =
-  let genv = menv.genv in
-  let genv = Iltyping.process_macros genv [m] in
+  let genv = Iltyping.process_macros menv.genv [m] in
   { menv with genv }
 
 let process_macros (menv:mainenv) (ms:Ilast.macro_decl located list) =

@@ -1,4 +1,4 @@
-(* Copyright 2019 - Inria, NXP *)
+(* Copyright 2019-2020 - Inria, NXP *)
 
 open Location
 open Utils
@@ -10,9 +10,11 @@ let ty_error loc = error "type error" (loc, [])
 let add_gvar genv x =
   try
     let x' = Ms.find x.v_name genv.glob_var in
-    ty_error x.v_loc "the variable %s is already declared at %a"
+    ty_error x.v_loc "global variable %s is already declared at %a"
       x.v_name pp_loc x'.v_loc
   with Not_found ->
+    Glob_option.print_normal "iltyping: adding global %a@."
+      Il.pp_global_g (Gvar x);
     { genv with glob_var = Ms.add x.v_name x genv.glob_var }
 
 let add_macro genv m =
@@ -79,8 +81,13 @@ type id_kind = [%import: Iltyping.id_kind]
 type unsatdep = [%import: Iltyping.unsatdep]
 type env = [%import: Iltyping.env]
 
-let empty_env genv mn : env =
-  { genv; locals = Ms.empty; unsat = Ms.empty; current = mn }
+let empty_env genv mn : env = {
+  genv;
+  locals = Ms.empty;
+  unsat = Ms.empty;
+  current = mn;
+  currenti = None;
+}
 
 (* add a variable to the local definitions of this macro *)
 let add_var (env:env) (x:var) : env =
@@ -136,9 +143,8 @@ let find_var env x =
          ty_error loc "%s is not defined as variable but as label %a in dependency of %a"
            x Lbl.pp_dbg ld (pp_list ",@," pp_string) ms
        | DVar x, _   -> ty_error loc "unexpected"
-       (* FIXME this makes no sense: variables need to be local or global,
+       (* this makes no sense: variables need to be local or global,
                              but not shared between macros *)
-       (* TODO update the dependency statement *)
        | exception Not_found ->
          ty_error loc "unknown variable %s" x)
 
@@ -186,8 +192,6 @@ let find_label (makedep:bool) (env:env) (l:Ilast.label) : env * Lbl.t * bool =
         else
           env, l', false
 
-(* TODO check that if the result is a variable it is compatible
-   with label *)
 (* try to find destination in a goto statement and mark it unsatisfied otherwise *)
 let find_goto (env:env) (l:Ilast.label) : env * id_kind=
   let ln = Ilast.label_to_string l in
@@ -251,6 +255,9 @@ let process_var_decl vd =
   let ty  = process_ty loc vd.Ilast.v_type in
   V.fresh (unloc vd.Ilast.v_name) loc ty
 
+let process_gvar_decl genv vd =
+  let x = process_var_decl vd in
+  add_gvar genv x
 
 let get_op1 o =
   match o with
@@ -296,6 +303,7 @@ let get_op2 loc o ws =
   | Ilast.OR    -> ty2 (fun ws -> Oor ws) tbool ws
   | Ilast.EQ    -> assert false
   | Ilast.NEQ   -> assert false
+  | Ilast.NAMECMP -> assert false
   | Ilast.LT s  -> ty2_b (fun ws -> Olt(s,ws)) tint ws
   | Ilast.LE s  -> ty2_b (fun ws -> Ole(s,ws)) tint ws
 
@@ -386,6 +394,24 @@ let rec type_e env e =
       let od = Onot None in
       let o = { od } in
       Eop(o, [e]), ty
+
+    | Ilast.Op2 (Ilast.NAMECMP, _) when
+        (match env.currenti with
+         | Some {pl_desc=Ilast.Iif _} -> true
+         | _ -> false)  ->
+      let e1, e2 = get_e2 (loc e) es in
+      (match type_e env e1, type_e env e2 with
+      | (Evar v1, bty1), (Evar v2, bty2) ->
+        let _ = check_ty_base (loc e) bty1 in
+        let _ = check_ty_base (loc e) bty2 in
+        Eop({od=Onamecmp}, [Evar v1; Evar v2]), tbool
+      | (e1, _), (e2, _) ->
+        ty_error (loc e) "expected variables in operation but got %a"
+          Ilast.pp_expr e)
+
+    | Ilast.Op2 (Ilast.NAMECMP, _) ->
+      ty_error (loc e) "operation %s not allowed outside if statement %a"
+        (op_string { od = Il.Onamecmp}) Ilast.pp_expr e
 
     | Ilast.Opn "if" ->
       let loc = loc e in
@@ -546,6 +572,7 @@ let check_args env loc args params : env * macro_arg list =
   env, List.rev args
 
 let rec type_i (env:env) (i:Ilast.instr) : env * Il.instr =
+  let env = { env with currenti = Some i } in
   let env, i_desc =
     match unloc i with
     | Ilast.Iassgn(x,e) ->
@@ -654,13 +681,19 @@ let process_macros genv (ms:Ilast.macro_decl located list) =
   List.iter (Il.check_labels "type error in check_labels" genv') ms;
   genv'
 
-let check_initval env loc v ty =
+let rec check_initval (env:env) (loc:Location.t) (v:Ilast.initval) (ty:Common.ty)
+  : Ileval.ival =
   let open Ileval in
   match v with
-  | Ilast.Iptr (x,ofs) ->
+  | Ilast.Iptr(x, ofs) ->
     let x = find_var env x in
-    (* FIXME check that ofs is in the bound of x *)
-    Ileval.Iregion (x, ofs)
+    let _, i1, i2 = check_ty_arr loc x.v_ty in
+    if not ((B.le i1 ofs) && (B.le ofs i2)) then
+      Glob_option.eprint_normal
+        "initial value of pointer [%a %a] is out of range %a[%a:%a] (%a)"
+        V.pp_g x B.pp_print ofs V.pp_g x B.pp_print i1 B.pp_print i2
+        Location.pp_loc loc;
+      Ileval.Iptr(x, ofs)
   | Ilast.Ibool b ->
     check_type loc tbool ty;
     Ileval.Ibool b
@@ -668,8 +701,23 @@ let check_initval env loc v ty =
     check_type loc tint ty;
     Ileval.Iint i
   | Ilast.Iexit   ->
-    (* FIXME : label ??? *)
     Ileval.Icptr_exit
+  | Ilast.Ilbl l ->
+    (match find_label_glob env l with
+    | Some l' -> Ileval.Ilbl l'
+    | None ->
+      ty_error loc "unknown label %a as initial value" Ilast.pp_label l)
+  | Ilast.Iword(ws, iv) ->
+    check_type loc (tw ws) ty;
+    Ileval.Iint iv
+  | Ilast.Iarr ivs ->
+    let bty, i1, i2 = get_arr ty in
+    let ielems = List.length ivs in
+    let eelems = B.to_int (B.sub i2 i1) in
+    if (eelems != ielems) then
+      Ileval.Iarr (List.map (fun iv -> check_initval env loc iv (Tbase bty)) ivs)
+    else
+      ty_error loc "initial value has %d elements but expected %d values" ielems eelems
 
 let process_annotation genv evi =
   let open Ileval in

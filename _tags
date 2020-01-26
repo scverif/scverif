@@ -1,6 +1,6 @@
 # Copyright 2019-2020 - NXP
 
-true:   bin_annot, thread
+true:   bin_annot, thread, rectypes
 true:   package(ppx_import, ppx_deriving.show, menhirLib, batteries, zarith)
 
 <src>:  include

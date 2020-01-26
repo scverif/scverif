@@ -1,11 +1,11 @@
-# Copyright 2019 - Inria, NXP
+# Copyright 2019-2020 - Inria, NXP
 
 .PHONY: all clean logdir
 MAKEFLAGS += --silent
 
 MENHIR       := menhir
 MENHIRFLAGS  := --infer --explain
-OCB_FLAGS    := -cflag -rectypes -r
+OCB_FLAGS    := -cflag -rectypes -r -docflags -rectypes,-html
 OCB          := ocamlbuild -use-ocamlfind -use-menhir -menhir "$(MENHIR) $(MENHIRFLAGS)" $(OCB_FLAGS)
 
 MAIN         := main
@@ -34,7 +34,6 @@ EVALSRCDIR := testeval
 EVALSRC    := $(wildcard $(EVALSRCDIR)/*.il)
 EVALTESTS  := $(patsubst $(EVALSRCDIR)/%.il, %.evaltest, $(EVALSRC))
 
-MVEXE      ?= ../maskverif/maskverif
 MVTESTS    := $(patsubst $(EVALSRCDIR)/%.il, %.mvtest, $(EVALSRC))
 
 
@@ -56,6 +55,11 @@ clean:
 	$(OCB) -clean
 	rm -f src/*~ src/.*~ $(MAIN).native $(LOGDIR)/*
 
+# TODO, does not work beyond main
+# .odoc file has no effect for unknown reasons
+documentation:
+	$(OCB) $(MAIN).odoc
+
 logdir:
 	mkdir -p $(LOGDIR)
 
@@ -74,11 +78,6 @@ $(ASMSRCDIR)/%.asmtest %.asmtest: $(ASMSRCDIR)/%.il native logdir
 # rule to test ilfiles
 $(EVALSRCDIR)/%.evaltest %.evaltest: $(EVALSRCDIR)/%.il native logdir
 	./scverif --il $< | tee $(LOGDIR)/$(notdir $@)
-
-# rule to send evaltest output to maskverif
-%.mvtest: %.evaltest native logdir
-	cat $(LOGDIR)/$< | $(MVEXE)
-
 
 # shortcut for various tests
 test-m0pisa: isa-cortex-m0plus.isatest

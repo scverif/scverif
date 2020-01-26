@@ -17,7 +17,7 @@
 %token INPUT OUTPUT SECRET PUBLIC URANDOM SHARING
 %token INCLUDE ASM IL GAS
 %token BOOL TINT UINT W8 W16 W32 W64
-%token ADD SUB MUL MULH AND XOR OR NOT EQ NEQ LSL LSR ASR ZEROEXTEND SIGNEXTEND TRUE FALSE
+%token ADD SUB MUL MULH AND XOR OR NOT EQ NEQ LSL LSR ASR ZEROEXTEND SIGNEXTEND TRUE FALSE NAMECMP
 %token <Common.sign> LT
 %token <Common.sign> LE
 %token <Bigint.zint> INT
@@ -108,6 +108,9 @@ expr_r:
   | LBRACKET s=wsize x=ident e=expr RBRACKET  { Eload(s, x, e) }
   | e1=expr o=loc(op2) e2=expr
     { Eop(Location.lmap (fun (o,s) -> Op2(o,s)) o, [e1;e2]) }
+  | v1=ident nc=loc(NAMECMP) v2=ident
+    { Eop(mk_loc (loc nc) (Op2(Ilast.NAMECMP, None)),
+          [mk_loc (loc v1) (Evar v1); mk_loc (loc v1) (Evar v2);]) }
   | o=loc(op1) e=expr    %prec NOT
     { Eop(Location.lmap (fun o -> Op1 o) o, [e]) }
   | o=ident LPAREN es=separated_nonempty_list(COMMA,expr) RPAREN
@@ -189,6 +192,10 @@ initval:
   | FALSE                             { Ibool false }
   | i=INT                             { Iint i }
   | EXIT                              { Iexit }
+  | ws=wsize i=INT                    { Iword(ws,i) }
+  | LCURLY l=label RCURLY             { Ilbl l }
+  | LBRACKET ivs=separated_list(COMMA, initval) RBRACKET
+    { Iarr ivs }
 
 annot_ty_kind:
   | SHARING                           { Sharing }

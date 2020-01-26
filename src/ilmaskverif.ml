@@ -610,7 +610,8 @@ end = struct
 
     | Il.Osignextend(ws1, ws2)
     | Il.Ozeroextend(ws1, ws2) -> err_unsupported ()
-    | Il.Oif(ty) -> err_invalid ()
+    | Il.Onamecmp
+    | Il.Oif _ -> err_invalid ()
     (* pow *)
     | Il.Omulh(ws) -> err_unsupported ()
 

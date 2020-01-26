@@ -103,7 +103,7 @@ let vars_of_scvtarget (st:state) (t:Scv.scvtarget) : (var * value) list =
         if regex k.v_name then (k, Varr bva)::ms else ms) st.st_mregion
 
 let pp_statevars fmt (st,vtgt : state * Scv.scvtarget) : unit =
-  let vars = vars_of_scvtarget st vtgt in
+  let vars = List.rev (vars_of_scvtarget st vtgt) in
   let rec pp_varval fmt (va : (var * value) list) : unit =
     match va with
     | [] -> ()
@@ -124,10 +124,13 @@ let pp_iregions fmt ir =
         V.pp_g r.r_dest) ir;
   Format.fprintf fmt "@]"
 
-let pp_ival fmt = function
+let rec pp_ival fmt = function
   | Iint i       -> B.pp_print fmt i
   | Ibool b      -> Format.fprintf fmt "%b" b
-  | Iregion(x,i) ->
+  | Ilbl l       -> Format.fprintf fmt "%a" Lbl.pp_g l
+  | Iarr iv      -> Format.fprintf fmt "@[[%a]@]"
+                      (pp_list ",@," pp_ival) iv
+  | Iptr(x,i) ->
     Format.fprintf fmt "[%a %a]"
       V.pp_g x
       B.pp_print i
@@ -265,14 +268,19 @@ let eopp ws v1 =
   match ws, v1 with
   | None   , Vint i -> Vint (B.neg i)
   | Some ws, Vint i -> op_w_w B.neg ws i
-  | _               -> Vunknown
+  | _                  ->
+    Glob_option.print_full "@[<v>eopp: cannot evaluate Oopp %a@]@."
+      pp_bvalue v1;
+    Vunknown
 
 let emul ws (v1,v2) =
   match ws, v1, v2 with
   | None, Vint i1, Vint i2    -> Vint (B.mul i1 i2)
   | Some ws, Vint i1, Vint i2 -> op_ww_w B.mul ws i1 i2
-  | _                         -> Vunknown
-
+  | _                  ->
+    Glob_option.print_full "@[<v>emul: cannot evaluate Omul %a %a@]@."
+      pp_bvalue v1 pp_bvalue v2;
+    Vunknown
 let elsl ws (v1, v2) =
   match v1, v2 with
   | Vint i1 , Vint i2  -> op_wi_w B.lshl ws i1 i2
@@ -280,7 +288,6 @@ let elsl ws (v1, v2) =
     Glob_option.print_full "@[<v>elsl: cannot evaluate Olsl %a %a@]@."
       pp_bvalue v1 pp_bvalue v2;
     Vunknown
-
 
 let elsr ws (v1, v2) =
   match v1, v2 with
@@ -293,25 +300,37 @@ let elsr ws (v1, v2) =
 let easr ws (v1, v2) =
   match v1, v2 with
   | Vint i1 , Vint i2  -> op_wi_w B.ashr ws i1 i2 (* Check this *)
-  | _                  -> Vunknown
+  | _                           ->
+    Glob_option.print_full "@[<v>easr: cannot evaluate Oasr %a %a@]@."
+      pp_bvalue v1 pp_bvalue v2;
+    Vunknown
 
 let eand ws (v1, v2) =
   match ws, v1, v2 with
   | None   , Vbool b1, Vbool b2 -> Vbool (b1 && b2)
   | Some ws, Vint i1 , Vint i2  -> op_ww_w B.lgand ws i1 i2
-  | _                           -> Vunknown
+  | _                           ->
+    Glob_option.print_full "@[<v>eand: cannot evaluate Oand %a %a@]@."
+      pp_bvalue v1 pp_bvalue v2;
+    Vunknown
 
 let exor ws (v1, v2) =
   match ws, v1, v2 with
   | None   , Vbool b1, Vbool b2 -> Vbool (if b1 then not b2 else b2)
   | Some ws, Vint i1 , Vint i2  -> op_ww_w B.lgxor ws i1 i2
-  | _                           -> Vunknown
+  | _                           ->
+    Glob_option.print_full "@[<v>exor: cannot evaluate Oxor %a %a@]@."
+      pp_bvalue v1 pp_bvalue v2;
+    Vunknown
 
 let eor ws (v1, v2) =
   match ws, v1, v2 with
   | None   , Vbool b1, Vbool b2 -> Vbool (b1 || b2)
   | Some ws, Vint i1 , Vint i2  -> op_ww_w B.lgor ws i1 i2
-  | _                           -> Vunknown
+  | _                           ->
+    Glob_option.print_full "@[<v>eor: cannot evaluate Oor %a %a@]@."
+      pp_bvalue v1 pp_bvalue v2;
+    Vunknown
 
 let enot ws v =
   match ws, v with
@@ -338,6 +357,14 @@ let eeq bty (v1,v2) =
       pp_bvalue v1 pp_bvalue v2;
     Vunknown
 
+let enamecmp (e1,e2 : expr * expr) : bvalue =
+  match e1, e2 with
+  | Evar v1, Evar v2 ->
+    Vbool (String.equal v1.v_name v2.v_name)
+  | _ ->
+    Glob_option.print_full "@[<v>enamecmp: cannot evaluate %a@]@."
+      pp_e_g (Eop({od=Onamecmp}, [e1;e2]));
+    Vunknown
 
 let elt s ws (v1, v2) =
   match ws, v1, v2 with
@@ -380,7 +407,8 @@ let ecast_int s bty v =
   | Vptr p, W w, Unsigned -> Vptr {p with p_ofs = to_uint w p.p_ofs}
   | _     , _     , _        -> Vunknown
 
-let eval_op (loc:full_loc) (op:Il.op) (vs:bvalue list) : bvalue =
+let eval_op (loc:full_loc) (op:Il.op) (vs:bvalue list) (es:expr list)
+  : bvalue =
   match op.od with
   | Oif   _  -> eif (as_seq3 vs)
   | Oadd  ws -> eadd loc ws (as_seq2 vs)
@@ -397,6 +425,7 @@ let eval_op (loc:full_loc) (op:Il.op) (vs:bvalue list) : bvalue =
   | Oor   ws -> eor  ws (as_seq2 vs)
   | Onot  ws -> enot ws (as_seq1 vs)
   | Oeq  bty -> eeq bty (as_seq2 vs)
+  | Onamecmp -> enamecmp (as_seq2 es)
   | Olt (s,ws) -> elt s ws (as_seq2 vs)
   | Ole (s,ws) -> ele s ws (as_seq2 vs)
   | Osignextend(ws1,ws2) -> esignextend ws1 ws2 (as_seq1 vs)
@@ -436,42 +465,49 @@ let eval_get (loc:full_loc) st x (v,ei) =
 
 let get_ofs ws p =
   let q = B.of_int (ws_byte ws) in
-  (* pointer's offset is a multiple of the expected wordsize *)
+  (* pointer's offset is a multiple of the expected word-size *)
   assert (B.equal (B.erem p.p_ofs q) B.zero);
   B.div p.p_ofs q
 
-let eval_mem_index (loc:full_loc) (st:state) (ws:Common.wsize) (m:var) (e:expr) (v,_ei) =
+let eval_mem_index (loc:full_loc) (st:state) (ws:Common.wsize) (m:var) (e:expr) (v,_ei)
+  : bvalue array * int * var * expr =
   match v with
   | Vptr p when V.equal m p.p_mem ->
     begin
+      (* get type and bounds of destination  *)
       let bty, _i1, _i2 = get_arr p.p_dest.v_ty in
-      (* FIXME allow ordered memory access *)
-      let bty_ws = get_ws bty in
-      match ws_eq bty_ws ws with
-      | true ->
-        (* compute offset in times of expected ws ??? *)
-        let ofs = get_ofs ws p in
-        (* compute relative offset *)
+      (* get word-size of destination *)
+      let dst_ws = get_ws bty in
+      (* match on kind of access *)
+      match ws_eq dst_ws ws, ws_le dst_ws ws with
+      | true, _ -> (* accessing equal word-size *)
+        (* compute offset in multiples of destination's word-size *)
+        let ofs = get_ofs dst_ws p in
+        (* compute relative offset to destinations lower bound *)
         let iofs = eval_index loc "eval_load region" p.p_dest ofs in
+        (* get array holding values from state *)
         let t =
           try Mv.find p.p_dest st.st_mregion
           with Not_found ->
             ev_hierror loc "%a@ eval_mem_index: unknown region %a"
               pp_state st V.pp_dbg p.p_dest in
         t, iofs, p.p_dest, Eint ofs
-      | false when (ws_le (get_ws bty) ws) ->
-        ev_hierror loc "need to implement this kind of access"
-      | false when not (ws_le (get_ws bty) ws) ->
-        ev_hierror loc "%a@ eval_mem_index: invalid word size %a, expected %a"
-          pp_state st pp_bty bty pp_wsize ws
-      | false -> assert false
+      | false, true -> (* accessing multiple words of destination at once *)
+        (* FIXME Benjamin: implement the projection *)
+        ev_hierror loc "%a@ need to implement access %a to \
+                        destination %a with smaller word-size %a than access word-size %a"
+          pp_state st pp_bvalue v V.pp_dbg p.p_dest pp_wsize dst_ws pp_wsize ws
+      | false, false -> (* trying to access a fraction of destination word-size *)
+        ev_hierror loc "%a@ eval_mem_index: invalid access %a to \
+                        destination %a with word-size %a smaller than access of word-size %a"
+          pp_state st pp_bvalue v V.pp_dbg p.p_dest pp_wsize dst_ws pp_wsize ws
     end
   | _ ->
     ev_hierror loc "@[<v>%a@ eval_mem_index: cannot evaluate pointer %a in %a@]"
       pp_state st pp_bvalue v
       (pp_e ~full:!Glob_option.full) e
 
-let eval_load loc st ws m e (v,ei) =
+let eval_load loc st ws m e (v,ei) : bvalue * expr =
   let t, iofs, dest, eofs = eval_mem_index loc st ws m e (v,ei) in
   t.(iofs), Eget(dest, eofs)
 
@@ -484,7 +520,7 @@ let rec eval_e (loc:full_loc) (st:state) (e:expr) : bvalue * expr =
   | Eload(ws, m, e) -> eval_load loc st ws m e (eval_e loc st e)
   | Eop(op, es) ->
     let vs, es = eval_es loc st es in
-    let v = eval_op loc op vs in
+    let v = eval_op loc op vs es in
     let e =
       match v with
       | Vint i  -> Eint i
@@ -492,7 +528,8 @@ let rec eval_e (loc:full_loc) (st:state) (e:expr) : bvalue * expr =
       | _       -> Eop(op, es) in
     v, e
 
-and eval_es (loc:full_loc) (st:state) (es:expr list) = List.split (List.map (eval_e loc  st) es)
+and eval_es (loc:full_loc) (st:state) (es:expr list) =
+  List.split (List.map (eval_e loc  st) es)
 
 (* ********************************************* *)
 (* Programs evaluation                           *)
@@ -638,6 +675,9 @@ and eval_assgn (loc:Utils.full_loc) (st:state) (lv:Il.lval) (e:Il.expr) (c:Il.cm
     | Lstore(ws, m, ei) ->
       let t, iofs, dest, eofs = eval_mem_index loc st ws m ei (eval_e loc st ei) in
       t.(iofs) <- v;
+      st.st_mregion <- Mv.add dest t st.st_mregion;
+      Glob_option.print_full "@[ileval: updating memory %a: %a gets %a@]@."
+        V.pp_g m V.pp_g dest (pp_list ", " pp_bvalue) (Array.to_list t);
       Lset(dest, eofs), c
   in
   next st (Some {i_desc = Iassgn(lv, e); i_loc = loc }) c
@@ -685,18 +725,39 @@ let partial_eval (g:genv) (eenv:eenv) (m:Il.macro) =
     Mv.add r.r_dest t mr in
   let st_mregion = List.fold_left init_region Mv.empty init.init_region in
 
-  let init_var mv (x, iv) =
+  let init_var (mv,mr:(value Mv.t) * (bvalue array Mv.t)) (x, iv) =
+    let map v =
+      match v with
+      | Iint    i  -> Vint i
+      | Ibool   b  -> Vbool b
+      | Ilbl    l  -> Vcptr l
+      | Icptr_exit -> Vcptr Lbl.exit_
+      | Iarr _
+      | Iptr _     -> assert false in
     let v =
       match iv with
-      | Iint    i       -> Vint i
-      | Ibool   b       -> Vbool b
-      | Iregion (d,ofs) ->
+      | Iint _
+      | Ibool _
+      | Ilbl _
+      | Icptr_exit -> Vbase (map iv)
+      | Iarr iv -> Varr (Array.of_list (List.map map iv))
+      | Iptr(d, ofs) ->
         let m =
           try Mv.find d !mdest with Not_found -> assert false in
-        Vptr { p_mem = m; p_dest = d; p_ofs = ofs }
-      | Icptr_exit      -> Vcptr Lbl.exit_ in
-    Mv.add x (Vbase v) mv in
-  let st_mvar = List.fold_left init_var Mv.empty init.init_var in
+        Vbase (Vptr { p_mem = m; p_dest = d; p_ofs = ofs }) in
+    (* decide whether to update a state variable or a variable in memory *)
+    match Mv.Exceptionless.find x mr, v with
+    | Some mvar, Varr ba ->
+      Glob_option.print_full "replacing region %a of %a by %a@."
+        V.pp_g x (pp_list ", " pp_bvalue) (Array.to_list mvar)
+        (pp_list ", " pp_bvalue) (Array.to_list ba);
+      mv, Mv.add x ba mr
+    | None, Vbase _ ->
+      Mv.add x v mv, mr
+    | _, _ ->
+      assert false
+  in
+  let st_mvar, st_mregion = List.fold_left init_var (Mv.empty, st_mregion) init.init_var in
   (* TODO set the program counter accordingly *)
 
   Glob_option.print_full "DEBUG mc@ @[<v>%a@]@." (pp_cmd ~full:true) m.mc_body;

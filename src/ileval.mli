@@ -12,7 +12,9 @@ type region = {
 type ival =
   | Iint       of B.zint
   | Ibool      of bool
-  | Iregion    of V.t * B.zint
+  | Iarr       of ival list
+  | Ilbl       of Lbl.t
+  | Iptr       of V.t * B.zint
   | Icptr_exit
 
 type t_ty =

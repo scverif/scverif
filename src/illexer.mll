@@ -1,4 +1,4 @@
-(* Copyright 2019 - Inria, NXP *)
+(* Copyright 2019-2020 - Inria, NXP *)
 {
   open Utils
   open Ilparser
@@ -107,15 +107,13 @@ rule main = parse
   | "<-"    { LEFTARROW  }
   | ","     { COMMA      }
   | ";"     { SEMICOLON  }
-  | "?"     { QUESTIONMARK  }
-  | ":"     { COLON  }
+  | "?"     { QUESTIONMARK }
+  | ":"     { COLON      }
 
   | "<<"                    { LSL                }
   | ">>" (signletter as s)? { mk_shr (mk_sign s) }
-  | "<=" (signletter as s)? { LE   (mk_sign s) }
-  | "<"  (signletter as s)? { LT   (mk_sign s) }
-
-
+  | "<=" (signletter as s)? { LE   (mk_sign s)   }
+  | "<"  (signletter as s)? { LT   (mk_sign s)   }
 
   | "!"  { NOT      }
   | "+"  { ADD      }
@@ -127,6 +125,7 @@ rule main = parse
   | "|"  { OR       }
   | "==" { EQ       }
   | "!=" { NEQ      }
+  | "=name="{ NAMECMP }
 
   | _ as c  { invalid_char (L.of_lexbuf lexbuf) c }
   | eof     { EOF }

@@ -1,4 +1,4 @@
-(* Copyright 2019 - Inria, NXP *)
+(* Copyright 2019-2020 - Inria, NXP *)
 
 open Location
 open Common
@@ -51,6 +51,7 @@ type op2 =
   | OR
   | EQ
   | NEQ
+  | NAMECMP
   | LT  of sign
   | LE  of sign
 [@@deriving show]
@@ -127,6 +128,9 @@ type initval =
   | Iptr  of ident * B.zint
   | Ibool of bool
   | Iint  of B.zint
+  | Iword of wsize * B.zint
+  | Iarr  of initval list
+  | Ilbl  of label
   | Iexit
 [@@deriving show]
 
