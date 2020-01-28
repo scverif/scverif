@@ -348,6 +348,8 @@ let eeq bty (v1,v2) =
   | _   , Vptr  p1, Vptr  p2 -> Vbool (Ptr.equal p1 p2)
   | Bool, Vbool b1, Vbool b2 -> Vbool (b1 = b2)
   | W ws, Vint  i1, Vint  i2 -> Vbool (B.equal (of_int ws i1) (of_int ws i2))
+  | (Bool |Int), Vptr p, Vint i
+  | (Bool |Int), Vint i, Vptr p     -> Vbool (B.equal p.p_ofs i)
   | _,    Vptr  _ , _        ->
     Glob_option.print_full "@[<v>eeq: cannot evaluate Oeq of ptr %a %a@]@."
       pp_bvalue v1 pp_bvalue v2;

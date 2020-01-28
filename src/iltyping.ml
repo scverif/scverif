@@ -713,8 +713,8 @@ let rec check_initval (env:env) (loc:Location.t) (v:Ilast.initval) (ty:Common.ty
   | Ilast.Iarr ivs ->
     let bty, i1, i2 = get_arr ty in
     let ielems = List.length ivs in
-    let eelems = B.to_int (B.sub i2 i1) in
-    if (eelems != ielems) then
+    let eelems = B.to_int (B.succ (B.sub i2 i1)) in
+    if (eelems == ielems) then
       Ileval.Iarr (List.map (fun iv -> check_initval env loc iv (Tbase bty)) ivs)
     else
       ty_error loc "initial value has %d elements but expected %d values" ielems eelems
