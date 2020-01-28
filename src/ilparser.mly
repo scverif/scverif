@@ -12,7 +12,7 @@
 %token LPAREN RPAREN LCURLY RCURLY LBRACKET RBRACKET
 %token LEFTARROW COLON SEMICOLON QUESTIONMARK COMMA EOF
 %token MACRO LEAK IF ELSE WHILE LABEL GOTO
-%token ANNOTATION INIT REGION EXIT
+%token ANNOTATION INIT REGION VAR EXIT
 %token SCVDOCSTART SCVDOCEND NULL
 %token INPUT OUTPUT SECRET PUBLIC URANDOM SHARING
 %token INCLUDE ASM IL GAS
@@ -203,9 +203,18 @@ annot_ty_kind:
   | PUBLIC                            { Public }
   | SECRET                            { Secret }
 
+region_elem:
+  | l=ident                         { REvar l }
+  | l=ident LBRACKET i=INT RBRACKET { REget(l,i) }
+  | l=ident r=range                 { REblock(l,r) }
+
+region_def:
+  | LBRACKET d=separated_list(SEMICOLON, region_elem) RBRACKET { d }
+
 initialization:
-  | REGION m=ident ws=wsize x=ident r=range
-    { Region(m, ws, x, r) }
+  | VAR vd=loc(var_decl) { Var vd } 
+  | REGION m=ident ws=wsize x=ident r=range rd=region_def? 
+    { Region(m, ws, x, r, rd) }
   | INIT x=ident v=initval
     { Init(x,v) }
   | OUTPUT ty=annot_ty_kind i=ident r=range?

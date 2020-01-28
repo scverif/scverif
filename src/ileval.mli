@@ -4,9 +4,17 @@ open Utils
 open Common
 open Il
 
+type dest = { 
+    d_var : V.t;
+    d_ofs : B.zint option;  
+  }
+
+type region_name = V.t
+
 type region = {
-  r_from  : V.t;    (* name of the memory *)
-  r_dest  : V.t;    (* variable destination *)
+  r_from  : V.t;          (* name of the memory *)
+  r_name  : region_name;  (* name of the region, an array *)
+  r_dest  : dest array;  
 }
 
 type ival =
@@ -14,7 +22,7 @@ type ival =
   | Ibool      of bool
   | Iarr       of ival list
   | Ilbl       of Lbl.t
-  | Iptr       of V.t * B.zint
+  | Iptr       of region_name * B.zint
   | Icptr_exit
 
 type t_ty =
@@ -24,6 +32,7 @@ type t_ty =
   | Secret
 
 type initial = {
+  init_vard   : V.t list;
   init_region : region list;
   init_var    : (V.t * ival) list;
   input_var   : (t_ty * V.t) list;
@@ -31,9 +40,9 @@ type initial = {
 }
 
 type pointer = {
-  p_mem  : V.t;   (* access to this memory is performed *)
-  p_dest : V.t;   (* the variable representing the accessed location *)
-  p_ofs  : B.zint (* index of the access relative to p_dest *)
+  p_mem  : V.t;         (* access to this memory is performed *)
+  p_dest : region_name; (* the region representing the accessed location *)
+  p_ofs  : B.zint       (* index of the access relative to p_dest *)
 }
 
 type cpointer = Lbl.t
@@ -51,6 +60,7 @@ type value =
 
 type state = {
   mutable st_mregion : bvalue array Mv.t;
+          st_dregion : dest array Mv.t;
   mutable st_mvar    : value Mv.t;
   mutable st_prog    : cmd;
   mutable st_pc      : cmd;

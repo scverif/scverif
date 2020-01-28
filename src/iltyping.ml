@@ -484,13 +484,13 @@ let type_lval env lv =
     Lstore(ws,x,e), ty
 
 let check_bound loc n1 n2 j1 j2 =
-  if not (B.le n1 n2) then
+  if not (B.le n1 n2) then (* n2 < n1 *)
     ty_error loc "invalid range, %a should be smaller than %a"
       B.pp_print n1 B.pp_print n2;
-  if not (B.le j1 n1) then
+  if not (B.le j1 n1) then (* n1 < j1 *)
     ty_error loc "invalid index, %a should be greater than %a"
       B.pp_print n1 B.pp_print j1;
-  if not (B.le n2 j2) then
+  if not (B.le n2 j2) then (* j2 < n2*)
     ty_error loc "invalid index, %a should be smaller than %a"
       B.pp_print n1 B.pp_print j2
 
@@ -727,6 +727,7 @@ let process_annotation genv evi =
   let iv = ref [] in
   let ipv = ref [] in
   let opv = ref [] in
+  let ivd = ref [] in
   let env0 = empty_env genv (unloc mn) in
   let env = ref env0 in
   let convty ty =
@@ -747,8 +748,54 @@ let process_annotation genv evi =
     | _, None ->
       (ity, x)
   in
+
+  let process_dest ws d = 
+    match d with
+    | Ilast.REvar x ->
+      let loc = loc x in
+      let x = find_var !env x in
+      check_type loc x.v_ty (tw ws);
+      [{ d_var = x; d_ofs = None }]
+    | Ilast.REget (x, i) ->
+      let loc = loc x in
+      let x = find_var !env x in
+      let bty,i1,i2 = check_ty_arr loc x.v_ty in
+      check_type loc (Tbase bty) (tw ws);
+      check_bound loc i i i1 i2;
+      [{ d_var = x; d_ofs = Some i }]
+    | Ilast.REblock(x, (i,j)) ->
+        let loc = loc x in
+      let x = find_var !env x in
+      let bty,i1,i2 = check_ty_arr loc x.v_ty in
+      check_type loc (Tbase bty) (tw ws);
+      check_bound loc i j i1 i2;
+      let size = B.to_int (B.add (B.sub j i) B.one) in
+      List.init size (fun k -> {d_var = x; d_ofs = Some (B.add i (B.of_int k))})
+  in
+
+  let process_dests loc d dest = 
+    let ws,i1,i2 = get_arr d.v_ty in
+    let ws = check_ty_ws loc (Tbase ws) in
+    let size = B.to_int (B.add (B.sub i2 i1) B.one) in
+    match dest with
+    | None -> 
+      Array.init size 
+        (fun i -> {d_var = d; d_ofs = Some (B.add i1 (B.of_int i))})
+    | Some ds ->
+      let t = Array.of_list (List.flatten (List.map (process_dest ws) ds)) in
+      if Array.length t <> size then
+        ty_error loc 
+          "bad region declaration, %i elements are declared and %i are provided"
+          size (Array.length t);
+      t in
+    
   let process_ii = function
-    | Ilast.Region (mem, ws, dest, (i1,i2)) ->
+    | Ilast.Var vd ->
+      let d = process_var_decl vd in
+      env := add_var !env d;
+      ivd := d :: !ivd
+    | Ilast.Region (mem, ws, dest, (i1,i2), decls) ->
+      let dloc = loc dest in
       let mloc = loc mem in
       let mem = find_var env0 mem in
       check_ty_mem mloc mem.v_ty;
@@ -756,8 +803,9 @@ let process_annotation genv evi =
         mk_loc (loc dest)
           { Ilast.v_name = dest; Ilast.v_type = Tarr(W ws,i1,i2) } in
       let d = process_var_decl vd in
+      let dest = process_dests dloc d decls in
       env := add_var !env d;
-      ir := { r_from = mem; r_dest = d } :: !ir
+      ir := { r_from = mem; r_name = d; r_dest = dest } :: !ir
     | Ilast.Init (x, v) ->
       let loc = loc x in
       let x = find_var !env x in
@@ -771,7 +819,8 @@ let process_annotation genv evi =
       let (ty, x) = process_io_annot ty x orng in
       opv := (ty, x) :: !opv in
   List.iter process_ii evi.eval_i;
-  m, { init_region = List.rev !ir;
+  m, { init_vard = List.rev !ivd;
+       init_region = List.rev !ir;
        init_var    = List.rev !iv;
        input_var   = List.rev !ipv;
        output_var  = List.rev !opv;}
