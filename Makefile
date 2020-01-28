@@ -63,6 +63,27 @@ documentation:
 logdir:
 	mkdir -p $(LOGDIR)
 
+install: uninstall native
+	@if [[ ":${PATH}:" == *":${HOME}/.local/bin:"* ]]; then\
+	   mkdir -p "${HOME}/.local/bin/" && \
+	   cp $(MAIN).native "${HOME}/.local/bin/scverif" && \
+	   echo "installed scverif to '${HOME}/.local/bin/scverif'"; \
+	elif [[ ":${PATH}:" == *":${HOME}/bin:"* ]]; then\
+	   mkdir -p "${HOME}/bin/" && \
+	   cp $(MAIN).native "${HOME}/bin/scverif" && \
+	   echo "installed scverif to '${HOME}/bin/scverif'"; \
+	else\
+	  echo "Your path is missing ~/bin or ~/.local/bin, refusing to install executable.";\
+	fi
+
+uninstall:
+ifneq (,$(wildcard ${HOME}/.local/bin/scverif))
+	rm "${HOME}/.local/bin/scverif"
+endif
+ifneq (,$(wildcard ${HOME}/bin/scverif))
+	rm "${HOME}/bin/scverif"
+endif
+
 # rule to test ilfiles
 $(ILSRCDIR)/%.iltest %.iltest: $(ILSRCDIR)/%.il native logdir
 	./scverif --il $< | tee $(LOGDIR)/$(notdir $@)
