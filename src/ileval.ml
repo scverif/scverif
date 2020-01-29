@@ -7,8 +7,6 @@ open Il
 
 let ev_hierror (loc:full_loc) fmsg = error "evaluation" loc fmsg
 
-type dest = [%import: Ileval.dest]
-type region_name = [%import: Ileval.region_name]
 type pointer = [%import: Ileval.pointer]
 type cpointer = [%import: Ileval.cpointer]
 type bvalue = [%import: Ileval.bvalue]
@@ -118,22 +116,13 @@ let pp_statevars fmt (st,vtgt : state * Scv.scvtarget) : unit =
   in
   pp_varval fmt vars
 
-let pp_dest fmt d = 
-  match d.d_ofs with
-  | None -> Format.fprintf fmt "%a" V.pp_g d.d_var 
-  | Some i -> Format.fprintf fmt "%a[%a]" V.pp_g d.d_var B.pp_print i
-
-let pp_dests fmt d = 
-  Format.fprintf fmt "@[%a@]" (pp_list ";@ " pp_dest) (Array.to_list d)
-
-let pp_iregion fmt r = 
-  Format.fprintf fmt "[@<h>%a, %a -> %a@]" 
-    V.pp_g r.r_from
-    V.pp_g r.r_name
-    pp_dests r.r_dest
-
 let pp_iregions fmt ir =
-  Format.fprintf fmt "  @[<v>%a@]" (pp_list "@ " pp_iregion) ir
+  Format.fprintf fmt "  @[<v>";
+  List.iter (fun r ->
+      Format.fprintf fmt "%a -> @[%a@]@ "
+        V.pp_g r.r_from
+        V.pp_g r.r_dest) ir;
+  Format.fprintf fmt "@]"
 
 let rec pp_ival fmt = function
   | Iint i       -> B.pp_print fmt i
@@ -481,7 +470,7 @@ let get_ofs ws p =
   B.div p.p_ofs q
 
 let eval_mem_index (loc:full_loc) (st:state) (ws:Common.wsize) (m:var) (e:expr) (v,_ei)
-  : bvalue array * int * var =
+  : bvalue array * int * var * expr =
   match v with
   | Vptr p when V.equal m p.p_mem ->
     begin
@@ -502,7 +491,7 @@ let eval_mem_index (loc:full_loc) (st:state) (ws:Common.wsize) (m:var) (e:expr) 
           with Not_found ->
             ev_hierror loc "%a@ eval_mem_index: unknown region %a"
               pp_state st V.pp_dbg p.p_dest in
-        t, iofs, p.p_dest
+        t, iofs, p.p_dest, Eint ofs
       | false, true -> (* accessing multiple words of destination at once *)
         (* FIXME Benjamin: implement the projection *)
         ev_hierror loc "%a@ need to implement access %a to \
@@ -518,24 +507,9 @@ let eval_mem_index (loc:full_loc) (st:state) (ws:Common.wsize) (m:var) (e:expr) 
       pp_state st pp_bvalue v
       (pp_e ~full:!Glob_option.full) e
 
-
-let load_expr st rname iofs = 
-  let ds = try Mv.find rname st.st_dregion with Not_found -> assert false in
-  let d = ds.(iofs) in
-  match d.d_ofs with
-  | None -> Evar d.d_var
-  | Some i -> Eget(d.d_var, Eint i)
-
-let store_expr st rname iofs = 
-  let ds = try Mv.find rname st.st_dregion with Not_found -> assert false in
-  let d = ds.(iofs) in
-  match d.d_ofs with
-  | None -> Lvar d.d_var
-  | Some i -> Lset(d.d_var, Eint i)
-
 let eval_load loc st ws m e (v,ei) : bvalue * expr =
-  let t, iofs, dest = eval_mem_index loc st ws m e (v,ei) in
-  t.(iofs), load_expr st dest iofs
+  let t, iofs, dest, eofs = eval_mem_index loc st ws m e (v,ei) in
+  t.(iofs), Eget(dest, eofs)
 
 let rec eval_e (loc:full_loc) (st:state) (e:expr) : bvalue * expr =
   match e with
@@ -699,12 +673,12 @@ and eval_assgn (loc:Utils.full_loc) (st:state) (lv:Il.lval) (e:Il.expr) (c:Il.cm
       Lset(x,ei), c
 
     | Lstore(ws, m, ei) ->
-      let t, iofs, dest = eval_mem_index loc st ws m ei (eval_e loc st ei) in
+      let t, iofs, dest, eofs = eval_mem_index loc st ws m ei (eval_e loc st ei) in
       t.(iofs) <- v;
       st.st_mregion <- Mv.add dest t st.st_mregion;
       Glob_option.print_full "@[ileval: updating memory %a: %a gets %a@]@."
         V.pp_g m V.pp_g dest (pp_list ", " pp_bvalue) (Array.to_list t);
-      store_expr st dest iofs, c
+      Lset(dest, eofs), c
   in
   next st (Some {i_desc = Iassgn(lv, e); i_loc = loc }) c
 
@@ -739,19 +713,17 @@ let update_state eenv mn state =
 
 let partial_eval (g:genv) (eenv:eenv) (m:Il.macro) =
   let mdest = ref Mv.empty in
-  let init = find_initial eenv m.mc_name in
-  let init_region (mr, dr) r =
-    assert (r.r_from.v_ty = Tmem);
-    let _, i1, i2 = get_arr r.r_name.v_ty in
-    let t = unknown_arr i1 i2 in
-    assert (not (Mv.mem r.r_name mr));
-    mdest := Mv.add r.r_name r.r_from !mdest;
-    assert (Array.length t = Array.length r.r_dest);
-    Mv.add r.r_name t mr, Mv.add r.r_name r.r_dest dr in
-  let st_mregion, st_dregion = 
-    List.fold_left init_region (Mv.empty, Mv.empty) init.init_region in
 
-  (* FIXME, check that the destination are all disjoint *)
+  let init = find_initial eenv m.mc_name in
+
+  let init_region mr r =
+    assert (r.r_from.v_ty = Tmem);
+    let _, i1, i2 = get_arr r.r_dest.v_ty in
+    let t = unknown_arr i1 i2 in
+    assert (not (Mv.mem r.r_dest mr));
+    mdest := Mv.add r.r_dest r.r_from !mdest;
+    Mv.add r.r_dest t mr in
+  let st_mregion = List.fold_left init_region Mv.empty init.init_region in
 
   let init_var (mv,mr:(value Mv.t) * (bvalue array Mv.t)) (x, iv) =
     let map v =
@@ -791,7 +763,6 @@ let partial_eval (g:genv) (eenv:eenv) (m:Il.macro) =
   Glob_option.print_full "DEBUG mc@ @[<v>%a@]@." (pp_cmd ~full:true) m.mc_body;
   let st = {
     st_mregion;
-    st_dregion;
     st_mvar;
     st_prog  =
       m.mc_body @

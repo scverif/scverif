@@ -141,18 +141,8 @@ type io_ty =
   | Secret
 [@@deriving show]
 
-type region_elem =
-  | REvar of ident 
-  | REget of ident * B.zint
-  | REblock of ident * range
-[@@deriving show]
-
-type region_def = region_elem list
-[@@deriving show]
-
 type init_info =
-  | Var     of var_decl located
-  | Region  of ident * wsize * ident * range * region_def option
+  | Region  of ident * wsize * ident * range
   | Init    of ident * initval
   | Input   of io_ty * ident * (range option)
   | Output  of io_ty * ident * (range option)

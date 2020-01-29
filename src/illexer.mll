@@ -38,7 +38,6 @@
     "signextend", SIGNEXTEND;
     "urandom", URANDOM ;
     "region", REGION ;
-    "var"   , VAR    ;
     "true"  , TRUE   ;
     "while" , WHILE  ;
     "zeroextend", ZEROEXTEND;
