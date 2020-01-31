@@ -61,9 +61,6 @@ end *) = struct
       lc_echar = l.loc_echar;
     }
 
-  let lift_ilvname (v:Il.var) : P.ident =
-    MVU.mkloc (lift_illoc v.v_loc) v.v_name
-
   let lift_ws (ws:Common.wsize) : MVE.ty =
     match ws with
     | Common.U8 -> MVE.W8
@@ -181,10 +178,12 @@ end *) = struct
       else
         error (Some v.v_loc) "use a variable before initialisation"
 
+  let get_index_i ty i = 
+    let _, i1, _ = get_arr ty in
+    B.to_int (B.sub i i1)
+
   let get_index ty = function
-    | Il.Eint i ->
-      let _, i1, _ = get_arr ty in
-      B.to_int (B.sub i i1)
+    | Il.Eint i -> get_index_i ty i 
     | _ -> assert false
 
   let lift_avar ~for_decl env v i =
@@ -356,7 +355,8 @@ end *) = struct
       add_bvar env x
     | Ileval.RDget (x, i) ->
       let env, xs = add_avar env x in
-      env, xs.(B.to_int i)
+      let i = get_index_i x.Il.v_ty i in
+      env, xs.(i)
 
   let init_header_vars aty env ans =
     let vars = atys_of_an aty ans in

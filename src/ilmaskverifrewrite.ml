@@ -24,7 +24,7 @@ let rewriteformaskverif (genv:genv) (eenv:eenv) (mn:macro_name) (params:Scv.scvm
     | Tbase _ -> [RDvar v]
     | Tarr(_,i1,i2) ->
       let size = B.to_int (B.sub i2 i1) + 1 in
-      List.init size (fun i -> RDget(v,B.of_int i))
+      List.init size (fun i -> RDget(v,B.add i1 (B.of_int i)))
     | Tmem -> [] in
   let glob_vars = 
     Ms.fold (fun _ v gv -> v2rds v @ gv) genv.glob_var [] in
