@@ -68,7 +68,7 @@ rewriteformv:
 print:
   kind: maskverif
   target: secxor
-  verbosity: 0;
+  verbosity: 1;
 
 check:
   target: secxor

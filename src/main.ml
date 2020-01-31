@@ -249,7 +249,7 @@ let process_rewritemv (menv:mainenv) (c:Scv.scvcmd located) =
           "expected RewriteMV command but got %a" Scv.pp_scvcmd e
     end in
   List.fold_left
-    (fun m mn ->
+    (fun m mn -> 
        (* TODO fail with location in error message *)
        { m with
         eenv =

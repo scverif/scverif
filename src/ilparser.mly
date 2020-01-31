@@ -203,14 +203,26 @@ annot_ty_kind:
   | PUBLIC                            { Public }
   | SECRET                            { Secret }
 
+region_elem:
+  | x=ident { REvar x }
+  | x=ident LBRACKET i=INT RBRACKET { REindex(x,i) }
+  | x=ident r=range { RErange(x,r) }
+
+region_def:
+  | LBRACKET d=separated_list(SEMICOLON, region_elem) RBRACKET { d }
+
+io_decl:
+  | r=range        { IOrange r }
+  | d = region_def { IOdef d   }
+
 initialization:
   | REGION m=ident ws=wsize x=ident r=range
     { Region(m, ws, x, r) }
   | INIT x=ident v=initval
     { Init(x,v) }
-  | OUTPUT ty=annot_ty_kind i=ident r=range?
+  | OUTPUT ty=annot_ty_kind i=ident r=io_decl?
     { Output(ty, i, r) }
-  | INPUT ty=annot_ty_kind i=ident r=range?
+  | INPUT ty=annot_ty_kind i=ident r=io_decl?
     { Input(ty, i, r) }
 
 eval_command:

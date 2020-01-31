@@ -719,6 +719,10 @@ let rec check_initval (env:env) (loc:Location.t) (v:Ilast.initval) (ty:Common.ty
     else
       ty_error loc "initial value has %d elements but expected %d values" ielems eelems
 
+type rdecl = 
+  | RDvar of var
+  | RDget of var * B.zint
+
 let process_annotation genv evi =
   let open Ileval in
   let mn = evi.Ilast.eval_m in
@@ -735,18 +739,81 @@ let process_annotation genv evi =
     | Ilast.URandom -> Ileval.URandom
     | Ilast.Public  -> Ileval.Public
     | Ilast.Secret  -> Ileval.Secret in
-  let process_io_annot ty x orng =
-    let lx = loc x in
+
+  let rdget x i1 i =  RDget(x, B.add i1 (B.of_int i)) in
+
+  let process_revar l x = 
     let x = find_var !env x in
-    let ity = convty ty in
-    match ity, orng with
-    | _, Some(i1, i2) ->
+    match x.v_ty with
+    | Tbase _ -> x, [RDvar x]
+    | Tarr (_, i1, i2) ->
+      let size = B.to_int (B.sub i2 i1) + 1 in
+      x, List.init size (rdget x i1)
+    | _ -> ty_error l "the variable can not be a memory"
+  in
+
+  let process_rdef l d = 
+    let process_ref1 = function
+      | Ilast.REvar x -> 
+        snd (process_revar l x)
+      | Ilast.REindex(x, i) ->
+        let lx = loc x in
+        let x = find_var !env x in
+        let _, j1, j2 = check_ty_arr lx x.v_ty in
+        check_bound lx i i j1 j2;
+        [rdget x j1 (B.to_int i)]
+      | Ilast.RErange(x,(i1,i2)) ->
+        let lx = loc x in
+        let x = find_var !env x in
+        let _, j1, j2 = check_ty_arr lx x.v_ty in
+        check_bound lx i1 i2 j1 j2;
+        let size = B.to_int (B.sub i2 i1) + 1 in
+        List.init size (rdget x i1) in
+    let all = List.flatten (List.map process_ref1 d) in
+    begin match all with
+    | [] -> ty_error l "can not use an empty region"
+    | x::xs ->
+      let ty_rd = function
+        | RDvar x -> x.v_ty
+        | RDget (x,_) -> let ty, _, _ = get_arr x.v_ty in Tbase ty in
+      let ty = ty_rd x in
+      if not (List.for_all (fun rd -> ty_rd rd = ty) xs) then
+        ty_error l "all the region elements should have the same type";
+      let bty = check_ty_base l ty in
+      bty, Array.of_list all
+    end
+  in
+    
+  let process_sharing x rd = 
+    let lx = loc x in
+    match rd with
+    | None -> 
+      let x, rds = process_revar lx x in
+      x, Array.of_list rds
+    | Some (Ilast.IOrange(i1,i2)) ->
+      let x = find_var !env x in
       let _, j1, j2 = check_ty_arr lx x.v_ty in
       check_bound lx i1 i2 j1 j2;
-      (ity, x)
-    | _, None ->
-      (ity, x)
+      x, Array.init (B.to_int (B.sub i2 i1) + 1) (rdget x i1)
+    | Some (Ilast.IOdef d) ->
+      let bty,d = process_rdef lx d in
+      let x = 
+        try find_var !env x 
+        with Error _ -> 
+          let ty = Tarr(bty, B.zero, B.of_int (Array.length d - 1)) in
+          let vd =
+            mk_loc (loc x) { Ilast.v_name = x; Ilast.v_type = ty } in
+          let d = process_var_decl vd in
+          env := add_var !env d;
+          d in
+      x, d
   in
+  let process_io_annot ty x rd =
+    let ity = convty ty in
+    let x, rd = process_sharing x rd in
+    ity, x, rd
+  in
+
   let process_ii = function
     | Ilast.Region (mem, ws, dest, (i1,i2)) ->
       let mloc = loc mem in
@@ -765,11 +832,11 @@ let process_annotation genv evi =
       let v = check_initval !env loc v ty in
       iv := (x,v) :: !iv
     | Ilast.Input(ty, x, orng) ->
-      let (ty, x) = process_io_annot ty x orng in
-      ipv := (ty, x) :: !ipv
+      let a = process_io_annot ty x orng in
+      ipv := a :: !ipv
     | Ilast.Output(ty, x, orng) ->
-      let (ty, x) = process_io_annot ty x orng in
-      opv := (ty, x) :: !opv in
+      let a = process_io_annot ty x orng in
+      opv := a :: !opv in
   List.iter process_ii evi.eval_i;
   m, { init_region = List.rev !ir;
        init_var    = List.rev !iv;

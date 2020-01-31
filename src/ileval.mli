@@ -23,11 +23,17 @@ type t_ty =
   | Public
   | Secret
 
+type rdecl = 
+  | RDvar of var
+  | RDget of var * B.zint
+
+type rdecls = rdecl array
+
 type initial = {
   init_region : region list;
   init_var    : (V.t * ival) list;
-  input_var   : (t_ty * V.t) list;
-  output_var  : (t_ty * V.t) list;
+  input_var   : (t_ty * V.t * rdecls) list;
+  output_var  : (t_ty * V.t * rdecls) list;
 }
 
 type pointer = {

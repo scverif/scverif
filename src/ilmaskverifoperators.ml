@@ -1,4 +1,5 @@
 (* Copyright 2020 - NXP *)
+open Common
 module MV = Maskverif
 module MVP = Maskverif.Prog
 module MVE = Maskverif.Expr
@@ -95,3 +96,151 @@ let o_asubw8  = mk_op2tttbij MVE.w8  "-w8"
 let o_asubw16 = mk_op2tttbij MVE.w16 "-w16"
 let o_asubw32 = mk_op2tttbij MVE.w32 "-w32"
 let o_asubw64 = mk_op2tttbij MVE.w64 "-w64"
+
+
+let mk_o oN o8 o16 o32 o64 = function
+  | None     -> oN
+  | Some U8  -> o8
+  | Some U16 -> o16
+  | Some U32 -> o32
+  | Some U64 -> o64
+
+let o_xor = mk_o 
+  MVE.o_addb 
+  MVE.o_addw8
+  MVE.o_addw16
+  MVE.o_addw32
+  MVE.o_addw64
+
+let o_and = mk_o
+  MVE.o_mulb 
+  MVE.o_mulw8 
+  MVE.o_mulw16 
+  MVE.o_mulw32 
+  MVE.o_mulw64 
+
+let o_not = mk_o
+  MVE.o_negb
+  MVE.o_negw8 
+  MVE.o_negw16
+  MVE.o_negw32
+  MVE.o_negw64
+
+let o_add = mk_o
+  o_aaddint
+  o_aaddw8
+  o_aaddw16
+  o_aaddw32
+  o_aaddw64
+
+let o_sub = mk_o 
+  o_asubint
+  o_asubw8
+  o_asubw16
+  o_asubw32
+  o_asubw64
+
+let o_mul = mk_o 
+  o_amulint
+  o_amulw8
+  o_amulw16
+  o_amulw32
+  o_amulw64
+
+let o_opp = mk_o
+  o_aoppint
+  o_aoppw8
+  o_aoppw16
+  o_aoppw32
+  o_aoppw64
+
+let mk_ob oi ob o8 o16 o32 o64 = function
+  | Int   -> oi
+  | Bool  -> ob
+  | W U8  -> o8
+  | W U16 -> o16
+  | W U32 -> o32
+  | W U64 -> o64
+
+
+let o_castsint = mk_ob 
+  o_castsintint
+  o_castsintb
+  o_castsintw8
+  o_castsintw16
+  o_castsintw32
+  o_castsintw64
+
+let o_castuint = mk_ob
+  o_castuintint
+  o_castuintb
+  o_castuintw8
+  o_castuintw16
+  o_castuintw32
+  o_castuintw64
+
+let o_lts = mk_o 
+  o_ltsint
+  o_ltsw8
+  o_ltsw16
+  o_ltsw32
+  o_ltsw64
+
+let o_ltu = mk_o
+  o_ltuint
+  o_ltuw8
+  o_ltuw16
+  o_ltuw32
+  o_ltuw64
+
+let o_les = mk_o
+  o_lesint
+  o_lesw8
+  o_lesw16
+  o_lesw32
+  o_lesw64
+
+let o_leu = mk_o 
+  o_leuint
+  o_leuw8
+  o_leuw16
+  o_leuw32
+  o_leuw64
+
+let mk_ow o8 o16 o32 o64 = function
+  | U8  -> o8
+  | U16 -> o16
+  | U32 -> o32
+  | U64 -> o64
+
+let o_lsl = mk_ow 
+  o_lslw8
+  o_lslw16
+  o_lslw32
+  o_lslw64
+
+let o_lsr = mk_ow
+  o_lsrw8
+  o_lsrw16
+  o_lsrw32
+  o_lsrw64
+
+let o_asr = mk_ow
+  o_asrw8
+  o_asrw16
+  o_asrw32
+  o_asrw64
+
+let o_cast_w = mk_ow
+  o_castww8
+  o_castww16
+  o_castww32
+  o_castww64
+
+let o_eq = mk_ob
+  o_eqb
+  o_eqint
+  o_eqw8
+  o_eqw16
+  o_eqw32
+  o_eqw64

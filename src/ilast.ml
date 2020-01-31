@@ -141,11 +141,22 @@ type io_ty =
   | Secret
 [@@deriving show]
 
+type region_elem = 
+  | REvar of ident
+  | REindex of ident * B.zint
+  | RErange of ident * range
+[@@deriving show]
+
+type region_def = 
+  | IOrange of range 
+  | IOdef   of region_elem list
+[@@deriving show]
+
 type init_info =
   | Region  of ident * wsize * ident * range
   | Init    of ident * initval
-  | Input   of io_ty * ident * (range option)
-  | Output  of io_ty * ident * (range option)
+  | Input   of io_ty * ident * region_def option
+  | Output  of io_ty * ident * region_def option
 [@@deriving show]
 
 type eval_info = {

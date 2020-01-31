@@ -216,8 +216,13 @@ let infer_inputs (ainv:(Ileval.t_ty * V.t) list) lmap =
   List.fold_right (fun (x,y) l -> (y,x)::l) (Mv.bindings inputmap) []
 
 let liveset_of_annot aoutv =
-  let lmap = Mv.empty in
-  List.fold_left (fun m (_,v) -> liveset_add_v m v) lmap aoutv
+
+  let liveset_add_rd m = function
+    | Ileval.RDvar x | Ileval.RDget (x,_) -> liveset_add_v m x in
+    
+  let liveset_add_rds = Array.fold_left liveset_add_rd in
+   
+  List.fold_left (fun m (_,x,rds) -> liveset_add_rds (liveset_add_v m x) rds) Mv.empty aoutv
 
 let deadcodeelim (eenv:Ileval.eenv) (mn:Il.macro_name) =
   let st = try(

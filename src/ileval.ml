@@ -15,6 +15,8 @@ type state = [%import: Ileval.state]
 type region = [%import: Ileval.region]
 type ival = [%import: Ileval.ival]
 type t_ty = [%import: Ileval.t_ty]
+type rdecl =[%import: Ileval.rdecl]
+type rdecls =[%import: Ileval.rdecls]
 type initial = [%import: Ileval.initial]
 type eenv = [%import: Ileval.eenv]
 
@@ -151,13 +153,15 @@ let pp_t_ty fmt = function
   | Secret  -> Format.fprintf fmt "secret"
 
 let pp_iovars fmt iov =
-  Format.fprintf fmt "  @[<v>";
-  List.iter (fun (t,x) ->
-      Format.fprintf fmt "%a %a@ "
-        pp_t_ty t
-        V.pp_g x) iov;
-  Format.fprintf fmt "@]"
-
+  let pp_rd fmt = function
+    | RDvar x -> V.pp_g fmt x
+    | RDget (x,i) -> Format.fprintf fmt "%a[%a]" V.pp_g x B.pp_print i in
+  let pp fmt (t,x,rds) = 
+    Format.fprintf fmt "%a %a [@[%a@]]"
+      pp_t_ty t
+      V.pp_g x
+      (pp_list ";@ " pp_rd) (Array.to_list rds) in
+  Format.fprintf fmt "  @[<v>%a@]" (pp_list "@ " pp) iov
 
 let pp_initial fmt ii =
   Format.fprintf fmt "@[<v>regions:@ %a@ vars:@ %a@ inputs:@ %a@ outputs:@ %a@]"
