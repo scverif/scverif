@@ -9,10 +9,16 @@
   exception Error of string
 
   let _keywords = [
-    ".global", DGLOBAL;
-    ".text"  , DTEXT;
     ".align" , DALIGN;
+    ".cpu"   , DCPU;
+    ".data"  , DDATA;
+    ".bss"   , DBSS;
+    ".global", DGLOBAL;
     ".syntax", DSYNTAX;
+    ".text"  , DTEXT;
+    ".thumb" , DTHUMB;
+    ".thumb_func" , DTHUMBFUNC;
+    ".type"  , DTYPE;
   ]
   let keywords = Hash.of_enum (List.enum _keywords)
 }

@@ -224,6 +224,8 @@ initialization:
     { Output(ty, i, r) }
   | INPUT ty=annot_ty_kind i=ident r=io_decl?
     { Input(ty, i, r) }
+  | error
+    { parse_error (Location.make $startpos $endpos) "invalid initialization" }
 
 eval_command:
   | ANNOTATION m=ident i=initialization* SEMICOLON { {eval_m = m; eval_i = i } }
@@ -276,7 +278,8 @@ command1:
   | i=include_                { Ginclude i }
   | e=eval_command            { Gannotation e }
   | d=scvdoc                  { Gscvcmd d }
-  | error        { parse_error (Location.make $startpos $endpos) "" }
+  | error
+    { parse_error (Location.make $startpos $endpos) "invalid command" }
 
 command:
   | c= command1    { c }

@@ -212,6 +212,12 @@ let to_int_s s ws i =
 (* ***************************************************** *)
 (* Operators evaluation                                  *)
 
+(** returns false if exprs are not variables *)
+let equal_vars (e1:expr) (e2:expr) : bool =
+  match e1, e2 with
+  | Evar v1, Evar v2 -> V.equal v1 v2
+  | _                -> false
+
 let op_w_w op ws i1 =
   let w1 = of_int ws i1 in
   Vint (to_uint ws (op w1))
@@ -309,28 +315,36 @@ let easr ws (v1, v2) =
       pp_bvalue v1 pp_bvalue v2;
     Vunknown
 
-let eand ws (v1, v2) =
+let eand ws (v1, v2) (e1, e2) =
   match ws, v1, v2 with
   | None   , Vbool b1, Vbool b2 -> Vbool (b1 && b2)
   | Some ws, Vint i1 , Vint i2  -> op_ww_w B.lgand ws i1 i2
+  | _      , _       , _        when equal_vars e1 e2 ->
+    v1
   | _                           ->
     Glob_option.print_full "@[<v>eand: cannot evaluate Oand %a %a@]@."
       pp_bvalue v1 pp_bvalue v2;
     Vunknown
 
-let exor ws (v1, v2) =
+let exor ws (v1, v2) (e1, e2) =
   match ws, v1, v2 with
   | None   , Vbool b1, Vbool b2 -> Vbool (if b1 then not b2 else b2)
   | Some ws, Vint i1 , Vint i2  -> op_ww_w B.lgxor ws i1 i2
+  | None   , _       , _        when equal_vars e1 e2 ->
+    Vbool false
+  | Some _ , _       , _        when equal_vars e1 e2 ->
+    Vint B.zero
   | _                           ->
     Glob_option.print_full "@[<v>exor: cannot evaluate Oxor %a %a@]@."
       pp_bvalue v1 pp_bvalue v2;
     Vunknown
 
-let eor ws (v1, v2) =
+let eor ws (v1, v2) (e1, e2) =
   match ws, v1, v2 with
   | None   , Vbool b1, Vbool b2 -> Vbool (b1 || b2)
   | Some ws, Vint i1 , Vint i2  -> op_ww_w B.lgor ws i1 i2
+  | _      , _       , _        when equal_vars e1 e2 ->
+    v1
   | _                           ->
     Glob_option.print_full "@[<v>eor: cannot evaluate Oor %a %a@]@."
       pp_bvalue v1 pp_bvalue v2;
@@ -346,12 +360,13 @@ let enot ws v =
     Vunknown
 
 
-let eeq bty (v1,v2) =
+let eeq bty (v1,v2) (e1,e2) =
   match bty, v1, v2 with
   | Int , Vint  i1, Vint  i2 -> Vbool (B.equal i1 i2)
   | _   , Vptr  p1, Vptr  p2 -> Vbool (Ptr.equal p1 p2)
   | Bool, Vbool b1, Vbool b2 -> Vbool (b1 = b2)
   | W ws, Vint  i1, Vint  i2 -> Vbool (B.equal (of_int ws i1) (of_int ws i2))
+  | _   , _       , _        when equal_vars e1 e2 -> Vbool true
   | _,    Vptr  _ , _        ->
     Glob_option.print_full "@[<v>eeq: cannot evaluate Oeq of ptr %a %a@]@."
       pp_bvalue v1 pp_bvalue v2;
@@ -424,11 +439,11 @@ let eval_op (loc:full_loc) (op:Il.op) (vs:bvalue list) (es:expr list)
   | Olsl  ws -> elsl ws (as_seq2 vs)
   | Olsr  ws -> elsr ws (as_seq2 vs)
   | Oasr  ws -> easr ws (as_seq2 vs)
-  | Oand  ws -> eand ws (as_seq2 vs)
-  | Oxor  ws -> exor ws (as_seq2 vs)
-  | Oor   ws -> eor  ws (as_seq2 vs)
+  | Oand  ws -> eand ws (as_seq2 vs) (as_seq2 es)
+  | Oxor  ws -> exor ws (as_seq2 vs) (as_seq2 es)
+  | Oor   ws -> eor  ws (as_seq2 vs) (as_seq2 es)
   | Onot  ws -> enot ws (as_seq1 vs)
-  | Oeq  bty -> eeq bty (as_seq2 vs)
+  | Oeq  bty -> eeq bty (as_seq2 vs) (as_seq2 es)
   | Onamecmp -> enamecmp (as_seq2 es)
   | Olt (s,ws) -> elt s ws (as_seq2 vs)
   | Ole (s,ws) -> ele s ws (as_seq2 vs)

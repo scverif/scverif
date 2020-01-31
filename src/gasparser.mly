@@ -6,7 +6,7 @@
   open Ilast
 %}
 %token EOF COMMA COLON SHARP EXCLAMATION
-%token DGLOBAL DTEXT DALIGN DSYNTAX
+%token DALIGN DDATA DBSS DCPU DGLOBAL DSYNTAX DTEXT DTHUMB DTHUMBFUNC DTYPE
 %token LBRACKET RBRACKET LCURLY RCURLY
 %token <string> IDENT COMMENT
 %token <Bigint.zint> INT
@@ -26,9 +26,15 @@ ident:
 (* TODO some are quite dangerous and should lead to a big fat warning
    GAS input is anyway not considered to be representative for security due to ambiguity *)
 gasignores:
-  | DTEXT   {}
-  | DALIGN  {}
-  | DSYNTAX ident {}
+  | DALIGN INT? COMMENT* {}
+  | DBSS COMMENT* {}
+  | DCPU ident COMMENT* {}
+  | DDATA COMMENT* {}
+  | DGLOBAL ident COMMENT* {}
+  | DSYNTAX ident COMMENT* {}
+  | DTEXT COMMENT* {}
+  | DTHUMB COMMENT* {}
+  | DTHUMBFUNC COMMENT* {}
 
 regident:
   | r=ident { Aexpr (mk_loc (loc r) (Evar { r with pl_desc = String.lowercase (unloc r) } )) }
@@ -66,8 +72,8 @@ gasstmt:
     { parse_error (Location.make $startpos $endpos) "gasparser: invalid statement" }
 
 
-gasmacro:
-  | DGLOBAL gname=ident COMMENT* name=ident COLON COMMENT* cs=nonempty_list(loc(gasstmt))
+%inline gasmacro:
+  | gasignores* DTYPE gname=ident ident COMMENT* name=ident COLON COMMENT* cs=nonempty_list(loc(gasstmt))
     { if (String.equal (unloc gname) (unloc name)) then
         begin
           (* labels must be declared as local variables *)
@@ -93,5 +99,7 @@ gasmacro:
                     "gasparser: global name and label do not match" }
 
 gasfile:
-  | gasignores* ms=gasmacro+ EOF
+  | COMMENT* ms=gasmacro+ EOF
     { ms }
+  | error
+    { parse_error (Location.make $startpos $endpos) "gasparser: invalid gasfile" }

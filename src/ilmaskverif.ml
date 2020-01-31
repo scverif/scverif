@@ -21,7 +21,7 @@ end *) = struct
 
   type ilvmapping =
     | MScalar of MVE.var
-    | MArray of MVE.var array 
+    | MArray of MVE.var array
 
   type mvvmapping =
     | IlVar of Il.var
@@ -31,13 +31,13 @@ end *) = struct
   (* global lookups *)
 
   (* lookup from Il.macro -> MVP.func *)
-  let globilmacro2func : MVP.func Mf.t ref = ref Mf.empty 
+  let globilmacro2func : MVP.func Mf.t ref = ref Mf.empty
 
   (* maskverif internal env *)
-  let mvglobalenv : MVP.global_env = Hashtbl.create 107 
+  let mvglobalenv : MVP.global_env = Hashtbl.create 107
 
-  type mvkind = 
-    | Local 
+  type mvkind =
+    | Local
     | Pin
     | Inp
     | Rand
@@ -45,7 +45,7 @@ end *) = struct
   type liftstate =
     {
       names      : unit Ms.t;
-      mvkind     : mvkind MVE.Mv.t; 
+      mvkind     : mvkind MVE.Mv.t;
       il2mv      : ilvmapping Il.Mv.t; (* translate il variable to mv correspondence *)
       mv2il      : mvvmapping MVE.Mv.t; (* translate back an mv variable to its il origin *)
     }
@@ -92,8 +92,8 @@ end *) = struct
       let s = Format.sprintf "%s/%a" s Uid.pp_s v.v_id in
       assert (not (Ms.mem s env.names));
       s
-    else 
-      s 
+    else
+      s
 
   let mk_name_i env v i =
     let s = Format.sprintf "%s[%i]" v.Il.v_name i in
@@ -102,28 +102,28 @@ end *) = struct
       assert (not (Ms.mem s env.names));
       s
     else s
-            
-  let add_bvar env v = 
+
+  let add_bvar env v =
     match Il.Mv.find v env.il2mv with
     | MScalar x -> env, x
-    | MArray _ -> assert false 
+    | MArray _ -> assert false
     | exception Not_found ->
       let name = mk_name env v in
       let x = MVE.V.mk_var name (lift_ilty v) in
-      { env with 
+      { env with
         names = Ms.add name () env.names;
         il2mv = Il.Mv.add v (MScalar x) env.il2mv;
         mv2il = MVE.Mv.add x (IlVar v) env.mv2il }, x
 
-  let add_avar env v = 
+  let add_avar env v =
     match Il.Mv.find v env.il2mv with
     | MScalar _ -> assert false
     | MArray xs -> env, xs
-    | exception Not_found -> 
+    | exception Not_found ->
       let bty, i1, i2 = Common.get_arr v.Il.v_ty in
       let env = ref env in
-      let create i = 
-        let name = mk_name_i !env v i in 
+      let create i =
+        let name = mk_name_i !env v i in
         let x = MVE.V.mk_var name (lift_bty (Some v.v_loc) bty) in
         env := {!env with
                  names = Ms.add name () !env.names;
@@ -142,55 +142,55 @@ end *) = struct
     | Rand  -> Format.fprintf fmt "random"
 
 
-  let add_kind k env x = 
-    try 
+  let add_kind k env x =
+    try
       let k' = MVE.Mv.find x env.mvkind in
       error None "duplicate declaration of %s, already declared as %a"
         x.MVE.v_name pp_mvkind k'
-    with Not_found -> 
+    with Not_found ->
       { env with mvkind = MVE.Mv.add x k env.mvkind }
 
   let add_pin = add_kind Pin
   let add_in  = add_kind Inp
   let add_rnd = add_kind Rand
   let add_local = add_kind Local
-              
-  let add_pout env x = env 
-  let add_out env x = env 
+
+  let add_pout env x = env
+  let add_out env x = env
 
   open Ilmaskverifoperators
 
-  let check_init for_decl loc env x = 
+  let check_init for_decl loc env x =
     if not (MVE.Mv.mem x !env.mvkind) then
       if for_decl then env := add_local !env x
-      else 
-        error (Some loc) "use a variable before initialisation @." 
+      else
+        error (Some loc) "use a variable before initialisation @."
 
 
-  let lift_var ~for_decl env v = 
+  let lift_var ~for_decl env v =
     match Il.Mv.find v !env.il2mv with
-    | MScalar x -> 
+    | MScalar x ->
       check_init for_decl v.v_loc env x;
-      x 
-    | MArray _ -> assert false 
+      x
+    | MArray _ -> assert false
     | exception Not_found ->
       if for_decl then
         let env0, x = add_bvar !env v in
         env := add_local env0 x;
         x
-      else 
+      else
         error (Some v.v_loc) "use a variable before initialisation"
 
   let get_index ty = function
-    | Il.Eint i -> 
+    | Il.Eint i ->
       let _, i1, _ = get_arr ty in
-      B.to_int (B.sub i i1) 
+      B.to_int (B.sub i i1)
     | _ -> assert false
 
-  let lift_avar ~for_decl env v i = 
+  let lift_avar ~for_decl env v i =
     let i = get_index v.Il.v_ty i in
     match Il.Mv.find v !env.il2mv with
-    | MScalar x -> assert false 
+    | MScalar x -> assert false
     | MArray xs ->
       let x = xs.(i) in
       check_init for_decl v.v_loc env x;
@@ -201,12 +201,12 @@ end *) = struct
         let x = xs.(i) in
         env := add_local env0 x;
         x
-      else 
+      else
         error (Some v.v_loc) "use a variable before initialisation"
 
 
- 
-  let rec lift_expr (i:Il.instr) (env:liftstate ref) (expr:Il.expr) = 
+
+  let rec lift_expr (i:Il.instr) (env:liftstate ref) (expr:Il.expr) =
     match expr with
     | Il.Ebool true ->
       MVP.Econst MVE.C._true
@@ -256,10 +256,10 @@ end *) = struct
           Il.pp_e_dbg (Il.Eop(op,es)) in
 
     match op.od with
-    | Il.Oor t                  -> lift_or (o_and t) (o_not t) 
+    | Il.Oor t                  -> lift_or (o_and t) (o_not t)
     | Il.Oxor t                 -> lift_existing (o_xor t)
-    | Il.Oand t                 -> lift_existing (o_and t) 
-    | Il.Onot t                 -> lift_existing (o_not t) 
+    | Il.Oand t                 -> lift_existing (o_and t)
+    | Il.Onot t                 -> lift_existing (o_not t)
     | Il.Oadd t                 -> lift_existing (o_add t)
     | Il.Osub t                 -> lift_existing (o_sub t)
     | Il.Omul t                 -> lift_existing (o_mul t)
@@ -294,37 +294,37 @@ end *) = struct
     (* TODO improve location *)
     let instr_info = MVP.ToProg.pp_loc_info (lift_illoc (fst i.i_loc)) "" in
     { instr_d; instr_info }
- 
-  let lift_Ileak i env (li:Il.leak_info) (es:Il.expr list) = 
-    let lname, s = 
+
+  let lift_Ileak i env (li:Il.leak_info) (es:Il.expr list) =
+    let lname, s =
       match li with
       | Some lname -> lname, lname
       | None -> "unnamedleak", "_" in
-    
+
     let l_name = MVE.V.mk_var lname MVE.w1 in
-    env := {!env with 
-             mv2il = 
-               MVE.Mv.add l_name (IlLeakname(lname, fst i.Il.i_loc)) 
+    env := {!env with
+             mv2il =
+               MVE.Mv.add l_name (IlLeakname(lname, fst i.Il.i_loc))
                  !env.mv2il};
-    let lis = 
-      Format.sprintf "@[leak %s at %s@]"
-        s
+    let lis =
+      Format.asprintf "@[leak %s(%a)at %s@]"
+        s (Utils.pp_list ", " Il.pp_e_g) es
         (List.fold_right
-           (fun l s -> String.concat "\n" [Location.tostring l; s]) 
+           (fun l s -> String.concat "\n" [Location.tostring l; s])
            (snd i.i_loc) "") in
     let es = List.map (lift_expr i env) es in
-   
+
     let l_exprs = MVP.Eop(MVE.o_tuple, es) in
     let instr_d = MVP.Ileak({l_name; l_exprs}) in
     let instr_info = MVP.ToProg.pp_loc_info (lift_illoc (fst i.i_loc)) lis in
     { MVP.instr_d; instr_info }
- 
+
   let lift_instr env body =
-    let body = 
+    let body =
       List.filter (* remove the labels to keep lift_instr neat and clean *)
         (function { Il.i_desc = Il.Ilabel _} -> false | _ -> true) body in
 
-    let lift_i env i = 
+    let lift_i env i =
       match i.Il.i_desc with
       | Il.Iassgn (lvar, expr) ->
         lift_Iassgn i env lvar expr
@@ -334,7 +334,7 @@ end *) = struct
         error (Some (fst i.i_loc))
           "@[macro calls not yet supported: cannot handle %a@]@."
           Il.pp_i_dbg i
-      | Il.Ilabel _ -> assert false 
+      | Il.Ilabel _ -> assert false
       | Il.Igoto _
       | Il.Iigoto _
       | Il.Iif (_, _, _)
@@ -344,55 +344,54 @@ end *) = struct
           Il.pp_i_dbg i
     in
     let env = ref env in
-    let body = List.map (lift_i env) body in 
-    body, !env 
+    let body = List.map (lift_i env) body in
+    body, !env
 
 
-  let atys_of_an aty ans = 
-    List.filter (fun (aty',_, _) -> aty' = aty) ans 
-  
+  let atys_of_an aty ans =
+    List.filter (fun (aty',_, _) -> aty' = aty) ans
+
   let add_rd env = function
-    | Ileval.RDvar x -> 
+    | Ileval.RDvar x ->
       add_bvar env x
     | Ileval.RDget (x, i) ->
       let env, xs = add_avar env x in
       env, xs.(B.to_int i)
 
-
   let init_header_vars aty env ans =
     let vars = atys_of_an aty ans in
-    List.map_fold (fun env (_,x,rds) -> 
+    List.map_fold (fun env (_,x,rds) ->
         let env, xs = List.map_fold add_rd env (Array.to_list rds) in
-        env, (x,xs)) env vars 
-    
-  let init_header add aty env ans = 
+        env, (x,xs)) env vars
+
+  let init_header add aty env ans =
     let env, xs = init_header_vars aty env ans in
-    let env, xs = 
-      List.map_fold (fun env (_, xs) -> 
-          List.fold_left add env xs, xs) env xs in 
+    let env, xs =
+      List.map_fold (fun env (_, xs) ->
+          List.fold_left add env xs, xs) env xs in
     List.flatten xs, env
 
-  let init_pin  env ans = init_header add_pin Ileval.Public env ans 
-  let init_rnd  env ans = init_header add_rnd Ileval.URandom env ans 
+  let init_pin  env ans = init_header add_pin Ileval.Public env ans
+  let init_rnd  env ans = init_header add_rnd Ileval.URandom env ans
   let init_pout env ans = init_header add_pout Ileval.Public env ans
-  
-  let init_in env ans = 
+
+  let init_in env ans =
     let env, xs = init_header_vars Ileval.Sharing env ans in
-    let env, xs = 
-      List.map_fold (fun env (v,xs) -> 
+    let env, xs =
+      List.map_fold (fun env (v,xs) ->
         let env = List.fold_left add_in env xs in
         let name = mk_name env v in
         let x = MVE.V.mk_var name (lift_ilty v) in
-        let env = 
-          { env with 
+        let env =
+          { env with
             names = Ms.add name () env.names; } in
         env, (x,xs)) env xs in
    xs, env
-        
-  let init_out env ans = 
+
+  let init_out env ans =
     let env, xs = init_header_vars Ileval.Sharing env ans in
-    let env, xs = 
-      List.map_fold (fun env (_,xs) -> 
+    let env, xs =
+      List.map_fold (fun env (_,xs) ->
         let env = List.fold_left add_out env xs in
         env, xs) env xs in
     xs, env
@@ -417,10 +416,10 @@ end *) = struct
     let f_in, lenv = init_in lenv an.input_var in
     let f_out, lenv = init_out lenv an.output_var in
     (* body *)
-   
+
     let f_cmd, lenv = lift_instr lenv st.st_eprog in
-    let f_other = 
-      MVE.Mv.fold (fun x k l -> 
+    let f_other =
+      MVE.Mv.fold (fun x k l ->
           if k = Local then x::l else l) lenv.mvkind [] in
     let (func:MVP.func) = {
       f_name; (* function name *)
