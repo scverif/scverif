@@ -306,7 +306,7 @@ end *) = struct
                MVE.Mv.add l_name (IlLeakname(lname, fst i.Il.i_loc))
                  !env.mv2il};
     let lis =
-      Format.asprintf "@[leak %s(%a)at %s@]"
+      Format.asprintf "@[leak %s(%a) at %s@]"
         s (Utils.pp_list ", " Il.pp_e_g) es
         (List.fold_right
            (fun l s -> String.concat "\n" [Location.tostring l; s])
