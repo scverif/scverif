@@ -1,4 +1,4 @@
-// Copyright 2019 - NXP, TU Darmstadt
+// Copyright 2019-2020 - NXP, TU Darmstadt
 
 /* infinite amount of variables/registers */
 
@@ -152,10 +152,23 @@ macro clear_all ()
   opW <- pub;
 }
 
+
+clear_opB
+clear_opA
+clear_opR
+scrub(rX)
+copy(rX, r0) -> opB = rX
+clear_opB
+
+load_pub(a1) -> opB = a1
+ands(r0,r0) -> opB = pub
+load_pub(a0) -> opB = a0 ---> leak(a1,a0)
+
 macro load_pub (w32 dst)
 {
   leak loadOperand1 (opA, opB);
-  leak loadOperand2 (opA, pub);
+  leak loadOperand2A (opA, pub);
+//  leak loadOperand2B (opB, dst);         // this one is missing
   leak loadMemOperand (opR, pub);
   leak loadTransition (dst, pub);
 

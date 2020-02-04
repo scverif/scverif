@@ -1,4 +1,4 @@
-(* Copyright 2019-2020 - NXP *)
+(* Copyright 2019-2020 - NXP, Inria *)
 open Utils
 open Common
 module MV = Maskverif
@@ -87,7 +87,9 @@ end *) = struct
     let s = v.Il.v_name in
     if Ms.mem s env.names then
       let s = Format.sprintf "%s/%a" s Uid.pp_s v.v_id in
-      assert (not (Ms.mem s env.names));
+      if (Ms.mem s env.names) then
+        error None
+          "@[rewritten name %s already exists.@]@." s;
       s
     else
       s

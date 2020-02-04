@@ -482,10 +482,13 @@ let eval_get (loc:full_loc) st x (v,ei) =
   | _ ->
     Vunknown, Eget(x, ei)
 
-let get_ofs ws p =
+let get_ofs loc ws p =
   let q = B.of_int (ws_byte ws) in
   (* pointer's offset is a multiple of the expected word-size *)
-  assert (B.equal (B.erem p.p_ofs q) B.zero);
+  if not (B.equal (B.erem p.p_ofs q) B.zero) then
+    ev_hierror loc "illegal access: \
+                    pointer's offset %a is not a multiple of the expected word-size %a@."
+      B.pp_print p.p_ofs pp_wsize ws;
   B.div p.p_ofs q
 
 let eval_mem_index (loc:full_loc) (st:state) (ws:Common.wsize) (m:var) (e:expr) (v,_ei)
@@ -501,7 +504,7 @@ let eval_mem_index (loc:full_loc) (st:state) (ws:Common.wsize) (m:var) (e:expr) 
       match ws_eq dst_ws ws, ws_le dst_ws ws with
       | true, _ -> (* accessing equal word-size *)
         (* compute offset in multiples of destination's word-size *)
-        let ofs = get_ofs dst_ws p in
+        let ofs = get_ofs loc dst_ws p in
         (* compute relative offset to destinations lower bound *)
         let iofs = eval_index loc "eval_load region" p.p_dest ofs in
         (* get array holding values from state *)
