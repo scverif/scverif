@@ -1,4 +1,4 @@
-(* Copyright 2019 - Inria, NXP *)
+(* Copyright 2019-2020 - Inria, NXP *)
 
 open Location
 open Utils
@@ -119,8 +119,8 @@ type leak_info = string option
 type op_desc =
   | Oif  of ty
   | Oadd of wsize option
-  | Omul of wsize option
-  | Omulh of wsize
+  | Omul of wsize option (* low word of multiplication*)
+  | Omulh of wsize (* high word of multiplication*)
   | Osub of wsize option
   | Oopp of wsize option
   | Olsl of wsize
