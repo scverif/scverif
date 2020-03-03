@@ -26,7 +26,7 @@ module ILParse = struct
         L.pos_fname = name;
         L.pos_lnum  = 1;
         L.pos_bol   = 0;
-        L.pos_cnum  = 0q
+        L.pos_cnum  = 0
       };
     lexbuf
 
