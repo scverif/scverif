@@ -1,6 +1,5 @@
 // Copyright 2019 - NXP
-
-// ./scverif --il testil/pseudo-secxor2.il | ../maskverif/maskverif
+// SPDX-License-Identifier: BSD-3-Clause-Clear
 
 include il "isa/pseudoisa.il"
 

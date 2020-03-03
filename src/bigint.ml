@@ -1,4 +1,5 @@
 (* Copyright 2019 - Inria, NXP *)
+(* SPDX-License-Identifier: BSD-3-Clause-Clear *)
 
 (* -------------------------------------------------------------------- *)
 module ZImpl : BigintCore.TheInterface = struct

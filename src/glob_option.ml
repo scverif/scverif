@@ -1,4 +1,5 @@
 (* Copyright 2019 - Inria, NXP *)
+(* SPDX-License-Identifier: BSD-3-Clause-Clear *)
 
 let v_silent = 0
 let v_normal = 1         (* normal printing *)

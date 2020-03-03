@@ -1,4 +1,5 @@
 (* Copyright 2019-2020 - Inria, NXP *)
+(* SPDX-License-Identifier: BSD-3-Clause-Clear *)
 
 open Utils
 open Location
@@ -25,7 +26,7 @@ module ILParse = struct
         L.pos_fname = name;
         L.pos_lnum  = 1;
         L.pos_bol   = 0;
-        L.pos_cnum  = 0
+        L.pos_cnum  = 0q
       };
     lexbuf
 

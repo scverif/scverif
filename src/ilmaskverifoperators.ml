@@ -1,4 +1,5 @@
 (* Copyright 2020 - NXP *)
+(* SPDX-License-Identifier: BSD-3-Clause-Clear *)
 open Common
 module MV = Maskverif
 module MVP = Maskverif.Prog

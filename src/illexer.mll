@@ -1,4 +1,5 @@
 (* Copyright 2019-2020 - Inria, NXP *)
+(* SPDX-License-Identifier: BSD-3-Clause-Clear *)
 {
   open Utils
   open Ilparser
