@@ -3,19 +3,30 @@
 
 FROM ocaml/opam2:4.07
 
-RUN opam depext conf-m4 conf-gmp && opam install ocamlfind ocamlbuild menhir zarith ocamlgraph batteries ppx_deriving ppx_import re
-RUN eval $(opam env)
-
-RUN mkdir -p ${HOME}/.local/bin
+ENV SCVHOME="/home/opam/scverif/"
+ENV MVHOME="/home/opam/maskverif"
+ENV MVBRANCH="SPINI"
 ENV PATH=${PATH}:${HOME}/.local/bin
 
-ENV MVHOME="/home/opam/maskverif"
-#COPY --chown=opam maskverif ${MVHOME}
-RUN eval $(opam env) && git clone https://gitlab.com/benjgregoire/maskverif.git -b SPINI ${MVHOME} && cd ${MVHOME}&& make clean install
+RUN mkdir -p ${HOME}/.local/bin \
+        && mkdir -p ${SCVHOME}
 
-ENV SCVHOME="/home/opam/scverif"
-COPY --chown=opam scverif ${SCVHOME}
-# TODO: pull from public git release
+RUN opam depext conf-m4 conf-gmp \
+        && opam install ocamlfind ocamlbuild menhir \
+        zarith ocamlgraph batteries ppx_deriving ppx_import re
+RUN eval $(opam env)
+
+# get and build maskverif
+RUN eval $(opam env) \
+        && git clone https://gitlab.com/benjgregoire/maskverif.git -b ${MVBRANCH} ${MVHOME} \
+        && cd ${MVHOME} \
+        && make clean install
+
+# build local version of scverif
+COPY --chown=opam . ${SCVHOME}
 WORKDIR ${SCVHOME}
-RUN eval $(opam env) && make
+RUN eval $(opam env) \
+        && make clean native
+
+# make it available
 ENV PATH="${SCVHOME}:${PATH}"

@@ -56,6 +56,9 @@ clean:
 	$(OCB) -clean
 	rm -f src/*~ src/.*~ $(MAIN).native $(LOGDIR)/*
 
+container:
+	docker build -t scverif -f .container/Dockerfile .
+
 # TODO, does not work beyond main
 # .odoc file has no effect for unknown reasons
 documentation:
