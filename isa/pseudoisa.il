@@ -1,5 +1,5 @@
 // Copyright 2019-2020 - NXP, TU Darmstadt
-// SPDX-License-Identifier: BSD-3-Clause-Clear
+// SPDX-License-Identifier: BSD-3-Clause-Clear WITH modifications
 
 /* infinite amount of variables/registers */
 

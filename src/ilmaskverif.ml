@@ -1,5 +1,5 @@
 (* Copyright 2019-2020 - NXP, Inria *)
-(* SPDX-License-Identifier: BSD-3-Clause-Clear *)
+(* SPDX-License-Identifier: BSD-3-Clause-Clear WITH modifications *)
 open Utils
 open Common
 module MV = Maskverif

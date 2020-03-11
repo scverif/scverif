@@ -1,0 +1,7 @@
+ocamlfind
+  - homepage: http://projects.camlcity.org/projects/findlib.html
+  - source: https://github.com/ocaml/ocamlfind
+  - version: 1.8.1
+  - license:
+    - MIT
+    - https://github.com/ocaml/ocamlfind/blob/master/LICENSE

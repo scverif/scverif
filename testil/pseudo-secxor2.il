@@ -1,5 +1,5 @@
 // Copyright 2019 - NXP
-// SPDX-License-Identifier: BSD-3-Clause-Clear
+// SPDX-License-Identifier: BSD-3-Clause-Clear WITH modifications
 
 include il "isa/pseudoisa.il"
 

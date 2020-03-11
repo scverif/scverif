@@ -1,5 +1,5 @@
 (* Copyright 2019 - Inria, NXP *)
-(* SPDX-License-Identifier: BSD-3-Clause-Clear *)
+(* SPDX-License-Identifier: BSD-3-Clause-Clear WITH modifications *)
 
 type t 
 val fresh : unit -> t

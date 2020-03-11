@@ -1,0 +1,7 @@
+maskverif (src/*.ml* src/*.c):
+  Copyright (c) - 2016-2019 - Inria
+  Copyright (c) - 2016-2019 - X
+
+Distributed under the terms of the CeCILL-B licence.
+
+http://www.cecill.info/licences/Licence_CeCILL-B_V1-en.txt

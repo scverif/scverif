@@ -1,5 +1,5 @@
 // Copyright 2020 - Inria, NXP
-// SPDX-License-Identifier: BSD-3-Clause-Clear
+// SPDX-License-Identifier: BSD-3-Clause-Clear WITH modifications
 
 include il "isa/isa-cortex-m0plus.il"
 

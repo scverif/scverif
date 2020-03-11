@@ -1,5 +1,5 @@
 ; Copyright 2019 - NXP
-; SPDX-License-Identifier: BSD-3-Clause-Clear
+; SPDX-License-Identifier: BSD-3-Clause-Clear WITH modifications
 
 00000000 <secmult_flaw>:
    0:	b5f0      	push	{r4, r5, r6, r7, lr}

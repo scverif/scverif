@@ -1,5 +1,5 @@
 // Copyright 2019-2020 - NXP
-// SPDX-License-Identifier: BSD-3-Clause-Clear
+// SPDX-License-Identifier: BSD-3-Clause-Clear WITH modifications
 
 w32 r0;
 w32 r1;

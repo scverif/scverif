@@ -1,5 +1,5 @@
 (* Copyright 2019-2020 - Inria, NXP *)
-(* SPDX-License-Identifier: BSD-3-Clause-Clear *)
+(* SPDX-License-Identifier: BSD-3-Clause-Clear WITH modifications *)
 
 open Utils
 open Location
@@ -424,6 +424,11 @@ let main =
     (mainenv := process_gas !mainenv (cmdloc fname); Format.print_flush ()) in
   let process_il' fname =
     (mainenv := process_il !mainenv (cmdloc fname); Format.print_flush ()) in
+  let process_version = fun () ->
+    Format.printf "scVerif version %s%s@.%a@.@.%a@."
+      (odfl Version.version Version.commithash)
+      (if Version.diverged then "-diverged" else "")
+      Version.pp_copyright () Version.pp_mvatrb () in
   let process_scv' fname =
     (mainenv := process_scv !mainenv (cmdloc fname); Format.print_flush ()) in
   let argspec =
@@ -432,10 +437,12 @@ let main =
      ("--scv", Arg.String process_scv', ": process commands in a scv file");
      ("--gas", Arg.String process_gas', ": process code in a gnu assembly file");
      ("-v", Arg.Int process_dbg', ": set verbosity");
+     ("--version", Arg.Unit process_version, ": display version");
      ("-i", Arg.Unit interactive, ": interactive mode");] in
   let cmdlineusage =
     "usage: " ^ Sys.argv.(0) ^
-    " [--asm filename] [--il filename] [--scv filename] [--gas filename] [-v level] [-i]" in
+    " [--asm filename] [--il filename] [--scv filename] \
+     [--gas filename] [-v level] [--version] [-i]" in
   let batch = fun () ->
     (* process command line arguments in order *)
     try

@@ -1,0 +1,7 @@
+ocamlbuild
+  - homepage: https://github.com/ocaml/ocamlbuild
+  - source: https://github.com/ocaml/ocamlbuild
+  - version: 0.14.0
+  - license:
+    - LGPL
+    - https://github.com/ocaml/ocamlbuild/blob/master/LICENSE

@@ -1,3 +1,5 @@
+Modified BSD 3 Clause Clear License
+
 Copyright 2019-2020 - VeriSec Consortium, Inria
 All rights reserved.
 

@@ -1,6 +1,0 @@
-* Installation
-1. Install [[https://gitlab.com/benjgregoire/maskverif/tree/SPINI][the maskverif SPINI branch]]
-see install description there and don't use nix but "make clean install"
-2. Install dependencies ~opam install zarith ocamlbuild menhir ocamlgraph batteries ppx_import re ppx_deriving~
-3. run ~make native~, or after updating maskverif ~make clean native~
-4. run example via: ~./scverif --il testil/pseudo-secxor2.il~
