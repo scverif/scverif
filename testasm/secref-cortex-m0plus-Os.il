@@ -1,5 +1,5 @@
-// Copyright 2019 - NXP
+// Copyright 2019-2020 - NXP
 // SPDX-License-Identifier: BSD-3-Clause-Clear WITH modifications
 
-include il "isa/isa-cortex-m0plus.il"
+include il "models/isa-cortex-m0plus.il"
 include asm "testasm/secref-cortex-m0plus-Os.objdump"

@@ -1,8 +1,8 @@
-// Copyright 2019 - Inria, NXP
+// Copyright 2019-2020 - Inria, NXP
 // SPDX-License-Identifier: BSD-3-Clause-Clear WITH modifications
 
-include il "isa/isa-cortex-m0plus.il"
-include il "isa/leakyisa-cortex-m0plus.il"
+include il "models/isa-cortex-m0plus.il"
+include il "models/leakyisa-cortex-m0plus.il"
 include asm "testasm/secxor-cortex-m0plus-Os.objdump"
 
 annotate secxor
@@ -41,6 +41,11 @@ print:
   kind: evaltrace
   target: secxor
   verbosity: 0;
+
+rewriteformv:
+  target: secxor
+  inferinput: true
+  inferoutput: true;
 
 check:
   kind: NI

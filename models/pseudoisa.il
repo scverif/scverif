@@ -19,13 +19,13 @@ w32 r5;
 w32 r6;
 w32 r7;
 
-/* but these cannot be used for computation
+/* but these should not be used for computation */
 w32 r8;
 w32 r9;
 w32 r10;
 w32 r11;
 w32 r12;
-*/
+w32 sp;
 
 /* variables to capute the leakage state */
 /* do not use for computation! */
@@ -113,75 +113,4 @@ macro store (w32 src, w32 ptr, int index)
   opW <- src;
 
   [w32 mem (uint) (ptr +w32 (w32) (index * 4))] <- src;
-}
-
-// clear leakage state
-macro clear(w32 l) {
-  l <- pub;
-}
-
-// clear regular state
-macro scrub(w32 r) {
-  r <- pub;
-}
-
-macro clear_opA ()
-{
-  opA <- pub;
-}
-
-macro clear_opB ()
-{
-  opB <- pub;
-}
-
-macro clear_opR ()
-{
-  opR <- pub;
-}
-
-macro clear_opW ()
-{
-  opW <- pub;
-}
-
-macro clear_all ()
-{
-  opA <- pub;
-  opB <- pub;
-  opR <- pub;
-  opW <- pub;
-}
-
-
-clear_opB
-clear_opA
-clear_opR
-scrub(rX)
-copy(rX, r0) -> opB = rX
-clear_opB
-
-load_pub(a1) -> opB = a1
-ands(r0,r0) -> opB = pub
-load_pub(a0) -> opB = a0 ---> leak(a1,a0)
-
-macro load_pub (w32 dst)
-{
-  leak loadOperand1 (opA, opB);
-  leak loadOperand2A (opA, pub);
-//  leak loadOperand2B (opB, dst);         // this one is missing
-  leak loadMemOperand (opR, pub);
-  leak loadTransition (dst, pub);
-
-  opA <- pub;
-  opB <- dst;
-  opR <- pub;
-
-  dst <- pub;
-
-}
-
-macro scrub(w32 r)
-{
-  r <- pub;
 }

@@ -1,8 +1,8 @@
-// Copyright 2019 - Inria, NXP
+// Copyright 2019-2020 - Inria, NXP
 // SPDX-License-Identifier: BSD-3-Clause-Clear WITH modifications
 
-include il "isa/isa-cortex-m0plus.il"
-include il "isa/leakyisa-cortex-m0plus.il"
+include il "models/isa-cortex-m0plus.il"
+include il "models/leakyisa-cortex-m0plus.il"
 include asm "testasm/secmult_direct-cortex-m0plus-O3.objdump"
 
 annotate secmult_direct
@@ -37,13 +37,15 @@ inlinecall:
 partialeval:
   target: secmult_direct;
 
-deadcodeelim:
-  target: secmult_direct;
-
 print:
   kind: evaltrace
   target: secmult_direct
   verbosity: 0;
+
+rewriteformv:
+  target: secmult_direct
+  inferinput: true
+  inferoutput: true;
 
 check:
   kind: SNI

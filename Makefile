@@ -22,9 +22,9 @@ ILSRCDIR  := testil
 ILSRC     := $(wildcard $(ILSRCDIR)/*.il)
 ILTESTS   := $(patsubst $(ILSRCDIR)/%.il, %.iltest, $(ILSRC))
 
-ISASRCDIR := isa
-ISASRC	  := $(wildcard $(ISASRCDIR)/*.il)
-ISATESTS  := $(patsubst $(ISASRCDIR)/%.il, %.isatest, $(ISASRC))
+MODELSDIR	:= isa
+MODELSSRC	:= $(wildcard $(MODELSDIR)/*.il)
+MODELSTESTS	:= $(patsubst $(MODELSDIR)/%.il, %.isatest, $(MODELSSRC))
 
 ASMSRCDIR := testasm
 ASMSRC    := $(wildcard $(ASMSRCDIR)/*.objdump)
@@ -93,7 +93,7 @@ $(ILSRCDIR)/%.iltest %.iltest: $(ILSRCDIR)/%.il native logdir
 	./scverif --il $< | tee $(LOGDIR)/$(notdir $@)
 
 # rule to test instruction set architectures
-$(ISASRCDIR)/%.isatest %.isatest: $(ISASRCDIR)/%.il native logdir
+$(MODELSDIR)/%.isatest %.isatest: $(MODELSDIR)/%.il native logdir
 	./scverif --il $< | tee $(LOGDIR)/$(notdir $@)
 
 # rule to test parsing of assembly files
@@ -123,4 +123,4 @@ test-il: secxor-while.iltest
 
 tests: test-m0pisa test-sxor test-sxors test-sand test-sref test-srefs test-il
 
-test-all: $(ILTESTS) $(ISATESTS) $(ASMTESTS) $(EVALTESTS)
+test-all: $(ILTESTS) $(MODELSTESTS) $(ASMTESTS) $(EVALTESTS)

@@ -1,8 +1,8 @@
-// Copyright 2019 - Inria, NXP
+// Copyright 2019-2020 - Inria, NXP
 // SPDX-License-Identifier: BSD-3-Clause-Clear WITH modifications
 
-include il "isa/isa-cortex-m0plus.il"
-include il "isa/leakyisa-cortex-m0plus.il"
+include il "models/isa-cortex-m0plus.il"
+include il "models/leakyisa-cortex-m0plus.il"
 include asm "testasm/secref-cortex-m0plus-O3.objdump"
 
 annotate secrefresh
@@ -39,6 +39,11 @@ print:
   kind: evaltrace
   target: secrefresh
   verbosity: 0;
+
+rewriteformv:
+  target: secrefresh
+  inferinput: true
+  inferoutput: true;
 
 check:
   kind: SNI
