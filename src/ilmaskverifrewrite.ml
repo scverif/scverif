@@ -1,4 +1,4 @@
-(* Copyright 2020 - NXP *)
+(* Copyright 2020 - Inria, NXP *)
 (* SPDX-License-Identifier: BSD-3-Clause-Clear WITH modifications *)
 open Utils
 open Common
