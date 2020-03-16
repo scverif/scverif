@@ -435,9 +435,8 @@ end *) = struct
       f_other;(* internal variables *)
       f_rand; (* input entropy *)
       f_cmd } in
-    (* as in Maskverif.Prog.func *)
-    let func = MVP.Process.macro_expand_func mvglobalenv func in
-    (* update the global state accordingly *)
+    (* update the global state of maskverif *)
+    MVP.add_global mvglobalenv func;
     (* update the binding *)
     globilmacro2func := Mf.add m func !globilmacro2func;
     (* return the resulting func *)

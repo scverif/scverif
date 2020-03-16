@@ -24,7 +24,7 @@ type t_ty =
   | Public
   | Secret
 
-type rdecl = 
+type rdecl =
   | RDvar of var
   | RDget of var * B.zint
 
