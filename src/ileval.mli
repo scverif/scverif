@@ -6,8 +6,8 @@ open Common
 open Il
 
 type region = {
-  r_from  : V.t;    (* name of the memory *)
-  r_dest  : V.t;    (* variable destination *)
+  r_from  : V.t;    (** name of the memory *)
+  r_dest  : V.t;    (** variable destination *)
 }
 
 type ival =
@@ -38,15 +38,15 @@ type initial = {
 }
 
 type pointer = {
-  p_mem  : V.t;   (* access to this memory is performed *)
-  p_dest : V.t;   (* the variable representing the accessed location *)
-  p_ofs  : B.zint (* index of the access relative to p_dest *)
+  p_mem  : V.t;   (** access to this memory is performed *)
+  p_dest : V.t;   (** the variable representing the accessed location *)
+  p_ofs  : B.zint (** index of the access relative to p_dest *)
 }
 
 type cpointer = Lbl.t
 
 type bvalue =
-  | Vcptr of Lbl.t
+  | Vcptr of cpointer
   | Vptr  of pointer
   | Vint  of B.zint
   | Vbool of bool
@@ -56,13 +56,15 @@ type value =
   | Varr  of bvalue array
   | Vbase of bvalue
 
+(** state for partial evaluation *)
 type state = {
-  mutable st_mregion : bvalue array Mv.t;
-  mutable st_mvar    : value Mv.t;
-  mutable st_prog    : cmd;
-  mutable st_pc      : cmd;
-  mutable st_eprog   : cmd;
-          st_global  : Il.genv;
+  mutable st_mregion : bvalue array Mv.t;  (** store containing value of memories *)
+  mutable st_mvar    : value Mv.t;         (** store containing value of variables *)
+  mutable st_prog    : cmd;                (** instructions of current scope (e.g. macro)*)
+  mutable st_pc      : cmd;                (** instructions to be executed next *)
+  mutable st_eprog   : cmd;                (** trace of evaluated instructions *)
+          st_global  : Il.genv;            (** copy of global environment *)
+          st_lblvar  : V.t option;         (** variable always holding the last visited label *)
 }
 
 type eenv = {

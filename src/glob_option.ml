@@ -7,13 +7,15 @@ let v_normal_debug = 2   (* normal printing with extra info i.e full *)
 let v_full = 3           (* full printing *)
 
 let full = ref false
-let set_full b = full := b
+let set_full b =
+  full := b
 
 let verbose = ref v_silent
 
 let set_verbose lvl =
   verbose := lvl;
-  set_full (v_normal_debug <= lvl)
+  set_full (v_normal_debug <= lvl);
+  Maskverif.Util.set_verbose lvl
 
 let if_fprintf lvl =
   if lvl <= !verbose then Format.fprintf

@@ -206,8 +206,6 @@ end *) = struct
       else
         error (Some v.v_loc) "use a variable before initialisation"
 
-
-
   let rec lift_expr (i:Il.instr) (env:liftstate ref) (expr:Il.expr) =
     match expr with
     | Il.Ebool true ->
@@ -350,6 +348,7 @@ end *) = struct
     body, !env
 
 
+  (** restrict annotations to specify annotation type aty *)
   let atys_of_an aty ans =
     List.filter (fun (aty',_, _) -> aty' = aty) ans
 
@@ -404,6 +403,7 @@ end *) = struct
     if Mf.mem m !globilmacro2func then
       error None
         "@[macro %s already lifted.@]@." m.mc_name;
+    Glob_option.print_full "about to lift %s to maskverif@." m.mc_name;
     let lenv : liftstate = {
         names  = Ms.empty;
         mvkind = MVE.Mv.empty;
@@ -475,6 +475,8 @@ let check_mvprog (params:Scv.scvcheckkind) (m:Il.macro) (an:Ileval.initial) (st:
     | Scv.Strongnoninterference -> MVU.(`SNI)
     )
   in
+  Glob_option.print_full
+    "Building leakage set of %s for maskverif@." m.mc_name;
   let (mvparams, nb_shares, interns, outputs, pubout, _) =
     MVP.build_obs_func
       ~ni:algorithm ~trans:false ~glitch:false
@@ -484,6 +486,8 @@ let check_mvprog (params:Scv.scvcheckkind) (m:Il.macro) (an:Ileval.initial) (st:
     pp_error = true;
     checkbool = true;
   } in
+  Glob_option.print_full
+    "Dispatching maskverif for %s@." m.mc_name;
   let success = match params with
   | Scv.StatefulNoninterference ->
     MV.Checker.check_ni

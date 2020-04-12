@@ -1,4 +1,4 @@
-(* Copyright 2019 - Inria, NXP *)
+(* Copyright 2019-2020 - Inria, NXP *)
 (* SPDX-License-Identifier: BSD-3-Clause-Clear WITH modifications *)
 
 open Location
@@ -10,31 +10,22 @@ type t = [%import: Location.t]
 type 'a located = [%import: 'a Location.located]
 [@@deriving show]
 
-type ident = string located [@@deriving show]
-type hex   = B.zint located [@@deriving show]
+type ident  = string located [@@deriving show]
+type hex    = B.zint located [@@deriving show]
 
-type regimm =
- | Reg of ident
- | Imm of B.zint located
-[@@deriving show]
-
+(** operands of assembly instructions *)
 type operand =
-  | Regimm  of regimm
-  | RegOffs of ident * regimm
-  | Label   of ident * hex
-[@@deriving show]
-
-type operands =
-  | Ofixed    of operand list
-  | Oflexible of ident list
-  | Onone
+  | Reg     of ident                          (** register by name *)
+  | Imm     of B.zint located                 (** constant number *)
+  | Bool    of bool located                   (** rarely used flag *)
+  | Label   of ident * B.zint located option  (** label with optional integrated offset *)
 [@@deriving show]
 
 type stmt_r = {
   offset    : hex;
   instr_bin : hex;
   instr_asm : ident;
-  instr_exp : operands
+  instr_exp : operand list
 } [@@deriving show]
 
 type stmt = stmt_r located [@@deriving show]

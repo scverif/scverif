@@ -38,7 +38,7 @@ end
 (* Pretty printer *)
 
 let pp_bvalue fmt = function
-  | Vcptr lbl -> Format.fprintf fmt "lbl %a" Lbl.pp_g lbl
+  | Vcptr lbl -> Format.fprintf fmt "lbl %a" Lbl.pp lbl
   | Vptr p    -> Ptr.pp fmt p
   | Vint i    -> B.pp_print fmt i
   | Vbool b   -> Format.fprintf fmt "%b" b
@@ -157,7 +157,7 @@ let pp_iovars fmt iov =
   let pp_rd fmt = function
     | RDvar x -> V.pp_g fmt x
     | RDget (x,i) -> Format.fprintf fmt "%a[%a]" V.pp_g x B.pp_print i in
-  let pp fmt (t,x,rds) = 
+  let pp fmt (t,x,rds) =
     Format.fprintf fmt "%a %a [@[%a@]]"
       pp_t_ty t
       V.pp_g x
@@ -243,19 +243,28 @@ let eif (v1,v2,v3) =
   | Vbool b -> if b then v2 else v3
   | _       -> Vunknown
 
-let eadd (loc:full_loc) ws (v1, v2) =
+let eadd (loc:full_loc) (st:state) ws (v1, v2) =
   match ws, v1, v2 with
   | None   , Vint i1, Vint i2 -> Vint (B.add i1 i2)
   | _      , Vptr p , Vint i
   | _      , Vint i , Vptr p  -> Vptr { p with p_ofs = B.add p.p_ofs i }
   | Some ws, Vint i1, Vint i2 -> op_ww_w B.add ws i1 i2
+  | _      , Vcptr l, Vint i
+  | _      , Vint i , Vcptr l ->
+    (* addition to code pointer *)
+    (match find_label_glob st.st_global l.l_name (B.add l.l_offs i) with
+     | Some lbl -> Vcptr lbl (* resulting label is defined *)
+     | None ->
+       Format.printf "@[<v>eadd: Oadd %a %a results in undefined label in %a@]@."
+         pp_bvalue v1 pp_bvalue v2 pp_full_loc loc;
+       Vunknown)
   | _                         ->
     Format.printf "@[<v>eadd: cannot evaluate Oadd %a %a in %a@]@."
       pp_bvalue v1 pp_bvalue v2
       pp_full_loc loc;
     Vunknown
 
-let esub ws (v1, v2) =
+let esub (loc:full_loc) (st:state) ws (v1, v2) =
   match ws, v1, v2 with
   | None   , Vint i1, Vint i2 -> Vint (B.sub i1 i2)
   | _      , Vptr p , Vint i
@@ -265,14 +274,23 @@ let esub ws (v1, v2) =
       Vint (B.sub p1.p_ofs p2.p_ofs)
     else
       begin
-        Format.printf "@[<v>esub: cannot evaluate Osub of two different ptr %a %a@]@."
-          pp_bvalue v1 pp_bvalue v2;
+        Format.printf "@[<v>esub: cannot evaluate Osub of two different ptr %a %a in %a@]@."
+          pp_bvalue v1 pp_bvalue v2 pp_full_loc loc;
         Vunknown
       end
   | Some ws, Vint i1, Vint i2 -> op_ww_w B.sub ws i1 i2
+  | _      , Vcptr l, Vint i
+  | _      , Vint i , Vcptr l ->
+    (* addition to code pointer *)
+    (match find_label_glob st.st_global l.l_name (B.sub l.l_offs i) with
+     | Some lbl -> Vcptr lbl (* resulting label is defined *)
+     | None ->
+       Glob_option.print_full "@[<v>esub: Osub of %a %a results in undefined label in %a@]@."
+         pp_bvalue v1 pp_bvalue v2 pp_full_loc loc;
+       Vunknown)
   | _                         ->
-    Glob_option.print_full "@[<v>esub: cannot evaluate Osub %a %a@]@."
-      pp_bvalue v1 pp_bvalue v2;
+    Glob_option.print_full "@[<v>esub: cannot evaluate Osub %a %a in %a@]@."
+      pp_bvalue v1 pp_bvalue v2 pp_full_loc loc;
     Vunknown
 
 let eopp ws v1 =
@@ -427,15 +445,15 @@ let ecast_int s bty v =
   | Vptr p, W w, Unsigned -> Vptr {p with p_ofs = to_uint w p.p_ofs}
   | _     , _     , _        -> Vunknown
 
-let eval_op (loc:full_loc) (op:Il.op) (vs:bvalue list) (es:expr list)
+let eval_op (loc:full_loc) (st:state) (op:Il.op) (vs:bvalue list) (es:expr list)
   : bvalue =
   match op.od with
   | Oif   _  -> eif (as_seq3 vs)
-  | Oadd  ws -> eadd loc ws (as_seq2 vs)
+  | Oadd  ws -> eadd loc st ws (as_seq2 vs)
   | Omul  ws -> emul ws (as_seq2 vs)
   | Omulh _ ->
     ev_hierror loc "op %s not yet implemented please raise an issue request" (op_string op)
-  | Osub  ws -> esub ws (as_seq2 vs)
+  | Osub  ws -> esub loc st ws (as_seq2 vs)
   | Oopp  ws -> eopp ws (as_seq1 vs)
   | Olsl  ws -> elsl ws (as_seq2 vs)
   | Olsr  ws -> elsr ws (as_seq2 vs)
@@ -462,17 +480,17 @@ let eval_var st x =
   | Varr _ -> Vunknown
   | exception Not_found -> Vunknown
 
-let eval_index (loc:full_loc) msg x i =
+let eval_index (loc:full_loc) (st:state) msg x i =
   let _, i1, i2 = get_arr x.v_ty in
   if not (B.le i1 i && B.le i i2) then
-    ev_hierror loc "%s out of bound (%a:[%a:%a]) [%a] " msg
-      V.pp_g x B.pp_print i1 B.pp_print i2 B.pp_print i;
+    ev_hierror loc "%a %s out of bound (%a:[%a:%a]) [%a] "
+      pp_state st msg V.pp_g x B.pp_print i1 B.pp_print i2 B.pp_print i;
   B.to_int (B.sub i i1)
 
 let eval_get (loc:full_loc) st x (v,ei) =
   match v with
   | Vint i ->
-    let ofs = eval_index loc "eval_get" x i in
+    let ofs = eval_index loc st "eval_get" x i in
     let vi =
       match Mv.find x st.st_mvar with
       | Varr t              -> t.(ofs)
@@ -483,13 +501,13 @@ let eval_get (loc:full_loc) st x (v,ei) =
   | _ ->
     Vunknown, Eget(x, ei)
 
-let get_ofs loc ws p =
+let get_ofs loc st ws p =
   let q = B.of_int (ws_byte ws) in
   (* pointer's offset is a multiple of the expected word-size *)
   if not (B.equal (B.erem p.p_ofs q) B.zero) then
-    ev_hierror loc "illegal access: \
+    ev_hierror loc "%a illegal access: \
                     pointer's offset %a is not a multiple of the expected word-size %a@."
-      B.pp_print p.p_ofs pp_wsize ws;
+      pp_state st B.pp_print p.p_ofs pp_wsize ws;
   B.div p.p_ofs q
 
 let eval_mem_index (loc:full_loc) (st:state) (ws:Common.wsize) (m:var) (e:expr) (v,_ei)
@@ -505,9 +523,9 @@ let eval_mem_index (loc:full_loc) (st:state) (ws:Common.wsize) (m:var) (e:expr) 
       match ws_eq dst_ws ws, ws_le dst_ws ws with
       | true, _ -> (* accessing equal word-size *)
         (* compute offset in multiples of destination's word-size *)
-        let ofs = get_ofs loc dst_ws p in
+        let ofs = get_ofs loc st dst_ws p in
         (* compute relative offset to destinations lower bound *)
-        let iofs = eval_index loc "eval_load region" p.p_dest ofs in
+        let iofs = eval_index loc st "eval_load region" p.p_dest ofs in
         (* get array holding values from state *)
         let t =
           try Mv.find p.p_dest st.st_mregion
@@ -543,7 +561,7 @@ let rec eval_e (loc:full_loc) (st:state) (e:expr) : bvalue * expr =
   | Eload(ws, m, e) -> eval_load loc st ws m e (eval_e loc st e)
   | Eop(op, es) ->
     let vs, es = eval_es loc st es in
-    let v = eval_op loc op vs es in
+    let v = eval_op loc st op vs es in
     let e =
       match v with
       | Vint i  -> Eint i
@@ -572,7 +590,7 @@ let find_label (loc:full_loc) (lbl:Lbl.t) (st:state) : instr list option =
               aux c2
         end
       | Ilabel lbl' when Lbl.equal lbl lbl' ->
-        Some c'
+        Some c
       | Ilabel _
       | Iassgn _
       | Ileak _
@@ -589,7 +607,6 @@ let unknown_arr i1 i2 =
   Array.make size Vunknown
 
 let rec eval_i (st:state) : unit =
-(*  Format.eprintf "%a@." pp_state st; *)
   match st.st_pc with
   | [] -> ()
   | i :: c ->
@@ -602,55 +619,80 @@ let rec eval_i (st:state) : unit =
       (* TODO implement this one as well *)
       ev_hierror i.i_loc "@[<v>%a@ eval %a: found macro %s but expected it to be inlined@]"
         pp_state st pp_i_dbg i mname
-    | Ilabel _ ->
+    | Ilabel l ->
+      (* update the program counter s.t. it is a cpointer to the current label *)
+      oiter (fun v -> st.st_mvar <- Mv.add v (Vbase (Vcptr l)) st.st_mvar) st.st_lblvar;
       next st (Some i) c
     | Igoto lbl ->
       (match find_label i.i_loc lbl st with
-      | Some c -> next st (None) c
-      | None ->
-        begin
-          try
-            (* check that label points to a macro *)
-            let mn = Ml.find lbl st.st_global.glob_lbl in
-            let m = Ms.find mn st.st_global.macro in
-            (* check that macro has no parameters *)
-            (* FIXME WARNING goto correct position in macro *)
-            if List.length m.mc_params != 0 then
-              ev_hierror i.i_loc "@[<v>%a@ eval Igoto: global jump to macro %s with arguments \
-                                  but expected it to be inlined@]"
-                pp_state st mn pp_i_dbg i;
-            (* change body of current evaluation *)
-            st.st_prog <- m.mc_body;
-            next st (None) m.mc_body
-              (* on return take evaluated part and append, proceed with next instr. *)
-          with Not_found ->
-            ev_hierror i.i_loc "@[<v>%a@ %a@ eval Igoto: encountered global jump \"%a\" \
-                                with unknown label@]"
-              pp_state st pp_genv_dbg st.st_global pp_i_dbg i
-          end)
+       | Some c -> next st (None) c
+       | None ->
+         begin
+           try
+             (* check that label points to a macro *)
+             let mn = oget ~exn:Not_found (Ml.find lbl st.st_global.glob_mem).ld_defmacro in
+             let m = Ms.find mn st.st_global.macro in
+             (* check that macro has no parameters *)
+             (* FIXME WARNING goto correct position in macro *)
+             if List.length m.mc_params != 0 then
+               ev_hierror i.i_loc "@[<v>%a@ eval Igoto: global jump to macro %s with arguments \
+                                   but expected it to be inlined@]"
+                 pp_state st mn pp_i_dbg i;
+             (* change body of current evaluation *)
+             st.st_prog <- m.mc_body;
+             (match find_label i.i_loc lbl st with
+              | Some c -> next st (None) c
+              | None -> assert false (* inconsistency of lbl scope view *))
+           with Not_found ->
+             ev_hierror i.i_loc "@[<v>%a@ %a@ eval Igoto: encountered global jump \"%a\" \
+                                 with unknown destination@]"
+               pp_state st pp_genv_dbg st.st_global pp_i_dbg i
+         end)
     | Iigoto x ->
-      begin match eval_var st x with
-      | Vcptr lbl ->
-        (match find_label i.i_loc lbl st with
-         | Some c -> next st (None) c
-         | None ->
-           ev_hierror i.i_loc "@[<v>%a@ eval Iigoto: encountered global jump %a \
-                               but expected it to be inlined@]"
-             pp_state st pp_i_dbg i)
-      | bv ->
-        ev_hierror i.i_loc "@[<v>%a@ eval unexpected value in Iigoto: %a @ \
-                            expected a pointer but got %a@]"
-          pp_state st pp_i_dbg i pp_bvalue bv
+      begin
+        match eval_var st x with
+        | Vcptr lbl when Lbl.equal Lbl.exit_ lbl -> next st (None) []
+        | Vcptr lbl ->
+          (match find_label i.i_loc lbl st with
+           | Some c -> next st (None) c
+           | None ->
+             begin
+               try
+                 (* check that label points to a macro *)
+                 let mn = oget ~exn:Not_found
+                     (Ml.find lbl st.st_global.glob_mem).ld_defmacro in
+                 let m = Ms.find mn st.st_global.macro in
+                 (* check that macro has no parameters *)
+                 (* FIXME WARNING goto correct position in macro *)
+                 if List.length m.mc_params != 0 then
+                   ev_hierror i.i_loc
+                     "@[<v>%a@ eval Iigoto: global jump to macro %s with arguments \
+                      but expected it to be inlined@]"
+                     pp_state st mn pp_i_dbg i;
+                 (* change body of current evaluation *)
+                 st.st_prog <- m.mc_body;
+                 (match find_label i.i_loc lbl st with
+                  | Some c -> next st (None) c
+                  | None -> assert false (* inconsistency of lbl scope view *))
+               with Not_found ->
+                 ev_hierror i.i_loc "@[<v>%a@ %a@ eval Iigoto: encountered global jump \"%a\" \
+                                     with unknown destination@]"
+                   pp_state st pp_genv_dbg st.st_global pp_i_dbg i
+             end)
+        | bv ->
+          ev_hierror i.i_loc "@[<v>%a@ eval unexpected value in Iigoto: %a @ \
+                              expected a pointer but got %a@]"
+            pp_state st pp_i_dbg i pp_bvalue bv
       end
     | Iif(e,c1,c2) ->
       begin match eval_e i.i_loc st e with
-      | Vbool b, _  -> next st None ((if b then c1 else c2) @ c)
-      | Vunknown, _ ->
-        ev_hierror i.i_loc "@[<v>%a@ eval Iif: cannot evaluate conditional expression \"%a\" at %a@]"
-          pp_state st
-          pp_e_dbg e
-          pp_full_loc i.i_loc
-      | _, _        -> assert false
+        | Vbool b, _  -> next st None ((if b then c1 else c2) @ c)
+        | Vunknown, _ ->
+          ev_hierror i.i_loc "@[<v>%a@ eval Iif: cannot evaluate conditional expression \"%a\" at %a@]"
+            pp_state st
+            pp_e_dbg e
+            pp_full_loc i.i_loc
+        | _, _        -> assert false
       end
     | Iwhile (c1, e, c2) ->
       let c = c1 @ {i_desc = Iif (e, c2 @ [i], []); i_loc = i.i_loc} :: c in
@@ -667,10 +709,7 @@ and eval_assgn (loc:Utils.full_loc) (st:state) (lv:Il.lval) (e:Il.expr) (c:Il.cm
     match lv with
     | Lvar x ->
       st.st_mvar <- Mv.add x (Vbase v) st.st_mvar;
-      if x.v_name = "pc" then
-        lv, {i_desc = Iigoto x; i_loc = loc}::c
-      else
-        lv, c
+      lv, c
     | Lset(x,ei) ->
       let vi, ei = eval_e loc st ei in
       begin match vi with
@@ -781,9 +820,7 @@ let partial_eval (g:genv) (eenv:eenv) (m:Il.macro) =
       assert false
   in
   let st_mvar, st_mregion = List.fold_left init_var (Mv.empty, st_mregion) init.init_var in
-  (* TODO set the program counter accordingly *)
 
-  Glob_option.print_full "DEBUG mc@ @[<v>%a@]@." (pp_cmd ~full:true) m.mc_body;
   let st = {
     st_mregion;
     st_mvar;
@@ -791,10 +828,10 @@ let partial_eval (g:genv) (eenv:eenv) (m:Il.macro) =
       m.mc_body @
       [ { i_desc = Ilabel Lbl.exit_; i_loc = dummy_full_loc; } ];
     st_pc    = m.mc_body;
+    st_lblvar = Ms.Exceptionless.find "pc" g.glob_var;
     st_eprog = [];
     st_global = g;
     } in
-  Glob_option.print_full "DEBUG st@ @[<v>%a@]@." (pp_cmd ~full:true) st.st_prog;
 
   eval_i st;
   { st with st_eprog = List.rev st.st_eprog }

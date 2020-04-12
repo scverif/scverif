@@ -24,6 +24,11 @@ bool apsrc;
 bool apsrv;
 
 int metric_cyclecount;
+int metric_ops_xor;
+int metric_ops_and;
+int metric_ops_copy;
+int metric_ops_load;
+int metric_ops_store;
 
 mem [];
 
@@ -81,12 +86,14 @@ macro ASR_C (w32 x, int shift, w32 result, bool carry_out)
 
 macro mov2 (w32 dst, w32 op)
 {
-  if dst =name= pc {
+  metric_ops_copy <- metric_ops_copy + 1;
+  dst <- op;
+  if (dst =name= pc) {
     metric_cyclecount <- metric_cyclecount + 2;
+    goto dst;
   } else {
     metric_cyclecount <- metric_cyclecount + 1;
   }
-  dst <- op;
 }
 
 macro movs2 (w32 dst, w32 op)
@@ -106,6 +113,9 @@ macro adds3 (w32 dst, w32 op1, w32 op2)
   AddWithCarry(op1, op2, false, dst, apsrc, apsrv);
   ExtractBit(dst, 31, apsrn);
   IsZero(dst, apsrz);
+  if (dst =name= pc) {
+    goto dst;
+  }
 }
 
 macro adds2 (w32 op1, w32 op2)
@@ -122,6 +132,9 @@ macro add3 (w32 dst, w32 op1, w32 op2)
     metric_cyclecount <- metric_cyclecount + 1;
   }
   AddWithCarry(op1, op2, false, dst, i, j);
+  if (dst =name= pc) {
+    goto dst;
+  }
 }
 
 macro add2 (w32 op1, w32 op2)
@@ -129,12 +142,15 @@ macro add2 (w32 op1, w32 op2)
   add3(op1, op1, op2);
 }
 
-macro adcs2 (w32 op1, w32 op2)
+macro adcs2 (w32 dst, w32 op2)
 {
   metric_cyclecount <- metric_cyclecount + 1;
-  AddWithCarry(op1, op2, apsrc, op1, apsrc, apsrv);
-  ExtractBit(op1, 31, apsrn);
-  IsZero(op1, apsrz);
+  AddWithCarry(dst, op2, apsrc, dst, apsrc, apsrv);
+  ExtractBit(dst, 31, apsrn);
+  IsZero(dst, apsrz);
+  if (dst =name= pc) {
+    goto dst;
+  }
 }
 
 macro sub3 (w32 dst, w32 op1, w32 op2)
@@ -142,6 +158,9 @@ macro sub3 (w32 dst, w32 op1, w32 op2)
 {
   metric_cyclecount <- metric_cyclecount + 1;
   SubWithCarry(op1, op2, dst, i, j);
+  if (dst =name= pc) {
+    goto dst;
+  }
 }
 
 macro sub2 (w32 op1, w32 op2)
@@ -155,6 +174,9 @@ macro subs3 (w32 dst, w32 op1, w32 op2)
   SubWithCarry(op1, op2, dst, apsrc, apsrv);
   ExtractBit(op1, 31, apsrn);
   IsZero(op1, apsrz);
+  if (dst =name= pc) {
+    goto dst;
+  }
 }
 
 macro subs2 (w32 op1, w32 op2)
@@ -166,30 +188,43 @@ macro ldr3 (w32 dst, w32 adr, w32 ofs)
   w32 address
 {
   metric_cyclecount <- metric_cyclecount + 1;
+  metric_ops_load <- metric_ops_load + 1;
   add3(address, adr, ofs);
   dst <- [w32 mem (int) address];
+  if (dst =name= pc) {
+    goto dst;
+  }
 }
 
 macro ldrb3 (w32 dst, w32 adr, w32 ofs)
   w32 address
 {
   metric_cyclecount <- metric_cyclecount + 1;
+  metric_ops_load <- metric_ops_load + 1;
   add3(address, adr, ofs);
   dst <- zeroextend w32 [w8 mem (int) address];
+  if (dst =name= pc) {
+    goto dst;
+  }
 }
 
 macro ldrh3 (w32 dst, w32 adr, w32 ofs)
   w32 address
 {
   metric_cyclecount <- metric_cyclecount + 1;
+  metric_ops_load <- metric_ops_load + 1;
   add3(address, adr, ofs);
   dst <- zeroextend w32 [w16 mem (int) address];
+  if (dst =name= pc) {
+    goto dst;
+  }
 }
 
 macro str3 (w32 op, w32 adr, w32 ofs)
   w32 address
 {
   metric_cyclecount <- metric_cyclecount + 1;
+  metric_ops_store <- metric_ops_store + 1;
   add3(address, adr, ofs);
   [w32 mem (int) address] <- op;
 }
@@ -198,6 +233,7 @@ macro strb3 (w32 op, w32 adr, w32 ofs)
   w32 address, w8 val
 {
   metric_cyclecount <- metric_cyclecount + 1;
+  metric_ops_store <- metric_ops_store + 1;
   add3(address, adr, ofs);
   val <- (w8) (uint) op;
   [w8 mem (int) address] <- val;
@@ -207,6 +243,7 @@ macro strh3 (w32 op, w32 adr, w32 ofs)
   w32 address, w16 val
 {
   metric_cyclecount <- metric_cyclecount + 1;
+  metric_ops_store <- metric_ops_store + 1;
   add3(address, adr, ofs);
   val <- (w16) (uint) op;
   [w16 mem (int) address] <- val;
@@ -224,9 +261,22 @@ macro sxth2 (w32 dst, w32 src)
   dst <- signextend w32 (w16) ((uint) src);
 }
 
+macro stmia4 (w32 adr, bool increment, w32 val1, w32 val2)
+{
+  metric_cyclecount <- metric_cyclecount - 1;
+  metric_ops_store <- metric_ops_store + 2;
+  str3(val1, adr, (w32) 0);
+  str3(val2, adr, (w32) 4);
+  if (increment) {
+    metric_cyclecount <- metric_cyclecount - 1;
+    add2(adr, (w32) 8);
+  }
+}
+
 macro push1 (w32 op1)
 {
   metric_cyclecount <- metric_cyclecount - 1;
+  metric_ops_store <- metric_ops_store + 1;
   sub2(sp, (w32) 4);
   str3(op1, sp, (w32) 0);
 }
@@ -234,6 +284,7 @@ macro push1 (w32 op1)
 macro push2 (w32 op1, w32 op2)
 {
   metric_cyclecount <- metric_cyclecount - 2;
+  metric_ops_store <- metric_ops_store + 2;
   sub2(sp, (w32) 8);
   str3(op1, sp, (w32) 0);
   str3(op2, sp, (w32) 4);
@@ -242,6 +293,7 @@ macro push2 (w32 op1, w32 op2)
 macro push3 (w32 op1, w32 op2, w32 op3)
 {
   metric_cyclecount <- metric_cyclecount - 3;
+  metric_ops_store <- metric_ops_store + 3;
   sub2(sp, (w32) 12);
   str3(op1, sp, (w32) 0);
   str3(op2, sp, (w32) 4);
@@ -251,6 +303,7 @@ macro push3 (w32 op1, w32 op2, w32 op3)
 macro push4 (w32 op1, w32 op2, w32 op3, w32 op4)
 {
   metric_cyclecount <- metric_cyclecount - 4;
+  metric_ops_store <- metric_ops_store + 4;
   sub2(sp, (w32) 16);
   str3(op1, sp, (w32) 0);
   str3(op2, sp, (w32) 4);
@@ -261,6 +314,7 @@ macro push4 (w32 op1, w32 op2, w32 op3, w32 op4)
 macro push5 (w32 op1, w32 op2, w32 op3, w32 op4, w32 op5)
 {
   metric_cyclecount <- metric_cyclecount - 5;
+  metric_ops_store <- metric_ops_store + 5;
   sub2(sp, (w32) 20);
   str3(op1, sp, (w32) 0);
   str3(op2, sp, (w32) 4);
@@ -272,6 +326,7 @@ macro push5 (w32 op1, w32 op2, w32 op3, w32 op4, w32 op5)
 macro push6 (w32 op1, w32 op2, w32 op3, w32 op4, w32 op5, w32 op6)
 {
   metric_cyclecount <- metric_cyclecount - 6;
+  metric_ops_store <- metric_ops_store + 6;
   sub2(sp, (w32) 24);
   str3(op1, sp, (w32) 0);
   str3(op2, sp, (w32) 4);
@@ -284,6 +339,7 @@ macro push6 (w32 op1, w32 op2, w32 op3, w32 op4, w32 op5, w32 op6)
 macro push7 (w32 op1, w32 op2, w32 op3, w32 op4, w32 op5, w32 op6, w32 op7)
 {
   metric_cyclecount <- metric_cyclecount - 7;
+  metric_ops_store <- metric_ops_store + 7;
   sub2(sp, (w32) 28);
   str3(op1, sp, (w32) 0);
   str3(op2, sp, (w32) 4);
@@ -297,6 +353,7 @@ macro push7 (w32 op1, w32 op2, w32 op3, w32 op4, w32 op5, w32 op6, w32 op7)
 macro push8 (w32 op1, w32 op2, w32 op3, w32 op4, w32 op5, w32 op6, w32 op7, w32 op8)
 {
   metric_cyclecount <- metric_cyclecount - 8;
+  metric_ops_store <- metric_ops_store + 8;
   sub2(sp, (w32) 32);
   str3(op1, sp, (w32) 0);
   str3(op2, sp, (w32) 4);
@@ -311,6 +368,7 @@ macro push8 (w32 op1, w32 op2, w32 op3, w32 op4, w32 op5, w32 op6, w32 op7, w32 
 macro push9 (w32 op1, w32 op2, w32 op3, w32 op4, w32 op5, w32 op6, w32 op7, w32 op8, w32 op9)
 {
   metric_cyclecount <- metric_cyclecount - 9;
+  metric_ops_store <- metric_ops_store + 9;
   sub2(sp, (w32) 36);
   str3(op1, sp, (w32) 0);
   str3(op2, sp, (w32) 4);
@@ -324,155 +382,176 @@ macro push9 (w32 op1, w32 op2, w32 op3, w32 op4, w32 op5, w32 op6, w32 op7, w32 
 }
 
 macro pop1 (w32 op1)
+  w32 adr
 {
+  metric_ops_load <- metric_ops_load + 1;
+  adr <- sp;
   if op1 =name= pc {
     metric_cyclecount <- metric_cyclecount + 1;
   } else {
     metric_cyclecount <- metric_cyclecount - 1;
   }
-  ldr3(op1, sp, (w32) 0);
   add2(sp, (w32) 4);
+  ldr3(op1, adr, (w32) 0);
 }
 
 macro pop2 (w32 op1, w32 op2)
+  w32 adr
 {
+  metric_ops_load <- metric_ops_load + 2;
   if op2 =name= pc {
     metric_cyclecount <- metric_cyclecount;
   } else {
     metric_cyclecount <- metric_cyclecount - 2;
   }
-  ldr3(op1, sp, (w32) 0);
-  ldr3(op2, sp, (w32) 4);
   add2(sp, (w32) 8);
+  ldr3(op1, adr, (w32) 0);
+  ldr3(op2, adr, (w32) 4);
 }
 
 macro pop3 (w32 op1, w32 op2, w32 op3)
+  w32 adr
 {
+  metric_ops_load <- metric_ops_load + 3;
+  adr <- sp;
   if op3 =name= pc {
     metric_cyclecount <- metric_cyclecount - 1;
   } else {
     metric_cyclecount <- metric_cyclecount - 3;
   }
-  ldr3(op1, sp, (w32) 0);
-  ldr3(op2, sp, (w32) 4);
-  ldr3(op3, sp, (w32) 8);
   add2(sp, (w32) 12);
+  ldr3(op1, adr, (w32) 0);
+  ldr3(op2, adr, (w32) 4);
+  ldr3(op3, adr, (w32) 8);
 }
 
 macro pop4 (w32 op1, w32 op2, w32 op3, w32 op4)
+  w32 adr
 {
+  metric_ops_load <- metric_ops_load + 4;
+  adr <- sp;
   if op4 =name= pc {
     metric_cyclecount <- metric_cyclecount - 2;
   } else {
     metric_cyclecount <- metric_cyclecount - 4;
   }
-  ldr3(op1, sp, (w32) 0);
-  ldr3(op2, sp, (w32) 4);
-  ldr3(op3, sp, (w32) 8);
-  ldr3(op4, sp, (w32) 12);
   add2(sp, (w32) 16);
+  ldr3(op1, adr, (w32) 0);
+  ldr3(op2, adr, (w32) 4);
+  ldr3(op3, adr, (w32) 8);
+  ldr3(op4, adr, (w32) 12);
 }
 
 macro pop5 (w32 op1, w32 op2, w32 op3, w32 op4, w32 op5)
+  w32 adr
 {
+  metric_ops_load <- metric_ops_load + 5;
+  adr <- sp;
   if op5 =name= pc {
     metric_cyclecount <- metric_cyclecount - 3;
   } else {
     metric_cyclecount <- metric_cyclecount - 5;
   }
-  ldr3(op1, sp, (w32) 0);
-  ldr3(op2, sp, (w32) 4);
-  ldr3(op3, sp, (w32) 8);
-  ldr3(op4, sp, (w32) 12);
-  ldr3(op5, sp, (w32) 16);
   add2(sp, (w32) 20);
+  ldr3(op1, adr, (w32) 0);
+  ldr3(op2, adr, (w32) 4);
+  ldr3(op3, adr, (w32) 8);
+  ldr3(op4, adr, (w32) 12);
+  ldr3(op5, adr, (w32) 16);
 }
 
 macro pop6 (w32 op1, w32 op2, w32 op3, w32 op4, w32 op5, w32 op6)
+  w32 adr
 {
+  metric_ops_load <- metric_ops_load + 6;
+  adr <- sp;
   if op6 =name= pc {
     metric_cyclecount <- metric_cyclecount - 4;
   } else {
     metric_cyclecount <- metric_cyclecount - 6;
   }
-  ldr3(op1, sp, (w32) 0);
-  ldr3(op2, sp, (w32) 4);
-  ldr3(op3, sp, (w32) 8);
-  ldr3(op4, sp, (w32) 12);
-  ldr3(op5, sp, (w32) 16);
-  ldr3(op6, sp, (w32) 20);
   add2(sp, (w32) 24);
+  ldr3(op1, adr, (w32) 0);
+  ldr3(op2, adr, (w32) 4);
+  ldr3(op3, adr, (w32) 8);
+  ldr3(op4, adr, (w32) 12);
+  ldr3(op5, adr, (w32) 16);
+  ldr3(op6, adr, (w32) 20);
 }
 
 macro pop7 (w32 op1, w32 op2, w32 op3, w32 op4, w32 op5, w32 op6, w32 op7)
+  w32 adr
 {
+  metric_ops_load <- metric_ops_load + 7;
+  adr <- sp;
   if op7 =name= pc {
     metric_cyclecount <- metric_cyclecount - 5;
   } else {
     metric_cyclecount <- metric_cyclecount - 7;
   }
-  ldr3(op1, sp, (w32) 0);
-  ldr3(op2, sp, (w32) 4);
-  ldr3(op3, sp, (w32) 8);
-  ldr3(op4, sp, (w32) 12);
-  ldr3(op5, sp, (w32) 16);
-  ldr3(op6, sp, (w32) 20);
-  ldr3(op7, sp, (w32) 24);
   add2(sp, (w32) 28);
+  ldr3(op1, adr, (w32) 0);
+  ldr3(op2, adr, (w32) 4);
+  ldr3(op3, adr, (w32) 8);
+  ldr3(op4, adr, (w32) 12);
+  ldr3(op5, adr, (w32) 16);
+  ldr3(op6, adr, (w32) 20);
+  ldr3(op7, adr, (w32) 24);
 }
 
 macro pop8 (w32 op1, w32 op2, w32 op3, w32 op4, w32 op5, w32 op6, w32 op7, w32 op8)
+  w32 adr
 {
+  metric_ops_load <- metric_ops_load + 8;
+  adr <- sp;
   if op8 =name= pc {
     metric_cyclecount <- metric_cyclecount - 6;
   } else {
     metric_cyclecount <- metric_cyclecount - 8;
   }
-  ldr3(op1, sp, (w32) 0);
-  ldr3(op2, sp, (w32) 4);
-  ldr3(op3, sp, (w32) 8);
-  ldr3(op4, sp, (w32) 12);
-  ldr3(op5, sp, (w32) 16);
-  ldr3(op6, sp, (w32) 20);
-  ldr3(op7, sp, (w32) 24);
-  ldr3(op8, sp, (w32) 28);
   add2(sp, (w32) 32);
+  ldr3(op1, adr, (w32) 0);
+  ldr3(op2, adr, (w32) 4);
+  ldr3(op3, adr, (w32) 8);
+  ldr3(op4, adr, (w32) 12);
+  ldr3(op5, adr, (w32) 16);
+  ldr3(op6, adr, (w32) 20);
+  ldr3(op7, adr, (w32) 24);
+  ldr3(op8, adr, (w32) 28);
 }
 
 macro pop9 (w32 op1, w32 op2, w32 op3, w32 op4, w32 op5, w32 op6, w32 op7, w32 op8, w32 op9)
+  w32 adr
 {
+  metric_ops_load <- metric_ops_load + 7;
+  adr <- sp;
   if op9 =name= pc {
     metric_cyclecount <- metric_cyclecount - 7;
   } else {
     metric_cyclecount <- metric_cyclecount - 9; // never happens as op9 must be pc
   }
-  ldr3(op1, sp, (w32) 0);
-  ldr3(op2, sp, (w32) 4);
-  ldr3(op3, sp, (w32) 8);
-  ldr3(op4, sp, (w32) 12);
-  ldr3(op5, sp, (w32) 16);
-  ldr3(op6, sp, (w32) 20);
-  ldr3(op7, sp, (w32) 24);
-  ldr3(op8, sp, (w32) 28);
-  ldr3(op9, sp, (w32) 32);
   add2(sp, (w32) 36);
+  ldr3(op1, adr, (w32) 0);
+  ldr3(op2, adr, (w32) 4);
+  ldr3(op3, adr, (w32) 8);
+  ldr3(op4, adr, (w32) 12);
+  ldr3(op5, adr, (w32) 16);
+  ldr3(op6, adr, (w32) 20);
+  ldr3(op7, adr, (w32) 24);
+  ldr3(op8, adr, (w32) 28);
+  ldr3(op9, adr, (w32) 32);
 }
 
-/* make excl a boolean input */
-macro ldmiaexcl2 (w32 adr, w32 dst1)
+macro ldmia3 (w32 adr, bool wb, w32 dst1)
+  w32 address
 {
+  metric_ops_load <- metric_ops_load + 1;
   metric_cyclecount <- metric_cyclecount - 1;
-  ldr3(dst1, adr, (w32) 0);
-  add2(adr, (w32) 4);
-}
-
-macro ldmia3 (bool wb, w32 adr, w32 dst1)
-{
-  metric_cyclecount <- metric_cyclecount - 1;
-  ldr3(dst1, adr, (w32) 0);
+  address <- adr;
   if wb {
     add2(adr, (w32) 4);
   }
+  ldr3(dst1, address, (w32) 0);
 }
 
 macro lsls3 (w32 dst, w32 op1, w32 shift)
@@ -523,6 +602,7 @@ macro asrs2 (w32 dst, w32 op1)
 macro eors2 (w32 op1, w32 op2)
 {
   metric_cyclecount <- metric_cyclecount + 1;
+  metric_ops_xor <- metric_ops_xor + 1;
   op1 <- op1 ^w32 op2;
   ExtractBit(op1, 31, apsrn);
   IsZero(op1, apsrz);
@@ -531,6 +611,7 @@ macro eors2 (w32 op1, w32 op2)
 macro ands2 (w32 op1, w32 op2)
 {
   metric_cyclecount <- metric_cyclecount + 1;
+  metric_ops_and <- metric_ops_and + 1;
   op1 <- op1 &w32 op2;
   ExtractBit(op1, 31, apsrn);
   IsZero(op1, apsrz);
@@ -756,6 +837,7 @@ macro nop0 ()
   metric_cyclecount <- metric_cyclecount + 1;
 }
 
+// FIXME: asmlifter needs to take care of it
 macro word1 (w32 i)
 {}
 

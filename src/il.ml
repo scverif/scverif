@@ -62,9 +62,8 @@ type lbl = {
   l_id   : Uid.t;
 }
 
-
 module Lbl : sig
-  type t
+  type t = lbl
   val compare : t -> t -> int
   val equal   : t -> t -> bool
   val fresh   : string -> B.zint -> t
@@ -73,8 +72,6 @@ module Lbl : sig
   val pp      : Format.formatter -> t -> unit
   val pp_g    : Format.formatter -> t -> unit
   val pp_dbg  : Format.formatter -> t -> unit
-  val hasname : string -> t -> bool
-  val compdata: string -> B.zint -> t -> bool
 
   val exit_ : t
 end = struct
@@ -83,8 +80,6 @@ end = struct
 
   let compare l1 l2 = Uid.compare l1.l_id l2.l_id
   let equal l1 l2 = Uid.equal l1.l_id l2.l_id
-  let hasname s l = String.equal s l.l_name
-  let compdata b o l = (String.equal l.l_name b) && (l.l_offs == o)
 
   let fresh l_name ofs =
     { l_name;
@@ -145,17 +140,17 @@ type op = {
   }
 
 type expr =
-  | Eint of B.zint
-  | Ebool of bool
-  | Evar of V.t
-  | Eget of V.t * expr            (* array access *)
-  | Eload of wsize * V.t * expr   (* memory access *)
-  | Eop  of op * expr list
+  | Eint  of B.zint               (** constant integer *)
+  | Ebool of bool                 (** constant boolean *)
+  | Evar  of V.t                  (** magic dinosaur *)
+  | Eget  of V.t * expr           (** array access *)
+  | Eload of wsize * V.t * expr   (** memory access *)
+  | Eop   of op * expr list       (** operation on variable number of arguments *)
 
 type lval =
   | Lvar   of V.t
-  | Lset   of V.t * expr           (* array assign *)
-  | Lstore of wsize * V.t * expr   (* memory assign *)
+  | Lset   of V.t * expr           (** array assign *)
+  | Lstore of wsize * V.t * expr   (** memory assign *)
 
 type macro_arg =
   | Aexpr  of expr
@@ -167,14 +162,15 @@ type param =
   | Plabel of Lbl.t
 
 type instr_desc =
-  | Iassgn of lval * expr
-  | Ileak  of leak_info * expr list
-  | Imacro of macro_name * macro_arg list
-  | Ilabel of Lbl.t
-  | Igoto  of Lbl.t
-  | Iigoto of V.t
-  | Iif    of expr * cmd * cmd
-  | Iwhile of cmd * expr * cmd
+  | Iassgn of lval * expr                  (** assignment to state from expression *)
+  | Ileak  of leak_info * expr list        (** explicit leak statement *)
+  | Imacro of macro_name * macro_arg list  (** call of macro by name and arguments *)
+  | Ilabel of Lbl.t                        (** label, used as target for jumps and data *)
+  | Igoto  of Lbl.t                        (** static goto with fixed destination *)
+  | Iigoto of V.t                          (** implicit goto of variable destination *)
+  | Iif    of expr * cmd * cmd             (** conditional code exection,
+                                                1st cmd for true, 2nd for false branch *)
+  | Iwhile of cmd * expr * cmd             (** conditional loop with *)
 
 and instr = {
    i_desc : instr_desc;
@@ -211,16 +207,26 @@ module M = struct
 
 end
 
-type genv = {
-  glob_var : V.t Ms.t;
-  glob_lbl : macro_name Ml.t; (* lookup from label to macro name for global jumps *)
-  glob_mem : B.zint Ml.t;     (* global memory, e.g. for data stored inside asm code *)
-  macro    : macro Ms.t;
+module Mb = Map.Make(Z)
+
+(** data associated to a label *)
+type lbldata = {
+  ld_defmacro : macro_name option;  (** defining macro *)
+  ld_data     : B.zint option;      (** optional data associated *)
 }
 
-let empty_genv =
-  { glob_var = Ms.empty;
-    glob_lbl = Ml.empty;
+type genv = {
+  glob_var : V.t Ms.t;           (** variables which have been defined global *)
+  macro    : macro Ms.t;         (** macros which have been defined global *)
+  (** two staged lookup of labels by name and offset,
+      for computation on labels *)
+  glob_lbl : (Lbl.t Mb.t) Ms.t;
+  glob_mem : lbldata Ml.t;       (** global memory addressable by labels *)
+}
+
+let empty_genv = {
+    glob_var = Ms.empty;
+    glob_lbl = Ms.empty;
     glob_mem = Ml.empty;
     macro    = Ms.empty;
   }
@@ -235,12 +241,40 @@ let pp_glob_var ~full fmt gvs =
         n (V.pp_full ~full:full) v) gvs;
   Format.fprintf fmt "@]"
 
+let pp_mb_lbl ~full fmt ml =
+  Format.fprintf fmt "  {@[<v>";
+  Mb.iter (fun b l ->
+      Format.fprintf fmt "%a@ "
+      (Lbl.pp_full ~full) l) ml;
+  Format.fprintf fmt "@]}"
+
 let pp_glob_lbl ~full fmt gls =
   Format.fprintf fmt "  @[<v>";
-  Ml.iter (fun l mn ->
-      Format.fprintf fmt "%a -> %s@ "
-        (Lbl.pp_full ~full:full) l mn) gls;
+  Ms.iter (fun ln ml ->
+      Format.fprintf fmt "%s -> %a@ "
+        ln (pp_mb_lbl ~full) ml) gls;
   Format.fprintf fmt "@]"
+
+let pp_lbldata fmt (d:lbldata) =
+  let pp_data fmt = function
+   | Some i ->
+     B.pp_print fmt i;
+   | _ ->
+     Format.fprintf fmt "_" in
+  let pp_mac fmt = function
+    | Some mn ->
+      Format.fprintf fmt "%s" mn;
+    | _ ->
+      Format.fprintf fmt "_" in
+  Format.fprintf fmt "%a data, defined in %a"
+    pp_data d.ld_data pp_mac d.ld_defmacro
+
+let pp_glob_mem ~full fmt ml =
+  Format.fprintf fmt "  {@[<v>";
+  Ml.iter (fun l d ->
+      Format.fprintf fmt "%a -> %a@ "
+      (Lbl.pp_full ~full) l pp_lbldata d) ml;
+  Format.fprintf fmt "@]}"
 
 let pp_glob_macro_name ~full fmt mm =
   Format.fprintf fmt "  @[<v>";
@@ -257,9 +291,11 @@ let pp_glob_macro_name ~full fmt mm =
 let pp_genv ~full fmt g =
   Format.fprintf fmt "@[<v>global vars:{@   @[<v>%a@]}@ \
                       global labels:{@   @[<v>%a@]}@ \
+                      global memory:{@   @[<v>%a@]}@ \
                       global macros:{@   @[<v>%a@]}@ @]"
     (pp_glob_var ~full:full) g.glob_var
     (pp_glob_lbl ~full:full) g.glob_lbl
+    (pp_glob_mem ~full:full) g.glob_mem
     (pp_glob_macro_name ~full:full) g.macro
 
 let pp_genv_g fmt g = pp_genv ~full:!Glob_option.full fmt g
@@ -301,39 +337,73 @@ let e2lv = function
 
 (* *********************************************** *)
 (* Checking that all labels are defined            *)
+
+(** get labels defined in instruction list *)
 let defined_label c =
   List.fold_left (fun s i ->
     match i.i_desc with
     | Ilabel lbl -> Sl.add lbl s
     | _ -> s) Sl.empty c
 
+(** get labels declared in macro header *)
 let params_label =
   List.fold_left (fun s p ->
       match p with
       | Plabel lbl -> Sl.add lbl s
       | _ -> s) Sl.empty
 
+let find_label_glob (g:genv) (name:string) (offs:B.zint)
+  : Lbl.t option =
+  try
+    let ofs = Ms.find name g.glob_lbl in
+    Some (Mb.find (B.to_zint offs) ofs)
+  with Not_found ->
+    None
+
+(** validity check of all used labels in a macro *)
 let check_labels (msg:string) (g:genv) (m:macro) =
   let def = defined_label m.mc_body in
   let dparams = params_label m.mc_params in
   let all = Sl.union def dparams in
   let defined = ref Sl.empty in
-  let check ii lbl =
+  (* check valid use of a label inside macro body *)
+  let check (ii:full_loc) (lbl:Lbl.t) =
+    (* check if declared as parameter or local *)
     if not (Sl.mem lbl all) then
       (* try to find the label globally *)
-      if not (Ml.mem lbl g.glob_lbl) then
-        error msg ii "%a@ undefined label %a in %s" pp_genv_dbg g (Lbl.pp_full ~full:true) lbl m.mc_name
-      else (* label defined, now check its definition *)
-        let mdest = Ms.find (Ml.find lbl g.glob_lbl) g.macro in
-        if not (Sl.mem lbl (params_label mdest.mc_locals)) then
-          error msg ii "%a@ inconsistent label %a in %s, globally known but stale in %s"
-            pp_genv_dbg g (Lbl.pp_full ~full:true) lbl m.mc_name mdest.mc_name
+      match find_label_glob g lbl.l_name lbl.l_offs with
+      | Some l when Lbl.equal lbl l ->
+        (* label defined, check its definition *)
+        begin
+          try
+            let lbldata = Ml.find l g.glob_mem in
+            (match lbldata.ld_defmacro with
+            | Some mn ->
+              let definingmacro = Ms.find mn g.macro in
+              if not (Sl.mem lbl (params_label definingmacro.mc_locals)) then
+                error msg ii "%a@ inconsistent label %a in %s, globally known but undefined in %s"
+                  pp_genv_dbg g (Lbl.pp_full ~full:true) lbl m.mc_name definingmacro.mc_name
+            | None ->
+              error msg ii "%a@ label %a in %s is globally known but \
+                            not defined inside a macro"
+                  pp_genv_dbg g (Lbl.pp_full ~full:true) lbl m.mc_name)
+          with Not_found ->
+            error msg ii "%a@ corrupted label database: \
+                          %a in %s is globally known but cannot be resolved"
+              pp_genv_dbg g (Lbl.pp_full ~full:true) lbl m.mc_name
+        end
+      | _ ->
+        error msg ii
+          "%a@ undefined label %a in %s"
+          pp_genv_dbg g (Lbl.pp_full ~full:true) lbl m.mc_name
   in
+  (* check validity of a label definition *)
   let check_def ii lbl =
     if Sl.mem lbl !defined then
       error msg ii "redefinition of label %a" Lbl.pp lbl;
     defined := Sl.add lbl !defined
   in
+  (* check validity of labels used as argument *)
   let check_args ii args =
     List.iter (function Alabel lbl -> check ii lbl | _ -> ()) args in
   let rec check_i i =
@@ -551,6 +621,7 @@ and pp_else ~full fmt c =
     Format.fprintf fmt "@ else@ %a" (pp_cmd ~full) c
 
 let pp_cmd_g fmt = pp_cmd ~full:!Glob_option.full fmt
+let pp_cmd_dbg fmt = pp_cmd ~full:true fmt
 let pp_i_g fmt = pp_i ~full:!Glob_option.full fmt
 let pp_i_dbg fmt = pp_i ~full:true fmt
 
@@ -565,6 +636,9 @@ let pp_macro ~full fmt m =
 
 let pp_macro_g p =
   pp_macro ~full:!Glob_option.full p
+
+let pp_macro_dbg p =
+  pp_macro ~full:true p
 
 let pp_global ~full fmt = function
   | Gvar x -> Format.fprintf fmt "%a;" (pp_var_decl ~full) x

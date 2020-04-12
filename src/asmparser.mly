@@ -5,6 +5,7 @@
   open Location
   open Utils
   open Asmast
+  open Common
 %}
 %token COLON COMMA PLUS
 %token LBRACKET RBRACKET
@@ -24,86 +25,78 @@
   | x=X
     { { pl_desc = x; pl_loc = Location.make $startpos $endpos; } }
 
-%inline secname:
-  | n=IDENT
+%inline ident:
+  | n=loc(IDENT)
     { n }
 
 %inline hexseq:
   | hs=loc(HEX)
     { mk_loc (loc hs) (String.concat "" (String.split_on_char ' ' (unloc hs)))}
 
-%inline immediate_:
+immediate:
   | i=loc(IDENT)
-    { mk_loc (loc i) (Bigint.of_string (unloc i)) }
+    { mk_loc (loc i) (B.of_string (unloc i)) }
   | h=loc(HEX) (* four digit immediate ambiguously classified as hex *)
-    { mk_loc (loc h) (Bigint.of_string (unloc h)) }
-
-%inline immediate:
-  | SHARP i=immediate_ { i }
+    { mk_loc (loc h) (B.of_string (unloc h)) }
 
 hex:
   | ib=hexseq
     { mk_loc (loc ib)
-             (try Bigint.of_string ("0x"^(unloc ib))
-              with Invalid_argument _ -> Bigint.of_string (unloc ib)) }
+             (try B.of_string ("0x"^(unloc ib))
+              with Invalid_argument _ -> B.of_string (unloc ib)) }
 
 hex_vl:
   | ib=loc(IDENT)
-    { mk_loc (loc ib) (Bigint.of_string ("0x"^(unloc ib))) }
+    { mk_loc (loc ib) (B.of_string ("0x"^(unloc ib))) }
   | h=hex
     { h }
 
-%inline instr_disasm:
-  | id=loc(IDENT) { id }
-
-%inline instr_disasm_excl:
-  | ib=loc(IDENT) { mk_loc (loc ib) ((unloc ib)^"excl") }
-
-%inline regident:
-  | n=loc(IDENT) { n }
-
-regimm:
-  | r=regident  { Reg r }
-  | i=immediate { Imm i }
-  | i=hex       { Imm i }
-
-operand:
-  | ri=regimm
-    { Regimm ri }
-  | LBRACKET r=regident COMMA ofs=regimm RBRACKET
-    { RegOffs(r,ofs) }
-  | hex_vl LT sid=loc(IDENT) PLUS loffs=immediate_ GT
-    { Label(sid,loffs) }
-  | hex_vl LT sid=loc(IDENT) GT
-    { Label(sid, mk_loc (loc sid) (Bigint.zero)) }
-
-%inline commoreol:
+commoreol:
   | COMMENT {}
   | EOL     {}
 
-operands:
-  | LCURLY regs=separated_list(COMMA,regident) RCURLY commoreol
-    { Oflexible regs }
-  | ops=separated_nonempty_list(COMMA, operand) commoreol
-    { Ofixed ops }
-  | COMMENT
-    { Onone }
+%inline offset:
+  | PLUS ofs=immediate { Some ofs }
+  |                    { None }
 
-%inline operands_excl:
-  | ra=regident EXCLAMATION COMMA LCURLY regs=separated_list(COMMA,regident) RCURLY commoreol
-    { Oflexible (List.cons ra regs) }
+operand_simple:
+  | r=ident
+    { Reg r }
+  | SHARP i=immediate
+    { Imm i }
+  | hex_vl LT sid=loc(IDENT) ofs=offset GT
+    { Label(sid, ofs) }
+
+operand:
+  | o=operand_simple
+    { [o] }
+  | LBRACKET r=separated_list(COMMA, operand_simple) RBRACKET
+    { r }
+
+operandregion:
+  | { [] }
+  | o=operand_simple
+    { [o] }
+  | r=ident COMMA ops=separated_nonempty_list(COMMA, operand)
+    { (Reg r)::(List.flatten ops) }
+  | LCURLY rs=separated_list(COMMA, operand_simple) RCURLY
+    { rs }
+  (* special cases of "rX!, ..." with optional exclamation mark "!" *)
+  | r=ident COMMA LCURLY rs=separated_list(COMMA, operand_simple) RCURLY
+    { (Reg r)::(Bool (mk_loc (loc r) false))::rs }
+  | r=ident l=loc(EXCLAMATION) COMMA LCURLY rs=separated_list(COMMA, operand_simple) RCURLY
+    { (Reg r)::(Bool (mk_loc (loc l) true))::rs }
+  | error { parse_error (Location.make $startpos $endpos) "asmparser: invalid instruction operands" }
 
 stmt:
-  | io=hex_vl COLON ib=hex id=instr_disasm ir=operands
+  | io=hex_vl COLON ib=hex id=ident ir=operandregion commoreol
     { { offset=io; instr_bin=ib; instr_asm=id; instr_exp=ir } }
-  | io=hex_vl COLON ib=hex id=instr_disasm_excl ir=operands_excl
-    { { offset=io; instr_bin=ib; instr_asm=id; instr_exp=ir } }
-  | error { parse_error (Location.make $startpos $endpos) "asmparser: stmt invalid" }
+  | error { parse_error (Location.make $startpos $endpos) "asmparser: assembly line invalid" }
 
 section_r:
-  | adr=hex_vl LT name=loc(secname) GT COLON EOL stmts=list(loc(stmt))
+  | adr=hex_vl LT name=ident GT COLON EOL stmts=list(loc(stmt))
     { { s_adr=adr; s_name=name; s_stmts=stmts } }
-  | error { parse_error (Location.make $startpos $endpos) "asmparser: invalid section header" }
+  | error { parse_error (Location.make $startpos $endpos) "asmparser: invalid assembly section header" }
 
 section:
   | commoreol* s=loc(section_r) EOF
