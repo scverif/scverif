@@ -6,7 +6,7 @@
   open Utils
   open Ilast
 %}
-%token EOF COMMA COLON SHARP EXCLAMATION
+%token EOF COMMA COLON SHARP EXCLAMATION PLUS
 %token DALIGN DDATA DBSS DCPU DGLOBAL DSYNTAX DTEXT DTHUMB DTHUMBFUNC DTYPE
 %token LBRACKET RBRACKET LCURLY RCURLY
 %token <string> IDENT COMMENT
@@ -63,6 +63,8 @@ operands:
 gaslabel:
   | l=ident
     { {l_base = unloc l; l_offs = Common.B.zero; l_loc = loc l} }
+  | l=ident PLUS ofs=INT
+    { {l_base = unloc l; l_offs = ofs; l_loc = loc l} }
 
 gasstmt:
   | m=ident args=operands COMMENT*

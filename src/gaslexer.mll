@@ -44,6 +44,7 @@ rule main = parse
   | "}"            { RCURLY }
   | ","            { COMMA }
   | ":"            { COLON }
+  | '+'            { PLUS }
   | '#'            { SHARP }
   | '!'            { EXCLAMATION }
   | ";"            { COMMENT (Buffer.contents (linecomment (Buffer.create 0) lexbuf)) }

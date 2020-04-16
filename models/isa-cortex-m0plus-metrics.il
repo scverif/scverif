@@ -387,7 +387,7 @@ macro pop1 (w32 op1)
   metric_ops_load <- metric_ops_load + 1;
   adr <- sp;
   if op1 =name= pc {
-    metric_cyclecount <- metric_cyclecount + 1;
+    metric_cyclecount <- metric_cyclecount;
   } else {
     metric_cyclecount <- metric_cyclecount - 1;
   }

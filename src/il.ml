@@ -94,7 +94,7 @@ end = struct
       if B.equal B.zero l.l_offs then
         l.l_name
       else
-        l.l_name ^ "+" ^ (B.to_string l.l_offs) in
+        l.l_name ^ "+" ^ (B.to_string_X l.l_offs) in
     if full then
       Format.fprintf fmt "%s.%a" ln Uid.pp l.l_id
     else Format.fprintf fmt "%s" ln
