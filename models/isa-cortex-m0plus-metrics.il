@@ -251,6 +251,33 @@ macro stmia4 (w32 adr, bool increment, w32 val1, w32 val2)
   }
 }
 
+macro stmia5 (w32 adr, bool increment, w32 val1, w32 val2, w32 val3)
+{
+  metric_cyclecount <- metric_cyclecount - 2;
+  metric_ops_store <- metric_ops_store + 3;
+  str3(val1, adr, (w32) 0);
+  str3(val2, adr, (w32) 4);
+  str3(val3, adr, (w32) 8);
+  if (increment) {
+    metric_cyclecount <- metric_cyclecount - 1;
+    add2(adr, (w32) 12);
+  }
+}
+
+macro stmia6 (w32 adr, bool increment, w32 val1, w32 val2, w32 val3, w32 val4)
+{
+  metric_cyclecount <- metric_cyclecount - 3;
+  metric_ops_store <- metric_ops_store + 4;
+  str3(val1, adr, (w32) 0);
+  str3(val2, adr, (w32) 4);
+  str3(val3, adr, (w32) 8);
+  str3(val4, adr, (w32) 12);
+  if (increment) {
+    metric_cyclecount <- metric_cyclecount - 1;
+    add2(adr, (w32) 16);
+  }
+}
+
 macro push1 (w32 op1)
 {
   metric_cyclecount <- metric_cyclecount - 1;

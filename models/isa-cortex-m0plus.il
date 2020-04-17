@@ -214,6 +214,27 @@ macro stmia4 (w32 adr, bool increment, w32 val1, w32 val2)
   }
 }
 
+macro stmia5 (w32 adr, bool increment, w32 val1, w32 val2, w32 val3)
+{
+  str3(val1, adr, (w32) 0);
+  str3(val2, adr, (w32) 4);
+  str3(val3, adr, (w32) 8);
+  if (increment) {
+    add2(adr, (w32) 12);
+  }
+}
+
+macro stmia6 (w32 adr, bool increment, w32 val1, w32 val2, w32 val3, w32 val4)
+{
+  str3(val1, adr, (w32) 0);
+  str3(val2, adr, (w32) 4);
+  str3(val3, adr, (w32) 8);
+  str3(val4, adr, (w32) 12);
+  if (increment) {
+    add2(adr, (w32) 16);
+  }
+}
+
 macro push1 (w32 op1)
 {
   sub2(sp, (w32) 4);
