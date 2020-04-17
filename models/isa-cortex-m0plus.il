@@ -1,4 +1,4 @@
-// Copyright 2019 - NXP
+// Copyright 2019-2020 - NXP
 // SPDX-License-Identifier: BSD-3-Clause-Clear WITH modifications
 
 w32 r0;
@@ -22,7 +22,6 @@ bool apsrn;
 bool apsrz;
 bool apsrc;
 bool apsrv;
-
 
 mem [];
 
@@ -81,13 +80,16 @@ macro ASR_C (w32 x, int shift, w32 result, bool carry_out)
 macro mov2 (w32 dst, w32 op)
 {
   dst <- op;
+  if (dst =name= pc) {
+    goto dst;
+  }
 }
 
 macro movs2 (w32 dst, w32 op)
 {
-  mov2(dst, op);
-  ExtractBit(dst, 31, apsrn);
+  ExtractBit(op, 31, apsrn);
   IsZero(op, apsrz);
+  mov2(dst, op);
 }
 
 macro adds3 (w32 dst, w32 op1, w32 op2)
@@ -95,6 +97,9 @@ macro adds3 (w32 dst, w32 op1, w32 op2)
   AddWithCarry(op1, op2, false, dst, apsrc, apsrv);
   ExtractBit(dst, 31, apsrn);
   IsZero(dst, apsrz);
+  if (dst =name= pc) {
+    goto dst;
+  }
 }
 
 macro adds2 (w32 op1, w32 op2)
@@ -106,6 +111,9 @@ macro add3 (w32 dst, w32 op1, w32 op2)
   bool i, bool j
 {
   AddWithCarry(op1, op2, false, dst, i, j);
+  if (dst =name= pc) {
+    goto dst;
+  }
 }
 
 macro add2 (w32 op1, w32 op2)
@@ -113,11 +121,11 @@ macro add2 (w32 op1, w32 op2)
   add3(op1, op1, op2);
 }
 
-macro adcs2 (w32 op1, w32 op2)
+macro adcs2 (w32 dst, w32 op2)
 {
-  AddWithCarry(op1, op2, apsrc, op1, apsrc, apsrv);
-  ExtractBit(op1, 31, apsrn);
-  IsZero(op1, apsrz);
+  AddWithCarry(dst, op2, apsrc, dst, apsrc, apsrv);
+  ExtractBit(dst, 31, apsrn);
+  IsZero(dst, apsrz);
 }
 
 macro sub3 (w32 dst, w32 op1, w32 op2)
@@ -195,6 +203,15 @@ macro sxtb2 (w32 dst, w32 src)
 macro sxth2 (w32 dst, w32 src)
 {
   dst <- signextend w32 (w16) ((uint) src);
+}
+
+macro stmia4 (w32 adr, bool increment, w32 val1, w32 val2)
+{
+  str3(val1, adr, (w32) 0);
+  str3(val2, adr, (w32) 4);
+  if (increment) {
+    add2(adr, (w32) 8);
+  }
 }
 
 macro push1 (w32 op1)
@@ -291,6 +308,9 @@ macro pop1 (w32 op1)
 {
   ldr3(op1, sp, (w32) 0);
   add2(sp, (w32) 4);
+  if (op1 =name= pc) {
+    goto op1;
+  }
 }
 
 macro pop2 (w32 op1, w32 op2)
@@ -298,6 +318,9 @@ macro pop2 (w32 op1, w32 op2)
   ldr3(op1, sp, (w32) 0);
   ldr3(op2, sp, (w32) 4);
   add2(sp, (w32) 8);
+  if (op2 =name= pc) {
+    goto op2;
+  }
 }
 
 macro pop3 (w32 op1, w32 op2, w32 op3)
@@ -306,6 +329,9 @@ macro pop3 (w32 op1, w32 op2, w32 op3)
   ldr3(op2, sp, (w32) 4);
   ldr3(op3, sp, (w32) 8);
   add2(sp, (w32) 12);
+  if (op3 =name= pc) {
+    goto op3;
+  }
 }
 
 macro pop4 (w32 op1, w32 op2, w32 op3, w32 op4)
@@ -315,6 +341,9 @@ macro pop4 (w32 op1, w32 op2, w32 op3, w32 op4)
   ldr3(op3, sp, (w32) 8);
   ldr3(op4, sp, (w32) 12);
   add2(sp, (w32) 16);
+  if (op4 =name= pc) {
+    goto op4;
+  }
 }
 
 macro pop5 (w32 op1, w32 op2, w32 op3, w32 op4, w32 op5)
@@ -325,6 +354,9 @@ macro pop5 (w32 op1, w32 op2, w32 op3, w32 op4, w32 op5)
   ldr3(op4, sp, (w32) 12);
   ldr3(op5, sp, (w32) 16);
   add2(sp, (w32) 20);
+  if (op5 =name= pc) {
+    goto op5;
+  }
 }
 
 macro pop6 (w32 op1, w32 op2, w32 op3, w32 op4, w32 op5, w32 op6)
@@ -336,6 +368,9 @@ macro pop6 (w32 op1, w32 op2, w32 op3, w32 op4, w32 op5, w32 op6)
   ldr3(op5, sp, (w32) 16);
   ldr3(op6, sp, (w32) 20);
   add2(sp, (w32) 24);
+  if (op6 =name= pc) {
+    goto op6;
+  }
 }
 
 macro pop7 (w32 op1, w32 op2, w32 op3, w32 op4, w32 op5, w32 op6, w32 op7)
@@ -348,6 +383,9 @@ macro pop7 (w32 op1, w32 op2, w32 op3, w32 op4, w32 op5, w32 op6, w32 op7)
   ldr3(op6, sp, (w32) 20);
   ldr3(op7, sp, (w32) 24);
   add2(sp, (w32) 28);
+  if (op7 =name= pc) {
+    goto op7;
+  }
 }
 
 macro pop8 (w32 op1, w32 op2, w32 op3, w32 op4, w32 op5, w32 op6, w32 op7, w32 op8)
@@ -361,6 +399,9 @@ macro pop8 (w32 op1, w32 op2, w32 op3, w32 op4, w32 op5, w32 op6, w32 op7, w32 o
   ldr3(op7, sp, (w32) 24);
   ldr3(op8, sp, (w32) 28);
   add2(sp, (w32) 32);
+  if (op8 =name= pc) {
+    goto op8;
+  }
 }
 
 macro pop9 (w32 op1, w32 op2, w32 op3, w32 op4, w32 op5, w32 op6, w32 op7, w32 op8, w32 op9)
@@ -375,20 +416,17 @@ macro pop9 (w32 op1, w32 op2, w32 op3, w32 op4, w32 op5, w32 op6, w32 op7, w32 o
   ldr3(op8, sp, (w32) 28);
   ldr3(op9, sp, (w32) 32);
   add2(sp, (w32) 36);
+  goto op9; // op9 must be pc, always jumping
 }
 
-macro ldmiaexcl2 (w32 adr, w32 dst1)
+macro ldmia3 (w32 adr, bool wb, w32 dst1)
+  w32 address
 {
-  ldr3(dst1, adr, (w32) 0);
-  add2(adr, (w32) 4);
-}
-
-macro ldmia3 (bool wb, w32 adr, w32 dst1)
-{
-  ldr3(dst1, adr, (w32) 0);
+  address <- adr;
   if wb {
     add2(adr, (w32) 4);
   }
+  ldr3(dst1, address, (w32) 0);
 }
 
 macro lsls3 (w32 dst, w32 op1, w32 shift)
@@ -479,7 +517,7 @@ macro uxth2 (w32 dst, w32 src)
 macro cmp2 (w32 op1, w32 op2)
   w32 cmpr
 {
-  SubWithCarry(op1, op2, cmpr, apsrc, apsrv);
+  AddWithCarry(op1, !w32 op2, true, cmpr, apsrc, apsrv);
   ExtractBit(cmpr, 31, apsrn);
   IsZero(cmpr, apsrz);
 }
@@ -501,78 +539,100 @@ macro bn1 (label l)
 
 macro beqn1 (label l)
 {
-  if (apsrz) { goto l; }
+  if (apsrz) {
+    goto l;
+  }
 }
 
 macro bnen1 (label l)
 {
-  if (!apsrz) { goto l; }
+  if (!apsrz) {
+    goto l;
+  }
 }
 
 macro bcsn1 (label l)
 {
-  if (apsrc) { goto l; }
+  if (apsrc) {
+    goto l;
+  }
 }
 
 macro bccn1 (label l)
 {
-  if (!apsrc) { goto l; }
+  if (!apsrc) {
+    goto l;
+  }
 }
 
 macro bmin1 (label l)
 {
-  if (apsrn) { goto l; }
+  if (apsrn) {
+    goto l;
+  }
 }
 
 macro bpln1 (label l)
 {
-  if (!apsrn) { goto l; }
+  if (!apsrn) {
+    goto l;
+  }
 }
 
 macro bvsn1 (label l)
 {
-  if (apsrv) { goto l; }
+  if (apsrv) {
+    goto l;
+  }
 }
 
 macro bvcn1 (label l)
 {
-  if (!apsrv) { goto l; }
+  if (!apsrv) {
+    goto l;
+  }
 }
 
 macro bhin1 (label l)
 {
-  if (apsrc & !apsrz)
-  { goto l; }
+  if (apsrc & !apsrz) {
+    goto l;
+  }
 }
 
 macro blsn1 (label l)
 {
-  if (!apsrc | apsrz)
-  { goto l; }
+  if (!apsrc | apsrz) {
+    goto l;
+  }
 }
 
 macro bgen1 (label l)
 {
-  if (apsrn == apsrv)
-  { goto l; }
+  if (apsrn == apsrv) {
+    goto l;
+  }
 }
 
 macro bltn1 (label l)
 {
-  if (apsrn != apsrv)
-  { goto l; }
+  if (apsrn != apsrv) {
+    goto l;
+  }
 }
 
 macro bgtn1 (label l)
 {
-  if (!apsrz & (apsrn == apsrv))
-  { goto l; }
+  if (!apsrz & (apsrn == apsrv)) {
+    goto l;
+  }
 }
 
 macro blen1 (label l)
 {
-  if (apsrz | (apsrn != apsrv))
-  { goto l; }
+  if (apsrz | (apsrn != apsrv)) {
+    goto l;
+  }
 }
 
 macro bl1 (label l)
@@ -590,8 +650,10 @@ macro bx1 (w32 adr)
 
 
 macro nop0 ()
-{}
+{
+}
 
+// FIXME: asmlifter needs to take care of it
 macro word1 (w32 i)
 {}
 
