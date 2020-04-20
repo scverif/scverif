@@ -9,7 +9,7 @@ MENHIRFLAGS  := --infer --explain
 OCB_FLAGS    := -cflag -rectypes -r -docflags -rectypes,-html
 OCB          := ocamlbuild -use-ocamlfind -use-menhir -menhir "$(MENHIR) $(MENHIRFLAGS)" $(OCB_FLAGS)
 
-MAIN         := main
+MAIN         := scverif
 
 UNAME_S      := $(shell uname -s)
 ifeq ($(UNAME_S),Linux)
@@ -42,15 +42,12 @@ all: native
 
 native:
 	$(OCB) $(MAIN).native
-	ln -fs $(MAIN).native scverif
 
 byte:
 	$(OCB) $(MAIN).byte
-	ln -fs $(MAIN).byte scverif
 
 debug:
 	$(OCB) -tag debug $(MAIN).byte
-	ln -fs $(MAIN).byte scverif
 
 clean:
 	$(OCB) -clean

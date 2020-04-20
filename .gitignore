@@ -22,4 +22,4 @@ scverif
 .gitmodules
 gadgets
 documentation.html
-/main.native
+*.native
