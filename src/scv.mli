@@ -37,9 +37,10 @@ type scvcheckkind =
   | StatefulNoninterference
   | StatefulStrongnoninterference
 
-type scvmvrewriteparam = {
-    inferpubin : bool;
-    inferstout : bool;
+type scvtaintparam = {
+    assumeInputsArePublic     : bool;
+    taintOutputsAsPublic      : bool;
+    taintMemoryOutputAsPublic : bool;
   }
 
 type scvcmd =
@@ -49,7 +50,7 @@ type scvcmd =
   | FilterLeakage of scvtarget * scvtarget * bool
   | InlineMacros  of scvtarget
   | PartialEval   of scvtarget
-  | RewriteMV     of scvtarget * scvmvrewriteparam
+  | InferTaint    of scvtarget * scvtaintparam
   | Print         of scvtarget * scvprintkind * scvverbosity option
   | Check         of scvtarget * scvcheckkind
   | Verbosity     of scvverbosity
@@ -58,7 +59,7 @@ val pp_scvstring    : Format.formatter -> scvstring -> unit
 val pp_scvval       : Format.formatter -> scvval -> unit
 val pp_scvtarget    : Format.formatter -> scvtarget -> unit
 val pp_scvcheckkind : Format.formatter -> scvcheckkind -> unit
-val pp_scvmvrewriteparam : Format.formatter -> scvmvrewriteparam -> unit
+val pp_scvtaintparam : Format.formatter -> scvtaintparam -> unit
 val pp_scvprintkind : Format.formatter -> scvprintkind -> unit
 val pp_scvverbosity : Format.formatter -> scvverbosity -> unit
 val pp_scvcmd       : Format.formatter -> scvcmd -> unit

@@ -115,8 +115,8 @@ type leak_info = string option
 type op_desc =
   | Oif  of ty
   | Oadd of wsize option
-  | Omul of wsize option (* low word of multiplication*)
-  | Omulh of wsize (* high word of multiplication*)
+  | Omul of wsize option  (** low  word of multiplication*)
+  | Omulh of wsize        (** high word of multiplication*)
   | Osub of wsize option
   | Oopp of wsize option
   | Olsl of wsize
@@ -149,8 +149,8 @@ type expr =
 
 type lval =
   | Lvar   of V.t
-  | Lset   of V.t * expr           (** array assign *)
-  | Lstore of wsize * V.t * expr   (** memory assign *)
+  | Lset   of V.t * expr          (** array assign *)
+  | Lstore of wsize * V.t * expr  (** memory assign *)
 
 type macro_arg =
   | Aexpr  of expr

@@ -24,17 +24,21 @@ type t_ty =
   | Public
   | Secret
 
+(** resource declaration *)
 type rdecl =
-  | RDvar of var
-  | RDget of var * B.zint
+  | RDvar of var          (** scalar variable *)
+  | RDget of var * B.zint (** variable accessed at specific position *)
 
 type rdecls = rdecl array
 
+(** initial state and IO taint specification *)
 type initial = {
-  init_region : region list;
-  init_var    : (V.t * ival) list;
-  input_var   : (t_ty * V.t * rdecls) list;
-  output_var  : (t_ty * V.t * rdecls) list;
+  init_region : region list;                (** memory layout,
+                                                mapping region-variables to memory-variables *)
+  init_var    : (V.t * ival) list;          (** initial values of variables,
+                                                can correspond to region-variables *)
+  input_var   : (t_ty * V.t * rdecls) list; (** taint of input  variables and their resource *)
+  output_var  : (t_ty * V.t * rdecls) list; (** taint of output variables and their resource *)
 }
 
 type pointer = {
@@ -76,8 +80,10 @@ val empty_eenv : eenv
 
 val pp_t_ty      : Format.formatter -> t_ty -> unit
 val pp_regions   : Format.formatter -> bvalue array Il.Mv.t -> unit
+val pp_rdecl     : Format.formatter -> rdecl -> unit
 val pp_vars      : Format.formatter -> value Il.Mv.t -> unit
 val pp_state     : Format.formatter -> state -> unit
+val pp_ival      : Format.formatter -> ival -> unit
 val pp_initial   : Format.formatter -> initial -> unit
 val pp_statevars : Format.formatter -> state * Scv.scvtarget -> unit
 

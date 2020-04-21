@@ -153,15 +153,16 @@ let pp_t_ty fmt = function
   | Public  -> Format.fprintf fmt "public"
   | Secret  -> Format.fprintf fmt "secret"
 
+let pp_rdecl fmt = function
+  | RDvar x -> V.pp_g fmt x
+  | RDget (x,i) -> Format.fprintf fmt "%a[%a]" V.pp_g x B.pp_print i
+
 let pp_iovars fmt iov =
-  let pp_rd fmt = function
-    | RDvar x -> V.pp_g fmt x
-    | RDget (x,i) -> Format.fprintf fmt "%a[%a]" V.pp_g x B.pp_print i in
   let pp fmt (t,x,rds) =
     Format.fprintf fmt "%a %a [@[%a@]]"
       pp_t_ty t
       V.pp_g x
-      (pp_list ";@ " pp_rd) (Array.to_list rds) in
+      (pp_list ";@ " pp_rdecl) (Array.to_list rds) in
   Format.fprintf fmt "  @[<v>%a@]" (pp_list "@ " pp) iov
 
 let pp_initial fmt ii =

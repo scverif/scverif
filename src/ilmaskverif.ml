@@ -164,7 +164,8 @@ end *) = struct
     if not (MVE.Mv.mem x !env.mvkind) then
       if for_decl then env := add_local !env x
       else
-        error (Some loc) "use a variable before initialisation @."
+        error (Some loc) "use of variable %a before initialization@."
+          MVE.pp_var x
 
 
   let lift_var ~for_decl env v =
@@ -179,14 +180,15 @@ end *) = struct
         env := add_local env0 x;
         x
       else
-        error (Some v.v_loc) "use a variable before initialisation"
+        error (Some v.v_loc) "use of variable %a before initialization@."
+          Il.V.pp_dbg v
 
-  let get_index_i ty i = 
+  let get_index_i ty i =
     let _, i1, _ = get_arr ty in
     B.to_int (B.sub i i1)
 
   let get_index ty = function
-    | Il.Eint i -> get_index_i ty i 
+    | Il.Eint i -> get_index_i ty i
     | _ -> assert false
 
   let lift_avar ~for_decl env v i =
@@ -204,7 +206,8 @@ end *) = struct
         env := add_local env0 x;
         x
       else
-        error (Some v.v_loc) "use a variable before initialisation"
+        error (Some v.v_loc) "use of variable %a before initialization@."
+          Il.V.pp_dbg v
 
   let rec lift_expr (i:Il.instr) (env:liftstate ref) (expr:Il.expr) =
     match expr with
@@ -403,6 +406,26 @@ end *) = struct
     if Mf.mem m !globilmacro2func then
       error None
         "@[macro %s already lifted.@]@." m.mc_name;
+
+    (* Warn if relevant variables are initialized *)
+    let warn (taint, v, rdecl) : unit =
+      let hasinitial v =
+        ignore(List.exists
+                 (fun (v', ival) ->
+                    if Il.V.equal v v' then
+                      (Glob_option.print_silent
+                         "Verification results potentially unsound: \
+                          variable %a has initial value %a@."
+                         Il.V.pp_g v Ileval.pp_ival ival;
+                       true)
+                    else false) an.init_var) in
+      if taint != Ileval.Public then
+        (hasinitial v;
+         Array.iter (function | Ileval.RDvar v | Ileval.RDget(v, _) -> hasinitial v) rdecl)
+    in
+    List.iter warn an.input_var;
+
+    (* proceed lifting *)
     Glob_option.print_full "about to lift %s to maskverif@." m.mc_name;
     let lenv : liftstate = {
         names  = Ms.empty;
