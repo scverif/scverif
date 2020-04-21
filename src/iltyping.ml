@@ -255,9 +255,8 @@ let find_goto (env:env) (l:Ilast.label)
           with Not_found ->
             (* try to find a label, create dependency otherwise *)
             let env, l', b = find_label true false env l in
-            assert(b == false);
             (* define a dependency *)
-            env, Label(l', false)
+            env, Label(l', b)
         end
     end
   else
@@ -269,7 +268,6 @@ let find_goto (env:env) (l:Ilast.label)
       (* define a dependency *)
       env, Label(l', false)
     end
-    
 
 (* ********************************************** *)
 (* Type checking                                  *)

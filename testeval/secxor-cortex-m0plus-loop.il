@@ -42,10 +42,11 @@ print:
   target: secxor
   verbosity: 0;
 
-rewriteformv:
-  target: secxor
-  inferinput: true
-  inferoutput: true;
+infertaint:
+  inputsAsPublic: true
+  outputsAsPublic: true
+  memoryAsPublicOut: true
+  target: secxor;
 
 check:
   kind: NI

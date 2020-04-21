@@ -22,7 +22,7 @@ ILSRCDIR  := testil
 ILSRC     := $(wildcard $(ILSRCDIR)/*.il)
 ILTESTS   := $(patsubst $(ILSRCDIR)/%.il, %.iltest, $(ILSRC))
 
-MODELSDIR	:= isa
+MODELSDIR	:= models
 MODELSSRC	:= $(wildcard $(MODELSDIR)/*.il)
 MODELSTESTS	:= $(patsubst $(MODELSDIR)/%.il, %.isatest, $(MODELSSRC))
 
@@ -87,19 +87,19 @@ endif
 
 # rule to test ilfiles
 $(ILSRCDIR)/%.iltest %.iltest: $(ILSRCDIR)/%.il native logdir
-	./scverif --il $< | tee $(LOGDIR)/$(notdir $@)
+	scverif --il $< | tee $(LOGDIR)/$(notdir $@)
 
 # rule to test instruction set architectures
 $(MODELSDIR)/%.isatest %.isatest: $(MODELSDIR)/%.il native logdir
-	./scverif --il $< | tee $(LOGDIR)/$(notdir $@)
+	scverif --il $< | tee $(LOGDIR)/$(notdir $@)
 
 # rule to test parsing of assembly files
 $(ASMSRCDIR)/%.asmtest %.asmtest: $(ASMSRCDIR)/%.il native logdir
-	./scverif --il $< | tee $(LOGDIR)/$(notdir $@)
+	scverif --il $< | tee $(LOGDIR)/$(notdir $@)
 
 # rule to test ilfiles
 $(EVALSRCDIR)/%.evaltest %.evaltest: $(EVALSRCDIR)/%.il native logdir
-	./scverif --il $< | tee $(LOGDIR)/$(notdir $@)
+	scverif --il $< | tee $(LOGDIR)/$(notdir $@)
 
 # shortcut for various tests
 test-m0pisa: isa-cortex-m0plus.isatest

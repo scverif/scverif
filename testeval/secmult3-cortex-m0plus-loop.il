@@ -45,10 +45,11 @@ print:
   target: secmult_flaw
   verbosity: 0;
 
-rewriteformv:
-  target: secmult_flaw
-  inferinput: true
-  inferoutput: true;
+infertaint:
+  inputsAsPublic: true
+  outputsAsPublic: true
+  memoryAsPublicOut: true
+  target: secmult_flaw;
 
 check:
   kind: SNI

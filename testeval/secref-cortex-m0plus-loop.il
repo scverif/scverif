@@ -40,10 +40,11 @@ print:
   target: secrefresh
   verbosity: 0;
 
-rewriteformv:
-  target: secrefresh
-  inferinput: true
-  inferoutput: true;
+infertaint:
+  inputsAsPublic: true
+  outputsAsPublic: true
+  memoryAsPublicOut: true
+  target: secrefresh;
 
 check:
   kind: SNI

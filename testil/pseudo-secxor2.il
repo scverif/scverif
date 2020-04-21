@@ -86,10 +86,11 @@ print:
 partialeval:
   target: secxor;
 
-rewriteformv:
-  target: secxor
-  inferinput: true
-  inferoutput: true;
+infertaint:
+  inputsAsPublic: true
+  outputsAsPublic: true
+  memoryAsPublicOut: true
+  target: secxor;
 
 print:
   kind: maskverif

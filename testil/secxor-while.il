@@ -9,7 +9,8 @@ macro secxor ()
   movs2 (r3, (w32) 0);
   push3 (r4, r5, lr);
 
-lbl1: ldr3  (r4, r1, r3);
+lbl1:
+  ldr3  (r4, r1, r3);
   ldr3  (r5, r2, r3);
   eors2 (r4, r5);
   str3  (r4, r0, r3);
@@ -40,7 +41,7 @@ annotate secxor
 print:
   target: secxor
   kind: macrodef
-  verbosity: 1;
+  verbosity: 0;
 
 addleakage:
   target: secxor;
@@ -59,17 +60,18 @@ partialeval:
 print:
   kind: evaltrace
   target: secxor
-  verbosity: 1;
+  verbosity: 0;
 
-rewriteformv:
-  target: secxor
-  inferinput: true
-  inferoutput: true;
+infertaint:
+  inputsAsPublic: true
+  outputsAsPublic: true
+  memoryAsPublicOut: true
+  target: secxor;
 
 print:
   kind: maskverif
   target: secxor
-  verbosity: 1;
+  verbosity: 0;
 
 check:
   target: secxor

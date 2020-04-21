@@ -42,10 +42,11 @@ print:
   target: secmult_direct
   verbosity: 0;
 
-rewriteformv:
-  target: secmult_direct
-  inferinput: true
-  inferoutput: true;
+infertaint:
+  inputsAsPublic: true
+  outputsAsPublic: true
+  memoryAsPublicOut: true
+  target: secmult_direct;
 
 check:
   kind: SNI
