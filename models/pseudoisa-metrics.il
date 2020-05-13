@@ -46,10 +46,10 @@ w32 opW; /* Memory Write Operand Transition */
 macro xor (w32 op1, w32 op2)
 {
   leak xorCompResult (op1 ^w32 op2);
+  leak xorTransition (op1, op1 ^w32 op2);
   leak xorOperand (opA, op1, opB, op2);
   leak xorOperandA (opA, op1);
   leak xorOperandB (opB, op2);
-  leak xorTransition (op1, op1 ^w32 op2);
 
   opA <- op1;
   opB <- op2;
@@ -62,10 +62,10 @@ macro xor (w32 op1, w32 op2)
 macro and (w32 op1, w32 op2)
 {
   leak andCompResult (op1 &w32 op2);
+  leak andTransition (op1, op1 &w32 op2);
   leak andOperand (opA, op1, opB, op2);
   leak andOperandA (opA, op1);
   leak andOperandB (opB, op2);
-  leak andTransition (op1, op1 &w32 op2);
 
   opA <- op1;
   opB <- op2;
@@ -117,8 +117,6 @@ macro store (w32 src, w32 ptr, int index)
 {
   leak storeOperand1 (opA, ptr, opB, index);
 
-//  leak storeOperand2WC (opA, ptr, opB, dst, opW, src); /* extreme worst case not yet reported */
-//  leak storeOperand2 (opA, ptr, opB, dst);             /* worst case not yet reported */
   leak storeOperand2A (opA, ptr);
   leak storeOperand2B (opB, src);
   leak storeMemOperand (opW, src);
