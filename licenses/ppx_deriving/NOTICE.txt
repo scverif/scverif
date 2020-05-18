@@ -1,0 +1,7 @@
+ppx_deriving
+  - homepage: https://github.com/ocaml-ppx/ppx_deriving
+  - source: https://github.com/ocaml-ppx/ppx_deriving
+  - version: 4.4
+  - license:
+    - MIT
+    - https://github.com/ocaml-ppx/ppx_deriving/blob/master/LICENSE.txt

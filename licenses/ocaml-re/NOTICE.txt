@@ -1,0 +1,7 @@
+re
+  - homepage: https://github.com/ocaml/ocaml-re
+  - source: https://github.com/ocaml/ocaml-re
+  - version: 1.9.0
+  - license:
+    - LGPL
+    - https://github.com/ocaml/ocaml-re/blob/master/LICENSE.md

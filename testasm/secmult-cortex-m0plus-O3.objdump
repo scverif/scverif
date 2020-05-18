@@ -1,0 +1,77 @@
+; Copyright 2019 - NXP
+; SPDX-License-Identifier: BSD-3-Clause-Clear WITH modifications
+
+00000000 <secmult>:
+   0:	b5f0      	push	{r4, r5, r6, r7, lr}
+   2:	464f      	mov	r7, r9
+   4:	4646      	mov	r6, r8
+   6:	46d6      	mov	lr, sl
+   8:	4699      	mov	r9, r3
+   a:	680c      	ldr	r4, [r1, #0]
+   c:	b5c0      	push	{r6, r7, lr}
+   e:	6817      	ldr	r7, [r2, #0]
+  10:	464b      	mov	r3, r9
+  12:	4027      	ands	r7, r4
+  14:	6007      	str	r7, [r0, #0]
+  16:	684d      	ldr	r5, [r1, #4]
+  18:	6854      	ldr	r4, [r2, #4]
+  1a:	402c      	ands	r4, r5
+  1c:	6044      	str	r4, [r0, #4]
+  1e:	688e      	ldr	r6, [r1, #8]
+  20:	6895      	ldr	r5, [r2, #8]
+  22:	4035      	ands	r5, r6
+  24:	6085      	str	r5, [r0, #8]
+  26:	680e      	ldr	r6, [r1, #0]
+  28:	46aa      	mov	sl, r5
+  2a:	6855      	ldr	r5, [r2, #4]
+  2c:	402e      	ands	r6, r5
+  2e:	46b0      	mov	r8, r6
+  30:	684d      	ldr	r5, [r1, #4]
+  32:	685e      	ldr	r6, [r3, #4]
+  34:	6813      	ldr	r3, [r2, #0]
+  36:	4074      	eors	r4, r6
+  38:	401d      	ands	r5, r3
+  3a:	4643      	mov	r3, r8
+  3c:	405c      	eors	r4, r3
+  3e:	4077      	eors	r7, r6
+  40:	406c      	eors	r4, r5
+  42:	6007      	str	r7, [r0, #0]
+  44:	6044      	str	r4, [r0, #4]
+  46:	6893      	ldr	r3, [r2, #8]
+  48:	680d      	ldr	r5, [r1, #0]
+  4a:	401d      	ands	r5, r3
+  4c:	464b      	mov	r3, r9
+  4e:	46ac      	mov	ip, r5
+  50:	689e      	ldr	r6, [r3, #8]
+  52:	688d      	ldr	r5, [r1, #8]
+  54:	6813      	ldr	r3, [r2, #0]
+  56:	4077      	eors	r7, r6
+  58:	401d      	ands	r5, r3
+  5a:	46a8      	mov	r8, r5
+  5c:	4655      	mov	r5, sl
+  5e:	4643      	mov	r3, r8
+  60:	4075      	eors	r5, r6
+  62:	405d      	eors	r5, r3
+  64:	4663      	mov	r3, ip
+  66:	405d      	eors	r5, r3
+  68:	6085      	str	r5, [r0, #8]
+  6a:	6007      	str	r7, [r0, #0]
+  6c:	684b      	ldr	r3, [r1, #4]
+  6e:	6896      	ldr	r6, [r2, #8]
+  70:	6889      	ldr	r1, [r1, #8]
+  72:	401e      	ands	r6, r3
+  74:	464b      	mov	r3, r9
+  76:	691b      	ldr	r3, [r3, #16]
+  78:	6852      	ldr	r2, [r2, #4]
+  7a:	405d      	eors	r5, r3
+  7c:	4075      	eors	r5, r6
+  7e:	400a      	ands	r2, r1
+  80:	4055      	eors	r5, r2
+  82:	405c      	eors	r4, r3
+  84:	6085      	str	r5, [r0, #8]
+  86:	6044      	str	r4, [r0, #4]
+  88:	bc1c      	pop	{r2, r3, r4}
+  8a:	4690      	mov	r8, r2
+  8c:	4699      	mov	r9, r3
+  8e:	46a2      	mov	sl, r4
+  90:	bdf0      	pop	{r4, r5, r6, r7, pc}

@@ -1,0 +1,15 @@
+# Copyright 2019 - Inria, NXP
+
+S src
+B _build
+B _build/src
+
+PKG zarith
+PKG menhirLib
+PKG batteries
+PKG ppx_import
+PKG ppx_deriving.show
+PKG re
+PKG maskverif
+
+FLG -rectypes

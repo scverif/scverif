@@ -1,0 +1,25 @@
+# Copyright 2019-2020 - NXP
+# -*- mode: gitignore; -*-
+
+*~
+\#*\#
+*.elc
+auto-save-list
+tramp
+.\#*
+.projectile
+.dir-locals.el
+*.annot
+_build/
+*.byte
+setup.data
+setup.log
+.merlin
+*.install
+_opam/
+logs/
+scverif
+.gitmodules
+gadgets
+documentation.html
+*.native

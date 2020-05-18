@@ -1,0 +1,7 @@
+ocaml
+  - homepage: https://ocaml.org/
+  - source: https://github.com/ocaml/ocaml
+  - version: 4.07
+  - license:
+    - LGPL
+    - https://github.com/ocaml/ocaml/blob/trunk/LICENSE

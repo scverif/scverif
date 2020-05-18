@@ -1,0 +1,12 @@
+# Copyright 2019-2020 - NXP
+# SPDX-License-Identifier: BSD-3-Clause-Clear WITH modifications
+
+true:   bin_annot, thread, rectypes
+true:   package(ppx_import, ppx_deriving.show, menhirLib, batteries, zarith)
+
+<src>:  include
+
+<scverif.{byte,native}>:                   package(maskverif)
+<src/{scverif,ilmaskverif*,glob_option}.*>:            package(maskverif)
+
+<src/{scverif,iltyping,scv,ileval,illeakage}.*>:  package(re)

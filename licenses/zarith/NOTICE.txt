@@ -1,0 +1,7 @@
+zarith
+  - homepage: https://github.com/ocaml/Zarith
+  - source: https://github.com/ocaml/Zarith
+  - version: 1.9.1
+  - license:
+    - LGPL
+    - https://github.com/ocaml/Zarith/blob/master/LICENSE

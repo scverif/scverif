@@ -1,0 +1,36 @@
+; Copyright 2019 - NXP
+; SPDX-License-Identifier: BSD-3-Clause-Clear WITH modifications
+
+00000000 <secrefresh>:
+   0:	b5f7      	push	{r0, r1, r2, r4, r5, r6, r7, lr}
+   2:	000d      	movs	r5, r1
+   4:	2200      	movs	r2, #0
+   6:	9301      	str	r3, [sp, #4]
+   8:	350c      	adds	r5, #12
+   a:	1c54      	adds	r4, r2, #1
+   c:	0020      	movs	r0, r4
+   e:	2704      	movs	r7, #4
+  10:	4090      	lsls	r0, r2
+  12:	4097      	lsls	r7, r2
+  14:	0082      	lsls	r2, r0, #2
+  16:	0008      	movs	r0, r1
+  18:	9b01      	ldr	r3, [sp, #4]
+  1a:	189a      	adds	r2, r3, r2
+  1c:	3004      	adds	r0, #4
+  1e:	42a8      	cmp	r0, r5
+  20:	d104      	bne.n	2c <secrefresh+0x2c>
+  22:	3104      	adds	r1, #4
+  24:	0022      	movs	r2, r4
+  26:	2c03      	cmp	r4, #3
+  28:	d1ef      	bne.n	a <secrefresh+0xa>
+  2a:	bdf7      	pop	{r0, r1, r2, r4, r5, r6, r7, pc}
+  2c:	6813      	ldr	r3, [r2, #0]
+  2e:	680e      	ldr	r6, [r1, #0]
+  30:	405e      	eors	r6, r3
+  32:	600e      	str	r6, [r1, #0]
+  34:	6813      	ldr	r3, [r2, #0]
+  36:	6806      	ldr	r6, [r0, #0]
+  38:	19d2      	adds	r2, r2, r7
+  3a:	405e      	eors	r6, r3
+  3c:	6006      	str	r6, [r0, #0]
+  3e:	e7ed      	b.n	1c <secrefresh+0x1c>

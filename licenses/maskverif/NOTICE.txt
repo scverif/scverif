@@ -1,0 +1,7 @@
+maskverif
+  - homepage: https://gitlab.com/benjgregoire/maskverif/
+  - source: https://gitlab.com/benjgregoire/maskverif/-/blob/SPINI/
+  - version: SPINI branch
+  - license:
+    - CeCILL-B
+    - https://gitlab.com/benjgregoire/maskverif/-/blob/SPINI/LICENSE

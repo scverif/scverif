@@ -1,0 +1,7 @@
+ocamlgraph
+  - homepage: https://github.com/backtracking/ocamlgraph
+  - source: https://github.com/backtracking/ocamlgraph
+  - version: 1.8.8
+  - license:
+    - LGPL
+    - https://github.com/backtracking/ocamlgraph/blob/master/LICENSE
