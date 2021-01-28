@@ -1,4 +1,5 @@
 (* Copyright 2019-2020 - Inria, NXP *)
+(* Copyright 2021 - NXP *)
 (* SPDX-License-Identifier: BSD-3-Clause-Clear WITH modifications *)
 
 open Location
@@ -311,8 +312,10 @@ let emul ws (v1,v2) =
     Glob_option.print_full "@[<v>emul: cannot evaluate Omul %a %a@]@."
       pp_bvalue v1 pp_bvalue v2;
     Vunknown
-let elsl ws (v1, v2) =
+
+let elsl ws (v1, v2 : bvalue * bvalue) =
   match v1, v2 with
+  | _ , Vint i2 when B.equal B.zero i2 -> v1
   | Vint i1 , Vint i2  -> op_wi_w B.lshl ws i1 i2
   | _                  ->
     Glob_option.print_full "@[<v>elsl: cannot evaluate Olsl %a %a@]@."
@@ -321,6 +324,7 @@ let elsl ws (v1, v2) =
 
 let elsr ws (v1, v2) =
   match v1, v2 with
+  | _ , Vint i2 when B.equal B.zero i2 -> v1
   | Vint i1 , Vint i2  -> op_wi_w B.lshr ws i1 i2
   | _                  ->
     Glob_option.print_full "@[<v>elsr: cannot evaluate Olsr %a %a@]@."
@@ -329,6 +333,7 @@ let elsr ws (v1, v2) =
 
 let easr ws (v1, v2) =
   match v1, v2 with
+  | _ , Vint i2 when B.equal B.zero i2 -> v1
   | Vint i1 , Vint i2  -> op_wi_w B.ashr ws i1 i2 (* Check this *)
   | _                           ->
     Glob_option.print_full "@[<v>easr: cannot evaluate Oasr %a %a@]@."

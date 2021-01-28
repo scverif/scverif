@@ -1,8 +1,9 @@
 (* Copyright 2019-2020 - NXP, Inria *)
+(* Copyright 2021 - NXP *)
 (* SPDX-License-Identifier: BSD-3-Clause-Clear WITH modifications *)
 open Utils
 open Common
-module MV = Maskverif
+
 module MVP = Maskverif.Prog
 module MVE = Maskverif.Expr
 module MVU = Maskverif.Util
@@ -16,7 +17,6 @@ module IlToMv(* : sig
 
 end *) = struct
   module MTP = Maskverif.Prog.ToProg
-  module P = Maskverif.Parsetree
 
   module Mf = Map.Make(Il.M)
 
@@ -291,7 +291,7 @@ end *) = struct
       | Il.Lset(v,i) -> lift_avar ~for_decl:true env v i
       | _ -> Format.eprintf "%a@." Il.pp_i_g i; assert false
     in
-    let i_kind = MV.Parsetree.IK_noleak in
+    let i_kind = Maskverif.Parsetree.IK_noleak in
     let i_expr = lift_expr i env rhs in
     let instr_d = MVP.Iassgn({i_var; i_kind; i_expr}) in
     (* TODO improve location *)
@@ -513,18 +513,18 @@ let check_mvprog (params:Scv.scvcheckkind) (m:Il.macro) (an:Ileval.initial) (st:
     "Dispatching maskverif for %s@." m.mc_name;
   let success = match params with
   | Scv.StatefulNoninterference ->
-    MV.Checker.check_ni
+    Maskverif.Checker.check_ni
       toolopts ~para:true ~fname:(m.mc_name) mvparams nb_shares ~order
       ~outpub:pubout interns
   | Scv.StatefulStrongnoninterference ->
-    MV.Checker.check_sni
+    Maskverif.Checker.check_sni
       toolopts ~para:true ~fname:(m.mc_name) mvparams nb_shares ~order
       interns ~outpub:pubout outputs
   | Scv.Noninterference ->
-    MV.Checker.check_ni
+    Maskverif.Checker.check_ni
       toolopts ~para:true ~fname:(m.mc_name) mvparams nb_shares ~order interns
   | Scv.Strongnoninterference ->
-    MV.Checker.check_sni
+    Maskverif.Checker.check_sni
       toolopts ~para:true ~fname:(m.mc_name) mvparams nb_shares ~order
       interns outputs in
   if success then

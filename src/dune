@@ -1,0 +1,29 @@
+; Copyright 2021 - Inria, NXP
+
+(env
+  (dev (flags
+    :standard
+    -safe-string
+    -g
+    -w -1..66-4-9-41-44-60
+  ))
+  (release (flags
+    :standard
+    -safe-string
+    -g
+  ))
+)
+
+(ocamllex
+  (modules asmlexer gaslexer illexer))
+
+(menhir
+ (modules asmparser gasparser ilparser))
+
+(executable
+ (name scverif)
+ (public_name scverif)
+ (promote (until-clean) (into ..))
+ (package scverif)
+ (preprocess (staged_pps ppx_import ppx_deriving.show))
+ (libraries zarith menhirLib ocamlgraph batteries re maskverif))

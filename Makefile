@@ -1,19 +1,15 @@
 # Copyright 2019-2020 - Inria, NXP
+# Copyright 2021 - NXP
 # SPDX-License-Identifier: BSD-3-Clause-Clear WITH modifications
 
-.PHONY: all clean logdir
+.PHONY: clean logdir build all
 MAKEFLAGS += --silent
-
-MENHIR       := menhir
-MENHIRFLAGS  := --infer --explain
-OCB_FLAGS    := -cflag -rectypes -r -docflags -rectypes,-html
-OCB          := ocamlbuild -use-ocamlfind -use-menhir -menhir "$(MENHIR) $(MENHIRFLAGS)" $(OCB_FLAGS)
 
 MAIN         := scverif
 
 UNAME_S      := $(shell uname -s)
 ifeq ($(UNAME_S),Linux)
-	OCB_FLAGS += -lflags -cclib,-lrt
+SHELL     := /bin/bash
 endif
 
 LOGDIR    := logs
@@ -38,20 +34,15 @@ EVALTESTS  := $(patsubst $(EVALSRCDIR)/%.il, %.evaltest, $(EVALSRC))
 MVTESTS    := $(patsubst $(EVALSRCDIR)/%.il, %.mvtest, $(EVALSRC))
 
 
-all: native
+all: build
 
-native:
-	$(OCB) $(MAIN).native
-
-byte:
-	$(OCB) $(MAIN).byte
-
-debug:
-	$(OCB) -tag debug $(MAIN).byte
+build:
+	dune build @install
+	ln -sf scverif.exe $(MAIN)
 
 clean:
-	$(OCB) -clean
-	rm -f src/*~ src/.*~ $(MAIN).native $(LOGDIR)/*
+	dune clean
+	rm -f src/*~ src/.*~ $(MAIN) $(LOGDIR)/*
 
 container:
 	docker build -t scverif -f .container/Dockerfile .
@@ -63,27 +54,6 @@ documentation:
 
 logdir:
 	mkdir -p $(LOGDIR)
-
-install: uninstall native
-	@if [[ ":${PATH}:" == *":${HOME}/.local/bin:"* ]]; then\
-	   mkdir -p "${HOME}/.local/bin/" && \
-	   cp $(MAIN).native "${HOME}/.local/bin/scverif" && \
-	   echo "installed scverif to '${HOME}/.local/bin/scverif'"; \
-	elif [[ ":${PATH}:" == *":${HOME}/bin:"* ]]; then\
-	   mkdir -p "${HOME}/bin/" && \
-	   cp $(MAIN).native "${HOME}/bin/scverif" && \
-	   echo "installed scverif to '${HOME}/bin/scverif'"; \
-	else\
-	  echo "Your path is missing ~/bin or ~/.local/bin, refusing to install executable.";\
-	fi
-
-uninstall:
-ifneq (,$(wildcard ${HOME}/.local/bin/scverif))
-	rm "${HOME}/.local/bin/scverif"
-endif
-ifneq (,$(wildcard ${HOME}/bin/scverif))
-	rm "${HOME}/bin/scverif"
-endif
 
 # rule to test ilfiles
 $(ILSRCDIR)/%.iltest %.iltest: $(ILSRCDIR)/%.il native logdir

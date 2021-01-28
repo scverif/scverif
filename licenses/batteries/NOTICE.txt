@@ -1,7 +1,7 @@
 batteries
  - homepage: https://github.com/ocaml-batteries-team/batteries-included
  - source: https://github.com/ocaml-batteries-team/batteries-included
- - version: 2.11.0
+ - version: 3.2.0
  - license:
    - LGPL
    - https://github.com/ocaml-batteries-team/batteries-included/blob/master/LICENSE

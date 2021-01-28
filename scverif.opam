@@ -1,0 +1,28 @@
+# Copyright 2021 - Inria, NXP
+opam-version: "2.0"
+name: "scverif"
+version: "1.1.0-ches"
+maintainer: "Marc Gourjon"
+authors: "Marc Gourjon and Benjamin Gregoire"
+license: "Modified BSD 3 Clause Clear License"
+bug-reports: "https://github.com/scverif/scverif/issues"
+build: [
+  ["dune" "subst"]
+  ["dune" "build" "-p" name "-j" jobs]
+]
+depends: [
+  "ocaml" {>= "4.07.1"}
+  "dune"
+  "zarith"
+  "menhir"
+  "ocamlgraph"
+  "batteries"
+  "ocamlfind"
+  "ppx_import"
+  "re"
+  "ppx_deriving"
+  "maskverif" {>= "0.8.0"}
+]
+homepage: "https://gitlab.com/benjgregoire/maskverif"
+dev-repo: "git+https://gitlab.com/benjgregoire/maskverif.git"
+synopsis: "The tool scVerif can be used to verify the security of masked implementations in user-defined leakage models"

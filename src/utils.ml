@@ -1,4 +1,4 @@
-(* Copyright 2019 - Inria, NXP *)
+(* Copyright 2019-2021 - Inria, NXP *)
 (* SPDX-License-Identifier: BSD-3-Clause-Clear WITH modifications *)
 
 (* -------------------------------------------------------------------- *)
@@ -30,7 +30,7 @@ type 'a cmp = 'a -> 'a -> int
 
 (* -------------------------------------------------------------------- *)
 let clamp ~min ~max i =
-  Pervasives.min max (Pervasives.max min i)
+  Stdlib.min max (Stdlib.max min i)
 
 (* -------------------------------------------------------------------- *)
 let tryexn (ignoreexn : exn -> bool) (f : unit -> 'a) =
@@ -90,12 +90,12 @@ let postincr (i : int ref) = incr i; !i
 let compare_tag (x1 : 'a) (x2 : 'a) =
   match Obj.tag (Obj.repr x1), Obj.tag (Obj.repr x2) with
   | n1, n2 when (n1, n2) = (Obj.int_tag, Obj.int_tag) ->
-      Pervasives.compare (Obj.magic x1 : int) (Obj.magic x2 : int)
+      Stdlib.compare (Obj.magic x1 : int) (Obj.magic x2 : int)
 
   | n1, _ when n1 = Obj.int_tag ->  1
   | _, n2 when n2 = Obj.int_tag -> -1
 
-  | n1, n2 -> Pervasives.compare n1 n2
+  | n1, n2 -> Stdlib.compare n1 n2
 
 type lzcmp = int lazy_t
 
@@ -541,10 +541,10 @@ module List = struct
     let sort = if stable then List.stable_sort else List.sort in
     sort cmp xs
 
-  let min ?(cmp = Pervasives.compare) s =
+  let min ?(cmp = Stdlib.compare) s =
     reduce (fun x y -> if cmp x y < 0 then x else y) s
 
-  let max ?(cmp = Pervasives.compare) s =
+  let max ?(cmp = Stdlib.compare) s =
     reduce (fun x y -> if cmp x y > 0 then x else y) s
 
   let is_singleton l =
@@ -557,7 +557,7 @@ module List = struct
   let snd xs = List.map snd xs
 end
 
-(* -------------------------------------------------------------------- *)
+(* --------------------------------------------------------------------
 module Parray = struct
   type 'a t = 'a array
 
@@ -599,12 +599,13 @@ module Parray = struct
       else true in
     aux 0 t
 end
+ *)
 
 (* -------------------------------------------------------------------- *)
 module String = struct
   include BatString
 
-  let split_lines = nsplit ~by:"\n"
+  let split_lines = split_on_string ~by:"\n"
 
   let trim (s : string) =
     let aout = BatString.trim s in
@@ -673,12 +674,12 @@ module File = struct
 
   let read_from_file ~offset ~length source =
     try
-      let input = Pervasives.open_in_bin source in
+      let input = Stdlib.open_in_bin source in
       try_finally
         (fun () ->
-          Pervasives.seek_in input offset;
-          Pervasives.really_input_string input length)
-        (fun () -> Pervasives.close_in input)
+          Stdlib.seek_in input offset;
+          Stdlib.really_input_string input length)
+        (fun () -> Stdlib.close_in input)
     with
     | End_of_file
     | Invalid_argument _
@@ -686,12 +687,12 @@ module File = struct
 
   let write_to_file ~output data =
     try
-      let output = Pervasives.open_out_bin output in
+      let output = Stdlib.open_out_bin output in
       try_finally
         (fun () ->
-          Pervasives.output_string output data;
-          Pervasives.flush output)
-        (fun () -> Pervasives.close_out output)
+          Stdlib.output_string output data;
+          Stdlib.flush output)
+        (fun () -> Stdlib.close_out output)
     with
     | Invalid_argument _
     | Sys_error _ -> invalid_arg "File.write_to_file"

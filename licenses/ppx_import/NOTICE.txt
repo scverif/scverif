@@ -1,7 +1,7 @@
 ppx_import
   - homepage: https://github.com/ocaml-ppx/ppx_import
   - source: https://github.com/ocaml-ppx/ppx_import
-  - version: 1.6.2
+  - version: 1.7.1
   - license:
     - MIT
     - https://github.com/ocaml-ppx/ppx_import/blob/master/LICENSE.md

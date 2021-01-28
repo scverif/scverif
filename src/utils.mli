@@ -1,4 +1,5 @@
-(* Copyright 2019 - Inria, NXP *)
+(* Copyright 2019-2020 - Inria, NXP *)
+(* Copyright 2021 - NXP *)
 (* SPDX-License-Identifier: BSD-3-Clause-Clear WITH modifications *)
 
 (* -------------------------------------------------------------------- *)
@@ -26,7 +27,7 @@ val tryexn : (exn -> bool) -> (unit -> 'a) -> 'a option
 val try_nf : (unit -> 'a) -> 'a option
 
 val try_finally : (unit -> 'a) -> (unit -> unit) -> 'a
-val finally : (unit -> 'a) -> ('b -> 'c) -> 'b -> 'c
+val finally : (unit -> unit) -> ('a -> 'b) -> 'a -> 'b
 
 val timed : ('a -> 'b) -> 'a -> float * 'b
 
@@ -257,8 +258,8 @@ module List : sig
 
   (* Functions working on 2 lists in parallel *)
   module Parallel : sig
-    val iter2i    : (int -> 'a -> 'b -> 'c) -> 'a list -> 'b list -> unit
-    val iter2o    : ('a option -> 'b option -> 'c) -> 'a list -> 'b list -> unit
+    val iter2i    : (int -> 'a -> 'b -> unit) -> 'a list -> 'b list -> unit
+    val iter2o    : ('a option -> 'b option -> unit) -> 'a list -> 'b list -> unit
     val filter2   : ('a -> 'b -> bool) -> 'a list -> 'b list -> 'a list * 'b list
     val all2      : ('a -> 'b -> bool) -> 'a list -> 'b list -> bool
     val map_fold2 : ('a -> 'b -> 'c -> 'a * 'd) -> 'a -> 'b list -> 'c list -> 'a * 'd list
@@ -294,7 +295,7 @@ module List : sig
      -> 'a list -> 'a list
 end
 
-(* -------------------------------------------------------------------- *)
+(* --------------------------------------------------------------------
 module Parray : sig
   type 'a t
 
@@ -316,6 +317,7 @@ module Parray : sig
   val exists : ('a -> bool) -> 'a t -> bool
   val for_all : ('a -> bool) -> 'a t -> bool
 end
+ *)
 
 (* -------------------------------------------------------------------- *)
 type full_loc = Location.t * Location.t list

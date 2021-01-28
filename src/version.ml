@@ -1,10 +1,11 @@
 (* Copyright 2019-2020 - Inria, NXP *)
+(* Copyright 2021 - NXP *)
 (* SPDX-License-Identifier: BSD-3-Clause-Clear WITH modifications *)
 
-let version = "1.0.0"
+let version = "1.1.0-ches"
 
 let pp_copyright fmt = fun () -> Format.fprintf fmt
-    "Copyright 2019-2020 - VeriSec Consortium, Inria@.@.\
+    "Copyright 2019-2021 - VeriSec Consortium, Inria@.@.\
      License: Modified BSD 3-Clause Clear@.@.\
      Redistribution and use in source and binary forms, with or without \
      modification, are permitted under any copyright provided that the \

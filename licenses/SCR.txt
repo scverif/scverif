@@ -8,16 +8,16 @@ Type of content:           Source code
 Description and comments:  Software tool to check side-channel resilience of masked algorithms and masked software implementations for microcontrollers
 Release Location:          https://github.com/scverif/scverif
 Origin:                    NXP (proprietary)
-                           batteries 2.11.0 (LGPL) - https://github.com/ocaml-batteries-team/batteries-included
+                           batteries 3.2.0 (LGPL) - https://github.com/ocaml-batteries-team/batteries-included
                            maskverif SPINI branch (CeCILL-B) - https://gitlab.com/benjgregoire/maskverif/-/blob/SPINI/
-                           menhir 20190924 (LGPL) - http://cambium.inria.fr/~fpottier/menhir/
-                           ocaml 4.07 (LGPL) - https://github.com/ocaml/ocaml
-                           ocamlbuild 0.14.0 (LGPL) - https://github.com/ocaml/ocamlbuild
+                           menhir 20201216 (LGPL) - http://cambium.inria.fr/~fpottier/menhir/
+                           ocaml 4.10 (LGPL) - https://github.com/ocaml/ocaml
+                           dune 2.8.1 (MIT) - https://github.com/ocaml/dune
                            ocamlfind 1.8.1 (MIT) - https://github.com/ocaml/ocamlfind
-                           ocamlgraph 1.8.8 (LGPL) - https://github.com/backtracking/ocamlgraph
+                           ocamlgraph 2.0.0 (LGPL) - https://github.com/backtracking/ocamlgraph
                            ocaml-re 1.9.0 (LGPL) - https://github.com/ocaml/ocaml-re
                            opam 2.0.1 (LGPL) - https://github.com/ocaml/opam
-                           ppx_deriving 4.4 (MIT) - https://github.com/ocaml-ppx/ppx_deriving
-                           ppx_import 1.6.2 (MIT) - https://github.com/ocaml-ppx/ppx_import
-                           zarith 1.9.1 (LGPL) - https://github.com/ocaml/Zarith
+                           ppx_deriving 5.1 (MIT) - https://github.com/ocaml-ppx/ppx_deriving
+                           ppx_import 1.7.1 (MIT) - https://github.com/ocaml-ppx/ppx_import
+                           zarith 1.11 (LGPL) - https://github.com/ocaml/Zarith
 --------------------------------------------
